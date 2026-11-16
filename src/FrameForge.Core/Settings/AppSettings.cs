@@ -11,6 +11,14 @@ public static class AppSettings
     public static readonly SettingDefinition<AppPage> StartPage =
         new("app.startPage", AppPage.Library, page => Enum.IsDefined(page));
 
+    /// <summary>Whether folder import also scans sub-folders. Remembered from the last import.</summary>
+    public static readonly SettingDefinition<bool> ImportIncludeSubfolders =
+        new("import.includeSubfolders", true);
+
+    /// <summary>Folder the import picker opens in. Empty until the first import.</summary>
+    public static readonly SettingDefinition<string> ImportLastFolder =
+        new("import.lastFolder", string.Empty);
+
     /// <summary>How many days of log files are kept; older files are removed at startup.</summary>
     public static readonly SettingDefinition<int> LogRetentionDays =
         new("logging.retentionDays", DefaultLogRetentionDays, days => days is >= MinLogRetentionDays and <= MaxLogRetentionDays);

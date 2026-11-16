@@ -1,5 +1,8 @@
+using System.Windows.Threading;
 using FrameForge.Application;
+using FrameForge.App.Services;
 using FrameForge.App.ViewModels;
+using FrameForge.Imaging;
 using FrameForge.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -11,6 +14,7 @@ namespace FrameForge.App.Startup;
 /// <summary>The single place where the application's object graph is composed.</summary>
 internal static class CompositionRoot
 {
+    /// <remarks>Must be called on the UI thread (captures its dispatcher).</remarks>
     public static IHost BuildHost(string[] args, AppDataPaths paths)
     {
         var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
@@ -26,10 +30,19 @@ internal static class CompositionRoot
 
         builder.Services.AddFrameForgeApplication();
         builder.Services.AddFrameForgeInfrastructure(paths);
+        builder.Services.AddFrameForgeImaging();
 
         builder.Services.AddSingleton(AppInfo.Create(paths));
         builder.Services.AddSingleton<AppStartup>();
 
+        // UI services
+        builder.Services.AddSingleton<IUiDispatcher>(new WpfUiDispatcher(Dispatcher.CurrentDispatcher));
+        builder.Services.AddSingleton<IFolderPicker, WindowsFolderPicker>();
+        builder.Services.AddSingleton<ThumbnailLoader>();
+        builder.Services.AddSingleton<IThumbnailSource>(sp => sp.GetRequiredService<ThumbnailLoader>());
+
+        // View models and shell
+        builder.Services.AddSingleton<ViewerViewModel>();
         builder.Services.AddSingleton<LibraryViewModel>();
         builder.Services.AddSingleton<SettingsViewModel>();
         builder.Services.AddSingleton<AboutViewModel>();

@@ -9,7 +9,7 @@
 
 ## Solution structure
 
-### Current (Milestone 01)
+### Current (Milestone 02)
 
 ```text
 FrameForge.sln
@@ -18,31 +18,50 @@ Directory.Build.props         net10.0 defaults: nullable, warnings-as-errors, la
 Directory.Packages.props      Central package versions
 dotnet-tools.json             Local tools (dotnet-ef 10.0.15)
 src/
-  FrameForge.Core/            Setting definitions (SettingDefinition<T>, AppSettings, AppPage). No dependencies.
-  FrameForge.Application/     Ports and use cases: ISettingsStore, ISettingsService/SettingsService
-  FrameForge.Infrastructure/  EF Core/SQLite (FrameForgeDbContext, migrations, DatabaseMigrator),
-                              SqliteSettingsStore, LogFileRetention, AppDataPaths
-  FrameForge.App/             WPF (net10.0-windows): composition root, shell, page views/view models, theme
+  FrameForge.Core/            Settings (SettingDefinition<T>, AppSettings) and photo domain types
+                              (Photo, PhotoMetadata, ImportStatus, ImportProgress/Summary, FolderScope,
+                              SupportedPhotoFormats). No dependencies.
+  FrameForge.Application/     Ports (ISettingsStore, IPhotoRepository, IPhotoFileEnumerator,
+                              IPhotoMetadataReader, IThumbnailGenerator, IThumbnailService) and use cases
+                              (SettingsService, PhotoImportService, PhotoLibraryService, ThumbnailKey)
+  FrameForge.Infrastructure/  EF Core/SQLite (DbContext, migrations, SqlitePhotoRepository, SqliteSettingsStore),
+                              FileSystemPhotoEnumerator, DiskThumbnailService, LogFileRetention, AppDataPaths
+  FrameForge.Imaging/         WIC via WPF imaging (net10.0-windows): WicPhotoMetadataReader,
+                              WicThumbnailGenerator, WicPhotoBitmapLoader, ExifOrientation
+  FrameForge.App/             WPF: composition root, shell, Library grid, viewer, ZoomPanImage, ThumbnailLoader
 tests/
-  FrameForge.Application.Tests/     SettingsService and SettingDefinition rules (in-memory store)
-  FrameForge.Infrastructure.Tests/  Real SQLite file: migrations, settings persistence, log retention
+  FrameForge.Application.Tests/     Settings rules; import idempotency, cancellation/resume, failures, missing files
+  FrameForge.Infrastructure.Tests/  Real SQLite + file system: migrations, repository, enumerator, thumbnail cache,
+                                    end-to-end import (imaging stubbed)
+  FrameForge.Imaging.Tests/         JPEG fixtures generated in-test: EXIF parsing, orientation, thumbnails, corrupt files
+  FrameForge.App.Tests/             Viewer and tile view models, thumbnail loader, LRU cache, zoom math
 ```
 
 ### Planned additions (introduce with their milestone)
 
 ```text
-src/FrameForge.Imaging/   image decoding, thumbnails, metadata, transforms   (Phase 2)
 src/FrameForge.AI/        model loading, inference, scoring                   (Phase 5)
-tests/FrameForge.Core.Tests/, FrameForge.Imaging.Tests/, FrameForge.AI.Tests/  as those projects gain logic
+tests/FrameForge.Core.Tests/, FrameForge.AI.Tests/  as those projects gain logic
 ```
 
-`FrameForge.Core.Tests` was not created in Milestone 01 because Core contains only a small setting-definition type; its rules are tested from `FrameForge.Application.Tests`. Preserve boundaries, not project count.
+`FrameForge.Core.Tests` does not exist yet: Core's rules are small and are tested from the Application and App test projects. Preserve boundaries, not project count.
 
-## Implementation notes (Milestone 01)
+### Project dependencies
+
+```text
+App ──► Application ──► Core
+ │  ──► Infrastructure ──► Application
+ └────► Imaging ───────► Application
+```
+
+Infrastructure and Imaging never reference each other: `DiskThumbnailService` (Infrastructure) depends on the
+`IThumbnailGenerator` port, which Imaging implements. The App composes both.
+
+## Implementation notes (Milestone 01: foundation)
 
 ### Composition root and startup
 - `App.xaml.cs` is the composition root. `CompositionRoot.BuildHost` uses the .NET Generic Host (`Microsoft.Extensions.Hosting`) for DI, lifetimes, and `ILogger<T>`; Serilog is the only logging provider.
-- Each layer exposes one registration extension: `AddFrameForgeApplication()`, `AddFrameForgeInfrastructure(paths)`. View models and `MainWindow` are registered in the App project.
+- Each layer exposes one registration extension: `AddFrameForgeApplication()`, `AddFrameForgeInfrastructure(paths)`, `AddFrameForgeImaging()`. View models, UI services, and `MainWindow` are registered in the App project.
 - Startup order: create data folders → configure Serilog → build/start host → **show the shell** (status "Starting…", navigation disabled) → `AppStartup.RunAsync` (migrate DB, apply log retention, load start page) → navigation enabled.
 - Fatal startup errors are logged and shown in a message box; the app then exits with code 1. Unhandled dispatcher exceptions are logged and reported to the user; unobserved task exceptions are logged.
 
@@ -59,7 +78,7 @@ tests/FrameForge.Core.Tests/, FrameForge.Imaging.Tests/, FrameForge.AI.Tests/  a
 ### Settings
 - A setting is a `SettingDefinition<T>` (key, default, validation rule) declared in Core (`AppSettings`).
 - `SettingsService` serialises values to JSON (enums by name). Reads return the default when nothing is stored; when the stored value is unreadable or fails validation, the default is returned **and a warning is logged**. Writes reject invalid values with `ArgumentOutOfRangeException`.
-- Current settings: `app.startPage` (Library/Settings/About, default Library) and `logging.retentionDays` (1–365, default 14). Both apply on next launch.
+- Current settings: `app.startPage` (Library/Settings/About, default Library) and `logging.retentionDays` (1–365, default 14), both applied on next launch; `import.includeSubfolders` (default true) and `import.lastFolder`, remembered from the Library page.
 
 ### Logging
 - Serilog file sink, daily rolling, 50 MB size roll, `%LOCALAPPDATA%\FrameForge\logs\frameforge-YYYYMMDD.log`. `Microsoft.*` categories are filtered to Warning (EF SQL is not logged).
@@ -75,6 +94,68 @@ tests/FrameForge.Core.Tests/, FrameForge.Imaging.Tests/, FrameForge.AI.Tests/  a
 ### UI theme
 - `Themes/Theme.xaml` holds colour tokens, brushes, typography, and control styles per `docs/ui-design-system.md` (charcoal surfaces, single accent, status colours only for meaning; selection shown by indicator bar + weight, not colour alone; status messages include a glyph).
 - Per-monitor V2 DPI awareness is declared in `app.manifest`.
+
+## Implementation notes (Milestone 02: import and viewer)
+
+### Import pipeline (`PhotoImportService`)
+1. **Scan** (`FileSystemPhotoEnumerator`, on the thread pool): walks folders explicitly, so an unreadable
+   sub-folder is reported in `ImportSummary.SkippedFolders` and logged, never silently skipped.
+   Junctions and system folders are not followed. Only `.jpg`/`.jpeg` (any case).
+2. **Diff** against stored `PhotoFileState`s (path, size, last-write UTC, status). A file is skipped when the path
+   matches case-insensitively, size and timestamp are equal, and the last status was `Imported`.
+   Failed and Missing records are always retried.
+3. **Read** changed/new files in batches of 200 with `Parallel.For` (max parallelism `min(cores/2, 4)`).
+   `PhotoReadException`, `IOException`, and `UnauthorizedAccessException` mark only that file as `Failed`
+   with `LastError`; any other exception is treated as a bug and aborts the import (after saving the batch).
+4. **Save** each batch in one transaction. Writes are not cancellable: when cancelled, the partially read batch is
+   still saved, so re-running the import resumes without re-reading anything already stored.
+5. **Mark missing** (only after a complete, uncancelled scan): records in the imported scope whose files were not
+   found become `Missing`. Records under skipped folders and outside the import scope are left untouched.
+   Records are never deleted by import.
+- Progress is throttled to one report per 100 ms; the summary is returned (not thrown) on cancellation.
+
+### Data model
+- `Photos` table (migration `AddPhotos`): `FilePath` and `FolderPath` use SQLite `NOCASE` collation, and `FilePath`
+  has a unique index, so the database itself rejects case-variant duplicates.
+- `Status` is stored as a string. `CaptureLocalTime` is the camera's EXIF wall-clock time (not UTC: EXIF has no
+  reliable time zone), so it is excluded from the UTC converter. Width/height are stored pixel dimensions, before
+  EXIF orientation.
+- No `Thumbnail` table: the cache key is computed, so the database is not needed to find a thumbnail.
+
+### Imaging (WIC through WPF, `FrameForge.Imaging`)
+- **Metadata:** header and metadata only (`BitmapCreateOptions.DelayCreation`, no pixel decode). Raw EXIF tag
+  queries (e.g. `/app1/ifd/exif/{ushort=36867}`) rather than Windows property-system names. Each tag read is
+  independent; a malformed tag yields null for that field only.
+- **Decoding:** source files are opened `FileAccess.Read` with permissive sharing, never written. Bitmaps are decoded
+  with `CacheOption.OnLoad` and frozen, so they can be created on worker threads and bound on the UI thread.
+  EXIF orientation is applied with an orthogonal `TransformedBitmap`, then materialised once with `CachedBitmap`.
+- WIC errors (`NotSupportedException`, `FileFormatException`, COM errors, …) become `PhotoReadException`;
+  `FileNotFoundException`/`IOException` pass through so callers can distinguish *missing* from *corrupt*.
+
+### Thumbnails
+- **Disk cache** (`DiskThumbnailService`): `%LOCALAPPDATA%\FrameForge\thumbnails\<2-char shard>\<key>.jpg`, longest side
+  320 px, JPEG quality 85, orientation applied. `ThumbnailKey` = SHA-256 of upper-cased path, size, mtime ticks,
+  max size, generator version. Written to a temp file and moved into place. Missing files are regenerated on demand;
+  the folder can be deleted at any time.
+- **Generated on demand**, not during import: import stays fast (≈2,000 files/3 s, ≈1,000 files/s for small files on
+  the development machine) and only thumbnails that are actually viewed cost anything.
+- **Memory** (`ThumbnailLoader`, App): an LRU of 400 decoded thumbnails, used only from the UI thread. Tiles do not
+  hold bitmaps; `PhotoTileViewModel.Thumbnail` asks the cache on each binding read and requests a load on a miss.
+- **Scheduling:** 3 workers, pending requests served newest-first (what the user just scrolled to), capped at 256
+  pending, with the oldest dropped. A dropped tile requests again the next time it is realised.
+
+### Grid and viewer
+- `ListBox` + `VirtualizingWrapPanel` (Recycling, pixel scrolling, one page of cache): with 22,000 photos only about
+  50 containers are realised. Arrow keys move by tile/row; Enter or double-click opens the viewer.
+- `LibraryViewModel` replaces `Photos` as one list per reload (one notification rather than thousands).
+- `ViewerViewModel` decodes **only the current photo** at full resolution behind a one-at-a-time gate; navigation
+  cancels the previous load, and the thumbnail is shown as a placeholder while decoding. Closing releases the bitmap.
+  Navigation stops at the first/last photo (no wrap-around).
+- `ZoomPanImage` (presentation-only control): fit (never upscaled past 100%), 100% = one image pixel per *device*
+  pixel (DPI-aware), wheel zoom around the cursor, drag pan clamped to keep the image in view, Z / + / − / 0 keys.
+  The image is hosted in a `Canvas` so WPF layout never clips it before the zoom transform. Pure math is in `ZoomMath`.
+- Problem states are shown with a glyph and text (`Missing`, `Unreadable`, `File not found`, `Can't display`) and
+  exposed to screen readers through `AutomationProperties.ItemStatus`.
 
 ## Dependency direction
 

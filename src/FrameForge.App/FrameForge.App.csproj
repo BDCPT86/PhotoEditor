@@ -12,6 +12,11 @@
   <ItemGroup>
     <ProjectReference Include="..\FrameForge.Application\FrameForge.Application.csproj" />
     <ProjectReference Include="..\FrameForge.Infrastructure\FrameForge.Infrastructure.csproj" />
+    <ProjectReference Include="..\FrameForge.Imaging\FrameForge.Imaging.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="FrameForge.App.Tests" />
   </ItemGroup>
 
   <ItemGroup>
@@ -19,6 +24,7 @@
     <PackageReference Include="Microsoft.Extensions.Hosting" />
     <PackageReference Include="Serilog.Extensions.Hosting" />
     <PackageReference Include="Serilog.Sinks.File" />
+    <PackageReference Include="VirtualizingWrapPanel" />
   </ItemGroup>
 
 </Project>

@@ -4,12 +4,145 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:FrameForge.App.ViewModels"
+             xmlns:views="clr-namespace:FrameForge.App.Views"
+             xmlns:controls="clr-namespace:FrameForge.App.Controls"
+             xmlns:vwp="clr-namespace:WpfToolkit.Controls;assembly=VirtualizingWrapPanel"
+             xmlns:conv="clr-namespace:FrameForge.App.Converters"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance Type=vm:LibraryViewModel}">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+        <conv:InverseBooleanConverter x:Key="InverseBool" />
+    </UserControl.Resources>
+
+    <UserControl.InputBindings>
+        <KeyBinding Modifiers="Control" Key="I" Command="{Binding ImportCommand}" />
+    </UserControl.InputBindings>
+
     <Grid>
-        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="420">
-            <TextBlock Text="{Binding EmptyStateHeading}" Style="{StaticResource Text.PageTitle}" HorizontalAlignment="Center" />
-            <TextBlock Text="{Binding EmptyStateMessage}" Style="{StaticResource Text.Secondary}" TextAlignment="Center" />
-        </StackPanel>
+        <!-- Grid mode -->
+        <Grid x:Name="GridMode">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <!-- Toolbar -->
+            <DockPanel Grid.Row="0" Margin="0,0,0,12" LastChildFill="False">
+                <Button DockPanel.Dock="Left" Content="_Import folder…" Command="{Binding ImportCommand}"
+                        ToolTip="Import a folder of JPEG photos (Ctrl+I)" />
+                <CheckBox DockPanel.Dock="Left" Margin="16,0,0,0" Content="Include _subfolders"
+                          IsChecked="{Binding IncludeSubfolders}" IsEnabled="{Binding IsImporting, Converter={StaticResource InverseBool}}" />
+
+                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Margin="24,0,0,0"
+                            Visibility="{Binding IsImporting, Converter={StaticResource BoolToVisibility}}">
+                    <ProgressBar Width="180" VerticalAlignment="Center" Minimum="0" Maximum="1"
+                                 Value="{Binding ImportProgressValue, Mode=OneWay}"
+                                 IsIndeterminate="{Binding IsImportProgressIndeterminate}"
+                                 AutomationProperties.Name="Import progress" />
+                    <TextBlock Margin="12,0" VerticalAlignment="Center" Text="{Binding ImportProgressText}"
+                               Foreground="{StaticResource Brush.Text.Secondary}"
+                               AutomationProperties.AutomationId="ImportStatus" />
+                    <Button Content="Cancel" Command="{Binding ImportCancelCommand}" ToolTip="Stop the import; photos read so far are kept" />
+                </StackPanel>
+
+                <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center" Text="{Binding CountText}"
+                           Foreground="{StaticResource Brush.Text.Secondary}"
+                           AutomationProperties.AutomationId="LibraryCount" />
+            </DockPanel>
+
+            <!-- Status: glyph + text, so warnings are not conveyed by colour alone. -->
+            <TextBlock Grid.Row="1" Margin="0,0,0,12" TextWrapping="Wrap" AutomationProperties.AutomationId="LibraryStatus">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Foreground" Value="{StaticResource Brush.Text.Secondary}" />
+                        <Setter Property="Text" Value="{Binding StatusMessage}" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding StatusIsWarning}" Value="True">
+                                <Setter Property="Foreground" Value="{StaticResource Brush.Status.Error}" />
+                                <Setter Property="Text" Value="{Binding StatusMessage, StringFormat='⚠ {0}'}" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding StatusMessage}" Value="{x:Null}">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+
+            <!-- Empty state -->
+            <StackPanel Grid.Row="2" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="420"
+                        Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}">
+                <TextBlock Text="Your library is empty" Style="{StaticResource Text.PageTitle}" HorizontalAlignment="Center" />
+                <TextBlock Style="{StaticResource Text.Secondary}" TextAlignment="Center"
+                           Text="Import a folder of JPEG photos to start. Originals stay where they are and are never modified." />
+            </StackPanel>
+
+            <!-- Photo grid: only visible tiles are created, and containers are recycled while scrolling. -->
+            <ListBox x:Name="PhotoGrid" Grid.Row="2"
+                     ItemsSource="{Binding Photos}"
+                     SelectedItem="{Binding SelectedPhoto}"
+                     Background="Transparent" BorderThickness="0"
+                     controls:ListBoxBehaviors.ScrollSelectionIntoView="True"
+                     VirtualizingPanel.IsVirtualizing="True"
+                     VirtualizingPanel.VirtualizationMode="Recycling"
+                     VirtualizingPanel.CacheLengthUnit="Page"
+                     VirtualizingPanel.CacheLength="1"
+                     VirtualizingPanel.ScrollUnit="Pixel"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     SelectionMode="Single"
+                     KeyboardNavigation.DirectionalNavigation="Cycle"
+                     AutomationProperties.Name="Photos">
+                <ListBox.InputBindings>
+                    <KeyBinding Key="Return" Command="{Binding OpenViewerCommand}" />
+                </ListBox.InputBindings>
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem" BasedOn="{StaticResource PhotoTileItem}">
+                        <!-- Screen readers announce the file name and any problem state. -->
+                        <Setter Property="AutomationProperties.Name" Value="{Binding FileName}" />
+                        <Setter Property="AutomationProperties.ItemStatus" Value="{Binding StatusText}" />
+                    </Style>
+                </ListBox.ItemContainerStyle>
+                <ListBox.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <vwp:VirtualizingWrapPanel ItemSize="192,184" SpacingMode="Uniform" StretchItems="False" />
+                    </ItemsPanelTemplate>
+                </ListBox.ItemsPanel>
+                <ListBox.ItemTemplate>
+                    <DataTemplate DataType="{x:Type vm:PhotoTileViewModel}">
+                        <Grid ToolTip="{Binding ToolTipText}" AutomationProperties.Name="{Binding FileName}" Background="Transparent">
+                            <Grid.InputBindings>
+                                <MouseBinding Gesture="LeftDoubleClick"
+                                              Command="{Binding DataContext.OpenViewerCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                              CommandParameter="{Binding}" />
+                            </Grid.InputBindings>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <Border Background="{StaticResource Brush.Surface.Sunken}" CornerRadius="2">
+                                <Grid>
+                                    <Image Source="{Binding Thumbnail}" Stretch="Uniform"
+                                           RenderOptions.BitmapScalingMode="HighQuality" />
+                                    <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"
+                                               Foreground="{StaticResource Brush.Status.Error}" TextAlignment="Center"
+                                               Text="{Binding StatusText, StringFormat='⚠&#x0a;{0}'}"
+                                               Visibility="{Binding HasProblem, Converter={StaticResource BoolToVisibility}}" />
+                                </Grid>
+                            </Border>
+
+                            <TextBlock Grid.Row="1" Margin="2,6,2,0" Text="{Binding FileName}" TextTrimming="CharacterEllipsis" FontSize="12" />
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Grid>
+
+        <!-- Viewer mode (overlays the grid so grid scroll position is preserved) -->
+        <Grid Visibility="{Binding IsViewerOpen, Converter={StaticResource BoolToVisibility}}">
+            <views:ViewerView x:Name="ViewerHost" DataContext="{Binding Viewer}" />
+        </Grid>
     </Grid>
 </UserControl>

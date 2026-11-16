@@ -24,19 +24,14 @@ public sealed class SettingsPersistenceTests : IDisposable
 
     public void Dispose() => _temp.Dispose();
 
-    private ServiceProvider BuildServices(TimeProvider? timeProvider = null)
-    {
-        var services = new ServiceCollection().AddLogging();
-        if (timeProvider is not null)
+    private ServiceProvider BuildServices(TimeProvider? timeProvider = null) =>
+        TestServices.Build(_paths, services =>
         {
-            services.AddSingleton(timeProvider);
-        }
-
-        return services
-            .AddFrameForgeApplication()
-            .AddFrameForgeInfrastructure(_paths)
-            .BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
-    }
+            if (timeProvider is not null)
+            {
+                services.AddSingleton(timeProvider);
+            }
+        });
 
     [Fact]
     public async Task Migrate_CreatesDatabase_AndModelMatchesMigrations()

@@ -17,7 +17,13 @@ public sealed class SettingDefinitionTests
     [Fact]
     public void AppSettingKeys_AreUnique()
     {
-        string[] keys = [AppSettings.StartPage.Key, AppSettings.LogRetentionDays.Key];
+        string[] keys =
+        [
+            AppSettings.StartPage.Key,
+            AppSettings.LogRetentionDays.Key,
+            AppSettings.ImportIncludeSubfolders.Key,
+            AppSettings.ImportLastFolder.Key,
+        ];
         Assert.Equal(keys.Length, keys.Distinct(StringComparer.Ordinal).Count());
     }
 }

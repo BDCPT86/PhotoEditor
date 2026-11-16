@@ -1,0 +1,78 @@
+<UserControl x:Class="FrameForge.App.Views.ViewerView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:FrameForge.App.ViewModels"
+             xmlns:controls="clr-namespace:FrameForge.App.Controls"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=vm:ViewerViewModel}"
+             Background="{StaticResource Brush.Surface.Sunken}"
+             AutomationProperties.Name="Photo viewer">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+    </UserControl.Resources>
+
+    <UserControl.InputBindings>
+        <KeyBinding Key="Right" Command="{Binding NextCommand}" />
+        <KeyBinding Key="Left" Command="{Binding PreviousCommand}" />
+        <KeyBinding Key="Home" Command="{Binding FirstCommand}" />
+        <KeyBinding Key="End" Command="{Binding LastCommand}" />
+        <KeyBinding Key="Escape" Command="{Binding RequestCloseCommand}" />
+    </UserControl.InputBindings>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <DockPanel Grid.Row="0" Margin="12,8">
+            <Button DockPanel.Dock="Left" Content="← Grid" ToolTip="Back to the grid (Esc)" Command="{Binding RequestCloseCommand}" />
+            <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center" Foreground="{StaticResource Brush.Text.Secondary}"
+                       Text="{Binding ZoomText, ElementName=Zoom}" AutomationProperties.AutomationId="ZoomLevel" />
+            <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center" Margin="0,0,24,0" Foreground="{StaticResource Brush.Text.Secondary}"
+                       Text="{Binding PositionText}" AutomationProperties.AutomationId="Position" />
+            <TextBlock Margin="16,0" VerticalAlignment="Center" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
+                       Text="{Binding Current.FileName}" ToolTip="{Binding Current.FilePath}" AutomationProperties.AutomationId="FileName" />
+        </DockPanel>
+
+        <!-- Image area -->
+        <Grid Grid.Row="1">
+            <!-- Thumbnail placeholder while the full-resolution image decodes. -->
+            <Image Source="{Binding Current.Thumbnail}" Stretch="Uniform" Margin="8" Opacity="0.6"
+                   RenderOptions.BitmapScalingMode="HighQuality"
+                   Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}" />
+
+            <controls:ZoomPanImage x:Name="Zoom" Source="{Binding Image}" AutomationProperties.Name="Photo" />
+
+            <TextBlock HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,16"
+                       Text="Loading full resolution…" Foreground="{StaticResource Brush.Text.Secondary}"
+                       Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}" />
+
+            <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="560" TextAlignment="Center" TextWrapping="Wrap"
+                       Foreground="{StaticResource Brush.Status.Error}" AutomationProperties.AutomationId="ViewerError"
+                       Text="{Binding ErrorMessage, StringFormat='⚠ {0}'}">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding ErrorMessage}" Value="{x:Null}">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+        </Grid>
+
+        <!-- Footer: metadata and shortcuts -->
+        <DockPanel Grid.Row="2" Margin="16,8">
+            <TextBlock DockPanel.Dock="Right" Foreground="{StaticResource Brush.Text.Disabled}" FontSize="11" VerticalAlignment="Center"
+                       Text="← →  previous/next   ·   Z  fit/100%   ·   + −  zoom   ·   Esc  grid" />
+            <TextBlock Foreground="{StaticResource Brush.Text.Secondary}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+                       Text="{Binding Current.DetailsText}" AutomationProperties.AutomationId="PhotoDetails" />
+        </DockPanel>
+    </Grid>
+</UserControl>

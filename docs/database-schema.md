@@ -9,6 +9,13 @@ _Implemented in Milestone 01 (migration `InitialCreate`). `Key` max length 200; 
 - `UpdatedUtc` (datetime)
 
 ## Photo
+_Implemented in Milestone 02 as table `Photos` (migration `AddPhotos`). Differences from the proposal below:_
+- _`FolderPath` (string, NOCASE, indexed) added, for scoping imports and missing-file detection._
+- _`FilePath` uses NOCASE collation; its unique index is case-insensitive, matching Windows paths._
+- _`CaptureUtc` became `CaptureLocalTime`: EXIF DateTimeOriginal has no reliable time zone, so it is stored as the camera's wall-clock time rather than claiming UTC._
+- _`FNumber` and `FocalLengthMm` are `double` (SQLite REAL); EF Core stores `decimal` as TEXT on SQLite, which cannot be compared or sorted in SQL._
+- _`ImportStatus` is stored as a string: `Imported`, `Failed`, or `Missing`._
+
 - `Id` (Guid, primary key)
 - `FilePath` (string, indexed; unique within current path strategy)
 - `FileName` (string)
@@ -38,6 +45,7 @@ _Implemented in Milestone 01 (migration `InitialCreate`). `Key` max length 200; 
 - `UpdatedUtc` (datetime)
 
 ## Thumbnail
+_Not implemented (Milestone 02). Thumbnails are found by a computed key (`ThumbnailKey`: path, size, modified time, size limit, generator version), so no table is needed. Revisit if cache size accounting or cleanup needs it._
 - `PhotoId` (Guid, foreign key)
 - `CacheKey` (string)
 - `RelativeCachePath` (string)
