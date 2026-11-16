@@ -35,6 +35,10 @@
                        Text="{Binding ZoomText, ElementName=Zoom}" AutomationProperties.AutomationId="ZoomLevel" />
             <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center" Margin="0,0,24,0" Foreground="{StaticResource Brush.Text.Secondary}"
                        Text="{Binding PositionText}" AutomationProperties.AutomationId="Position" />
+            <ContentControl DockPanel.Dock="Right" Margin="0,0,24,0" FontSize="15" Content="{Binding Current}"
+                            ContentTemplate="{StaticResource DecisionBadges}" Focusable="False" IsTabStop="False"
+                            AutomationProperties.AutomationId="ViewerDecision"
+                            AutomationProperties.Name="{Binding Current.AccessibleStatus}" />
             <TextBlock Margin="16,0" VerticalAlignment="Center" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
                        Text="{Binding Current.FileName}" ToolTip="{Binding Current.FilePath}" AutomationProperties.AutomationId="FileName" />
         </DockPanel>
@@ -70,7 +74,7 @@
         <!-- Footer: metadata and shortcuts -->
         <DockPanel Grid.Row="2" Margin="16,8">
             <TextBlock DockPanel.Dock="Right" Foreground="{StaticResource Brush.Text.Disabled}" FontSize="11" VerticalAlignment="Center"
-                       Text="← →  previous/next   ·   Z  fit/100%   ·   + −  zoom   ·   Esc  grid" />
+                       Text="← →  photo  ·  P X V U  decide  ·  1–5  rate  ·  F1  help  ·  Esc  grid" />
             <TextBlock Foreground="{StaticResource Brush.Text.Secondary}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
                        Text="{Binding Current.DetailsText}" AutomationProperties.AutomationId="PhotoDetails" />
         </DockPanel>

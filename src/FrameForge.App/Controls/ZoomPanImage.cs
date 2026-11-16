@@ -10,7 +10,7 @@ namespace FrameForge.App.Controls;
 /// <summary>
 /// Displays a bitmap with fit / 100% / free zoom and drag-to-pan.
 /// Mouse: wheel zooms around the cursor, drag pans, double-click toggles fit ↔ 100% at the cursor.
-/// Keyboard (when focused): Z toggles fit ↔ 100%, + / − zoom, 0 fits.
+/// Keyboard (when focused): Z toggles fit ↔ 100%, + / − zoom. (Digits are left for culling shortcuts.)
 /// This is presentation behaviour only; it holds no application state.
 /// </summary>
 public sealed class ZoomPanImage : Border
@@ -149,9 +149,6 @@ public sealed class ZoomPanImage : Border
                 break;
             case Key.OemMinus or Key.Subtract:
                 ZoomTo(_zoom / KeyStep, center);
-                break;
-            case Key.D0 or Key.NumPad0:
-                Fit();
                 break;
             default:
                 return;

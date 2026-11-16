@@ -49,11 +49,23 @@ internal sealed class ScriptedBitmapLoader : IPhotoBitmapLoader
 
     public BitmapSource LoadThumbnail(string thumbnailPath) => TestPhotos.Bitmap();
 
+    public List<int> DisplaySizesRequested { get; } = [];
+
     public BitmapSource LoadFull(string photoPath, CancellationToken cancellationToken)
     {
         var result = Behaviours.TryGetValue(photoPath, out var behaviour) ? behaviour(cancellationToken) : TestPhotos.Bitmap();
         Interlocked.Increment(ref _completedLoads);
         return result;
+    }
+
+    public BitmapSource LoadForDisplay(string photoPath, int maxPixelSize, CancellationToken cancellationToken)
+    {
+        lock (DisplaySizesRequested)
+        {
+            DisplaySizesRequested.Add(maxPixelSize);
+        }
+
+        return LoadFull(photoPath, cancellationToken);
     }
 }
 

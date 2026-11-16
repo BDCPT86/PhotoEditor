@@ -10,6 +10,8 @@ public sealed class FrameForgeDbContext(DbContextOptions<FrameForgeDbContext> op
 
     public DbSet<Photo> Photos => Set<Photo>();
 
+    public DbSet<PhotoDecisionEntity> PhotoDecisions => Set<PhotoDecisionEntity>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<AppSettingEntity>(entity =>
@@ -42,6 +44,22 @@ public sealed class FrameForgeDbContext(DbContextOptions<FrameForgeDbContext> op
 
             // Camera-local wall-clock time; must not be re-marked as UTC by the convention below.
             entity.Property(p => p.CaptureLocalTime).HasConversion(new LocalWallClockConverter());
+        });
+
+        modelBuilder.Entity<PhotoDecisionEntity>(entity =>
+        {
+            entity.ToTable("PhotoDecisions", table =>
+                table.HasCheckConstraint("CK_PhotoDecisions_Rating", "\"Rating\" IS NULL OR (\"Rating\" BETWEEN 1 AND 5)"));
+            entity.HasKey(d => d.PhotoId);
+            entity.Property(d => d.State).HasConversion<string>().HasMaxLength(16);
+            entity.Property(d => d.Label).HasConversion<string>().HasMaxLength(16);
+            entity.HasIndex(d => d.State);
+
+            // A decision belongs to exactly one photo and goes with it.
+            entity.HasOne<Photo>()
+                .WithOne()
+                .HasForeignKey<PhotoDecisionEntity>(d => d.PhotoId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 

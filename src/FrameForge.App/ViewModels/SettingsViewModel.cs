@@ -21,6 +21,9 @@ public sealed partial class SettingsViewModel(ISettingsService settings, ILogger
     private string _logRetentionDaysText = string.Empty;
 
     [ObservableProperty]
+    private bool _viewerAutoAdvance = true;
+
+    [ObservableProperty]
     private string? _statusMessage;
 
     [ObservableProperty]
@@ -33,6 +36,7 @@ public sealed partial class SettingsViewModel(ISettingsService settings, ILogger
             StartPage = await settings.GetAsync(AppSettings.StartPage, cancellationToken).ConfigureAwait(true);
             var days = await settings.GetAsync(AppSettings.LogRetentionDays, cancellationToken).ConfigureAwait(true);
             LogRetentionDaysText = days.ToString(CultureInfo.CurrentCulture);
+            ViewerAutoAdvance = await settings.GetAsync(AppSettings.ViewerAutoAdvance, cancellationToken).ConfigureAwait(true);
             SetStatus(null, isError: false);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -56,7 +60,8 @@ public sealed partial class SettingsViewModel(ISettingsService settings, ILogger
         {
             await settings.SetAsync(AppSettings.StartPage, StartPage, cancellationToken).ConfigureAwait(true);
             await settings.SetAsync(AppSettings.LogRetentionDays, days, cancellationToken).ConfigureAwait(true);
-            SetStatus("Settings saved. They take effect the next time FrameForge starts.", isError: false);
+            await settings.SetAsync(AppSettings.ViewerAutoAdvance, ViewerAutoAdvance, cancellationToken).ConfigureAwait(true);
+            SetStatus("Settings saved. Start page and log retention take effect the next time FrameForge starts.", isError: false);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

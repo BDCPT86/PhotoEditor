@@ -1,0 +1,93 @@
+<UserControl x:Class="FrameForge.App.Views.ExportPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:FrameForge.App.ViewModels"
+             xmlns:conv="clr-namespace:FrameForge.App.Converters"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=vm:ExportViewModel}"
+             AutomationProperties.Name="Export">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+        <conv:EnumEqualsConverter x:Key="EnumEquals" />
+        <conv:InverseBooleanConverter x:Key="InverseBool" />
+    </UserControl.Resources>
+
+    <UserControl.InputBindings>
+        <KeyBinding Key="Escape" Command="{Binding CloseCommand}" />
+    </UserControl.InputBindings>
+
+    <Border Style="{StaticResource SidePanel}">
+        <StackPanel>
+            <DockPanel Margin="0,0,0,16">
+                <Button DockPanel.Dock="Right" Content="Close" MinWidth="0" Command="{Binding CloseCommand}"
+                        IsEnabled="{Binding IsExporting, Converter={StaticResource InverseBool}}" />
+                <TextBlock Text="Export" Style="{StaticResource Text.SectionLabel}" FontSize="16" VerticalAlignment="Center" />
+            </DockPanel>
+
+            <StackPanel IsEnabled="{Binding IsExporting, Converter={StaticResource InverseBool}}">
+                <TextBlock Text="Photos" Style="{StaticResource Text.SectionLabel}" />
+                <RadioButton GroupName="ExportScope" Content="All photos marked Keep"
+                             IsChecked="{Binding Scope, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:ExportScope.Keep}}" />
+                <RadioButton GroupName="ExportScope" Content="Photos shown in the grid (current filter)" Margin="0,0,0,4"
+                             IsChecked="{Binding Scope, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:ExportScope.CurrentView}}" />
+                <TextBlock Text="{Binding CountText}" Style="{StaticResource Text.Secondary}" Margin="0,0,0,16" AutomationProperties.AutomationId="ExportCount" />
+
+                <TextBlock Text="Export as" Style="{StaticResource Text.SectionLabel}" />
+                <RadioButton GroupName="ExportMode" Content="Copy files to a folder"
+                             IsChecked="{Binding Mode, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:ExportMode.CopyFiles}}" />
+                <RadioButton GroupName="ExportMode" Content="Selection manifest (CSV)" Margin="0,0,0,8"
+                             IsChecked="{Binding Mode, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:ExportMode.Manifest}}" />
+                <TextBlock Style="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,16"
+                           Text="Originals are only read. Existing files are never replaced: name clashes are saved as “name (2).jpg”." />
+
+                <Button Content="Choose destination and export…" HorizontalAlignment="Left" Command="{Binding StartCommand}" />
+            </StackPanel>
+
+            <!-- Confirmation when the destination is inside (or contains) an imported folder -->
+            <Border Margin="0,16,0,0" Padding="12" BorderThickness="1" BorderBrush="{StaticResource Brush.Decision.Review}" CornerRadius="3"
+                    Visibility="{Binding HasPendingDestination, Converter={StaticResource BoolToVisibility}}"
+                    AutomationProperties.AutomationId="ExportConfirm">
+                <StackPanel>
+                    <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Brush.Decision.Review}"
+                               Text="⚠ This folder is part of your library. The copies will appear as new photos the next time it is imported." />
+                    <TextBlock TextWrapping="Wrap" Style="{StaticResource Text.Secondary}" Margin="0,6,0,10" Text="{Binding PendingDestination}" />
+                    <StackPanel Orientation="Horizontal">
+                        <Button Content="Export anyway" Command="{Binding ConfirmPendingCommand}" Margin="0,0,8,0" />
+                        <Button Content="Choose another" Command="{Binding DiscardPendingCommand}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Progress -->
+            <StackPanel Margin="0,16,0,0" Visibility="{Binding IsExporting, Converter={StaticResource BoolToVisibility}}">
+                <ProgressBar Minimum="0" Maximum="1" Value="{Binding ProgressValue, Mode=OneWay}" AutomationProperties.Name="Export progress" />
+                <DockPanel Margin="0,8,0,0">
+                    <Button DockPanel.Dock="Right" Content="Cancel" Command="{Binding CancelCommand}" />
+                    <TextBlock Text="{Binding ProgressText}" Style="{StaticResource Text.Secondary}" VerticalAlignment="Center"
+                               AutomationProperties.AutomationId="ExportProgressText" />
+                </DockPanel>
+            </StackPanel>
+
+            <!-- Result: glyph + text -->
+            <TextBlock Margin="0,16,0,0" TextWrapping="Wrap" AutomationProperties.AutomationId="ExportResult">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Foreground" Value="{StaticResource Brush.Status.Success}" />
+                        <Setter Property="Text" Value="{Binding ResultText, StringFormat='✓ {0}'}" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding ResultIsWarning}" Value="True">
+                                <Setter Property="Foreground" Value="{StaticResource Brush.Status.Error}" />
+                                <Setter Property="Text" Value="{Binding ResultText, StringFormat='⚠ {0}'}" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding ResultText}" Value="{x:Null}">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+        </StackPanel>
+    </Border>
+</UserControl>

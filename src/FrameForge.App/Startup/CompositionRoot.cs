@@ -38,11 +38,16 @@ internal static class CompositionRoot
         // UI services
         builder.Services.AddSingleton<IUiDispatcher>(new WpfUiDispatcher(Dispatcher.CurrentDispatcher));
         builder.Services.AddSingleton<IFolderPicker, WindowsFolderPicker>();
+        builder.Services.AddSingleton<IFileSavePicker, WindowsFileSavePicker>();
         builder.Services.AddSingleton<ThumbnailLoader>();
         builder.Services.AddSingleton<IThumbnailSource>(sp => sp.GetRequiredService<ThumbnailLoader>());
+        builder.Services.AddSingleton<DecisionController>();
 
         // View models and shell
+        builder.Services.AddSingleton<LibraryFilterViewModel>();
         builder.Services.AddSingleton<ViewerViewModel>();
+        builder.Services.AddSingleton<CompareViewModel>();
+        builder.Services.AddSingleton<ExportViewModel>();
         builder.Services.AddSingleton<LibraryViewModel>();
         builder.Services.AddSingleton<SettingsViewModel>();
         builder.Services.AddSingleton<AboutViewModel>();

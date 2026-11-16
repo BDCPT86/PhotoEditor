@@ -25,7 +25,16 @@ public sealed class WicPhotoBitmapLoader : IPhotoBitmapLoader
         }
     }
 
-    public BitmapSource LoadFull(string photoPath, CancellationToken cancellationToken)
+    public BitmapSource LoadFull(string photoPath, CancellationToken cancellationToken) =>
+        Decode(photoPath, maxPixelSize: null, cancellationToken);
+
+    public BitmapSource LoadForDisplay(string photoPath, int maxPixelSize, CancellationToken cancellationToken)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(maxPixelSize, 16);
+        return Decode(photoPath, maxPixelSize, cancellationToken);
+    }
+
+    private static BitmapSource Decode(string photoPath, int? maxPixelSize, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(photoPath);
         cancellationToken.ThrowIfCancellationRequested();
@@ -33,7 +42,7 @@ public sealed class WicPhotoBitmapLoader : IPhotoBitmapLoader
         try
         {
             // WIC decoding cannot be interrupted part-way; cancellation is checked around it.
-            var bitmap = WicDecoding.DecodeOriented(photoPath, maxPixelSize: null);
+            var bitmap = WicDecoding.DecodeOriented(photoPath, maxPixelSize);
             cancellationToken.ThrowIfCancellationRequested();
             return bitmap;
         }

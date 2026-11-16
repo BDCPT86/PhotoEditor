@@ -31,6 +31,16 @@
     <SolidColorBrush x:Key="Brush.Status.Error" Color="{StaticResource Color.Status.Error}" />
     <SolidColorBrush x:Key="Brush.Status.Success" Color="{StaticResource Color.Status.Success}" />
 
+    <!-- Culling: decision and label colours. Always paired with a glyph or letter, never colour alone. -->
+    <SolidColorBrush x:Key="Brush.Decision.Keep" Color="#FF6BB36F" />
+    <SolidColorBrush x:Key="Brush.Decision.Review" Color="#FFD9A441" />
+    <SolidColorBrush x:Key="Brush.Decision.Reject" Color="#FFE0645C" />
+    <SolidColorBrush x:Key="Brush.Label.Red" Color="#FFD9534F" />
+    <SolidColorBrush x:Key="Brush.Label.Yellow" Color="#FFE3C04B" />
+    <SolidColorBrush x:Key="Brush.Label.Green" Color="#FF5DAE63" />
+    <SolidColorBrush x:Key="Brush.Label.Blue" Color="#FF4F8FD9" />
+    <SolidColorBrush x:Key="Brush.Rating" Color="#FFE8C670" />
+
     <!-- Typography -->
     <FontFamily x:Key="Font.UI">Segoe UI</FontFamily>
     <sys:Double x:Key="FontSize.Body" xmlns:sys="clr-namespace:System;assembly=System.Runtime">13</sys:Double>
@@ -298,6 +308,55 @@
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+    </Style>
+
+    <!-- Chip: a RadioButton rendered as a compact toggle. Checked = raised surface + accent underline + bold. -->
+    <Style x:Key="Chip" TargetType="RadioButton">
+        <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.Text.Secondary}" />
+        <Setter Property="Margin" Value="0,0,4,0" />
+        <Setter Property="Padding" Value="10,4" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RadioButton">
+                    <Border x:Name="Root" Background="Transparent" BorderBrush="{StaticResource Brush.Border}" BorderThickness="1" CornerRadius="3" SnapsToDevicePixels="True">
+                        <Grid>
+                            <ContentPresenter Margin="{TemplateBinding Padding}" HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="True" />
+                            <Rectangle x:Name="Underline" Height="2" VerticalAlignment="Bottom" Fill="{StaticResource Brush.Accent}" Visibility="Hidden" />
+                        </Grid>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Root" Property="Background" Value="{StaticResource Brush.Surface.Hover}" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Root" Property="Background" Value="{StaticResource Brush.Surface.Raised}" />
+                            <Setter TargetName="Underline" Property="Visibility" Value="Visible" />
+                            <Setter Property="Foreground" Value="{StaticResource Brush.Text.Primary}" />
+                            <Setter Property="FontWeight" Value="SemiBold" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="Text.ChipGroupLabel" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{StaticResource Brush.Text.Disabled}" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Margin" Value="0,0,8,0" />
+    </Style>
+
+    <!-- Side panel surface (export, shortcut help) -->
+    <Style x:Key="SidePanel" TargetType="Border">
+        <Setter Property="Background" Value="{StaticResource Brush.Surface.Raised}" />
+        <Setter Property="BorderBrush" Value="{StaticResource Brush.Border}" />
+        <Setter Property="BorderThickness" Value="1,0,0,0" />
+        <Setter Property="Padding" Value="20,16" />
+        <Setter Property="Width" Value="360" />
+        <Setter Property="HorizontalAlignment" Value="Right" />
     </Style>
 
     <Style x:Key="NavigationList" TargetType="ListBox">

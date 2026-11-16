@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Windows.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using FrameForge.App.Services;
+using FrameForge.Core.Decisions;
 using FrameForge.Core.Photos;
 using FrameForge.Imaging;
 
@@ -18,10 +19,66 @@ public sealed partial class PhotoTileViewModel : ObservableObject, IThumbnailReq
     private bool _requested;
     private string? _details;
 
-    public PhotoTileViewModel(Photo photo, IThumbnailSource thumbnails)
+    public PhotoTileViewModel(Photo photo, IThumbnailSource thumbnails, PhotoDecision? decision = null)
     {
         Photo = photo;
         _thumbnails = thumbnails;
+        _decision = decision ?? PhotoDecision.Unset;
+    }
+
+    /// <summary>The photo's culling decision. Set by <see cref="Services.DecisionController"/>.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StateGlyph), nameof(StateText), nameof(IsRejected), nameof(RatingText), nameof(Label), nameof(LabelLetter), nameof(AccessibleStatus))]
+    private PhotoDecision _decision;
+
+    /// <summary>✓ Keep, ? Review, ✕ Reject; null when unset.</summary>
+    public string? StateGlyph => Decision.State switch
+    {
+        CullState.Keep => "✓",
+        CullState.Review => "?",
+        CullState.Reject => "✕",
+        _ => null,
+    };
+
+    public string? StateText => Decision.State == CullState.Unset ? null : Decision.State.ToString();
+
+    public bool IsRejected => Decision.State == CullState.Reject;
+
+    public string? RatingText => Decision.Rating is { } r ? new string('★', r) : null;
+
+    public ColourLabel Label => Decision.Label;
+
+    /// <summary>Letter shown on the label swatch, so the label is not conveyed by colour alone.</summary>
+    public string? LabelLetter => Decision.Label == ColourLabel.None ? null : Decision.Label.ToString()[..1];
+
+    /// <summary>Spoken by screen readers: problem state plus decision, e.g. "Keep, 3 stars, Red label".</summary>
+    public string AccessibleStatus
+    {
+        get
+        {
+            var parts = new List<string>(4);
+            if (StatusText is { } problem)
+            {
+                parts.Add(problem);
+            }
+
+            if (StateText is { } state)
+            {
+                parts.Add(state);
+            }
+
+            if (Decision.Rating is { } r)
+            {
+                parts.Add(r == 1 ? "1 star" : string.Create(CultureInfo.InvariantCulture, $"{r} stars"));
+            }
+
+            if (Decision.Label != ColourLabel.None)
+            {
+                parts.Add($"{Decision.Label} label");
+            }
+
+            return string.Join(", ", parts);
+        }
     }
 
     public Photo Photo { get; }
@@ -47,7 +104,7 @@ public sealed partial class PhotoTileViewModel : ObservableObject, IThumbnailReq
     public string ToolTipText => Photo.LastError is { } error ? $"{Photo.FilePath}\n{error}" : Photo.FilePath;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(StatusText), nameof(HasProblem))]
+    [NotifyPropertyChangedFor(nameof(StatusText), nameof(HasProblem), nameof(AccessibleStatus))]
     private string? _thumbnailError;
 
     public BitmapSource? Thumbnail

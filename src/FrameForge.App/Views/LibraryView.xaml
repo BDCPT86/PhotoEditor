@@ -6,13 +6,17 @@
              xmlns:vm="clr-namespace:FrameForge.App.ViewModels"
              xmlns:views="clr-namespace:FrameForge.App.Views"
              xmlns:controls="clr-namespace:FrameForge.App.Controls"
+             xmlns:shortcuts="clr-namespace:FrameForge.App.Shortcuts"
+             xmlns:library="clr-namespace:FrameForge.Core.Library;assembly=FrameForge.Core"
              xmlns:vwp="clr-namespace:WpfToolkit.Controls;assembly=VirtualizingWrapPanel"
              xmlns:conv="clr-namespace:FrameForge.App.Converters"
              mc:Ignorable="d"
-             d:DataContext="{d:DesignInstance Type=vm:LibraryViewModel}">
+             d:DataContext="{d:DesignInstance Type=vm:LibraryViewModel}"
+             shortcuts:ShortcutBehavior.Handler="{Binding}">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
         <conv:InverseBooleanConverter x:Key="InverseBool" />
+        <conv:EnumEqualsConverter x:Key="EnumEquals" />
     </UserControl.Resources>
 
     <UserControl.InputBindings>
@@ -20,16 +24,17 @@
     </UserControl.InputBindings>
 
     <Grid>
-        <!-- Grid mode -->
+        <!-- ============================== Grid mode ============================== -->
         <Grid x:Name="GridMode">
             <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
             <!-- Toolbar -->
-            <DockPanel Grid.Row="0" Margin="0,0,0,12" LastChildFill="False">
+            <DockPanel Grid.Row="0" Margin="0,0,0,10" LastChildFill="False">
                 <Button DockPanel.Dock="Left" Content="_Import folder…" Command="{Binding ImportCommand}"
                         ToolTip="Import a folder of JPEG photos (Ctrl+I)" />
                 <CheckBox DockPanel.Dock="Left" Margin="16,0,0,0" Content="Include _subfolders"
@@ -47,13 +52,57 @@
                     <Button Content="Cancel" Command="{Binding ImportCancelCommand}" ToolTip="Stop the import; photos read so far are kept" />
                 </StackPanel>
 
-                <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center" Text="{Binding CountText}"
+                <Button DockPanel.Dock="Right" Content="Shortcuts (F1)" Margin="8,0,0,0"
+                        Command="{Binding RunShortcutCommand}" CommandParameter="{x:Static shortcuts:CullingAction.ToggleHelp}"
+                        ToolTip="Show keyboard shortcuts" />
+                <Button DockPanel.Dock="Right" Content="_Export…" Margin="8,0,0,0" Command="{Binding OpenExportCommand}"
+                        ToolTip="Copy kept photos to a folder, or save a selection manifest" />
+                <Button DockPanel.Dock="Right" Content="_Compare (C)" Margin="8,0,0,0" Command="{Binding OpenCompareCommand}"
+                        ToolTip="Compare 2–4 selected photos side by side" />
+                <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center" Margin="0,0,16,0" Text="{Binding CountText}"
                            Foreground="{StaticResource Brush.Text.Secondary}"
                            AutomationProperties.AutomationId="LibraryCount" />
             </DockPanel>
 
+            <!-- Filter and sort -->
+            <WrapPanel Grid.Row="1" Margin="0,0,0,10" DataContext="{Binding Filter}" AutomationProperties.Name="Filter and sort">
+                <StackPanel Orientation="Horizontal" Margin="0,0,20,4">
+                    <TextBlock Text="SHOW" Style="{StaticResource Text.ChipGroupLabel}" />
+                    <RadioButton Style="{StaticResource Chip}" GroupName="State" Content="All" IsChecked="{Binding State, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:StateFilterChoice.All}}" />
+                    <RadioButton Style="{StaticResource Chip}" GroupName="State" Content="Unset" IsChecked="{Binding State, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:StateFilterChoice.Unset}}" />
+                    <RadioButton Style="{StaticResource Chip}" GroupName="State" Content="✓ Keep" AutomationProperties.Name="Keep" IsChecked="{Binding State, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:StateFilterChoice.Keep}}" />
+                    <RadioButton Style="{StaticResource Chip}" GroupName="State" Content="? Review" AutomationProperties.Name="Review" IsChecked="{Binding State, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:StateFilterChoice.Review}}" />
+                    <RadioButton Style="{StaticResource Chip}" GroupName="State" Content="✕ Reject" AutomationProperties.Name="Reject" IsChecked="{Binding State, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:StateFilterChoice.Reject}}" />
+                    <RadioButton Style="{StaticResource Chip}" GroupName="State" Content="⚠ Problems" AutomationProperties.Name="Problems" IsChecked="{Binding State, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:StateFilterChoice.Problems}}" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,20,4">
+                    <TextBlock Text="RATING" Style="{StaticResource Text.ChipGroupLabel}" />
+                    <RadioButton Style="{StaticResource Chip}" GroupName="Rating" Content="Any" IsChecked="{Binding MinRating, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:RatingFilterChoice.Any}}" />
+                    <RadioButton Style="{StaticResource Chip}" GroupName="Rating" Content="★+" AutomationProperties.Name="1 star or more" IsChecked="{Binding MinRating, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:RatingFilterChoice.One}}" />
+                    <RadioButton Style="{StaticResource Chip}" GroupName="Rating" Content="★★+" AutomationProperties.Name="2 stars or more" IsChecked="{Binding MinRating, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:RatingFilterChoice.Two}}" />
+                    <RadioButton Style="{StaticResource Chip}" GroupName="Rating" Content="★★★+" AutomationProperties.Name="3 stars or more" IsChecked="{Binding MinRating, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:RatingFilterChoice.Three}}" />
+                    <RadioButton Style="{StaticResource Chip}" GroupName="Rating" Content="★★★★+" AutomationProperties.Name="4 stars or more" IsChecked="{Binding MinRating, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:RatingFilterChoice.Four}}" />
+                    <RadioButton Style="{StaticResource Chip}" GroupName="Rating" Content="★★★★★" AutomationProperties.Name="5 stars" IsChecked="{Binding MinRating, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:RatingFilterChoice.Five}}" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,20,4">
+                    <TextBlock Text="LABEL" Style="{StaticResource Text.ChipGroupLabel}" />
+                    <RadioButton Style="{StaticResource Chip}" GroupName="Label" Content="Any" IsChecked="{Binding Label, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:LabelFilterChoice.Any}}" />
+                    <RadioButton Style="{StaticResource Chip}" GroupName="Label" Content="Red" IsChecked="{Binding Label, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:LabelFilterChoice.Red}}" />
+                    <RadioButton Style="{StaticResource Chip}" GroupName="Label" Content="Yellow" IsChecked="{Binding Label, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:LabelFilterChoice.Yellow}}" />
+                    <RadioButton Style="{StaticResource Chip}" GroupName="Label" Content="Green" IsChecked="{Binding Label, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:LabelFilterChoice.Green}}" />
+                    <RadioButton Style="{StaticResource Chip}" GroupName="Label" Content="Blue" IsChecked="{Binding Label, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:LabelFilterChoice.Blue}}" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                    <TextBlock Text="SORT" Style="{StaticResource Text.ChipGroupLabel}" />
+                    <RadioButton Style="{StaticResource Chip}" GroupName="Sort" Content="Folder" IsChecked="{Binding Sort, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static library:LibrarySort.FolderAndName}}" />
+                    <RadioButton Style="{StaticResource Chip}" GroupName="Sort" Content="Captured" IsChecked="{Binding Sort, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static library:LibrarySort.CaptureTime}}" />
+                    <RadioButton Style="{StaticResource Chip}" GroupName="Sort" Content="Name" IsChecked="{Binding Sort, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static library:LibrarySort.FileName}}" />
+                    <RadioButton Style="{StaticResource Chip}" GroupName="Sort" Content="Rating" IsChecked="{Binding Sort, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static library:LibrarySort.Rating}}" />
+                </StackPanel>
+            </WrapPanel>
+
             <!-- Status: glyph + text, so warnings are not conveyed by colour alone. -->
-            <TextBlock Grid.Row="1" Margin="0,0,0,12" TextWrapping="Wrap" AutomationProperties.AutomationId="LibraryStatus">
+            <TextBlock Grid.Row="2" Margin="0,0,0,10" TextWrapping="Wrap" AutomationProperties.AutomationId="LibraryStatus">
                 <TextBlock.Style>
                     <Style TargetType="TextBlock">
                         <Setter Property="Foreground" Value="{StaticResource Brush.Text.Secondary}" />
@@ -71,37 +120,44 @@
                 </TextBlock.Style>
             </TextBlock>
 
-            <!-- Empty state -->
-            <StackPanel Grid.Row="2" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="420"
+            <!-- Empty states -->
+            <StackPanel Grid.Row="3" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="420"
                         Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}">
                 <TextBlock Text="Your library is empty" Style="{StaticResource Text.PageTitle}" HorizontalAlignment="Center" />
                 <TextBlock Style="{StaticResource Text.Secondary}" TextAlignment="Center"
                            Text="Import a folder of JPEG photos to start. Originals stay where they are and are never modified." />
             </StackPanel>
+            <StackPanel Grid.Row="3" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="420"
+                        Visibility="{Binding IsFilteredEmpty, Converter={StaticResource BoolToVisibility}}">
+                <TextBlock Text="No photos match this filter" Style="{StaticResource Text.PageTitle}" HorizontalAlignment="Center" />
+                <TextBlock Style="{StaticResource Text.Secondary}" TextAlignment="Center" Text="Choose “All” to see every photo." />
+            </StackPanel>
 
-            <!-- Photo grid: only visible tiles are created, and containers are recycled while scrolling. -->
-            <ListBox x:Name="PhotoGrid" Grid.Row="2"
+            <!-- Photo grid: virtualised and recycled. Extended selection: Shift/Ctrl+click, Shift+arrows. -->
+            <controls:PhotoGridListBox x:Name="PhotoGrid" Grid.Row="3"
                      ItemsSource="{Binding Photos}"
                      SelectedItem="{Binding SelectedPhoto}"
                      Background="Transparent" BorderThickness="0"
                      controls:ListBoxBehaviors.ScrollSelectionIntoView="True"
+                     controls:ListBoxBehaviors.SelectedItemsSink="{Binding}"
                      VirtualizingPanel.IsVirtualizing="True"
                      VirtualizingPanel.VirtualizationMode="Recycling"
                      VirtualizingPanel.CacheLengthUnit="Page"
                      VirtualizingPanel.CacheLength="1"
                      VirtualizingPanel.ScrollUnit="Pixel"
                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                     SelectionMode="Single"
-                     KeyboardNavigation.DirectionalNavigation="Cycle"
+                     SelectionMode="Extended"
+                     IsTextSearchEnabled="False"
+                     KeyboardNavigation.DirectionalNavigation="Contained"
                      AutomationProperties.Name="Photos">
                 <ListBox.InputBindings>
                     <KeyBinding Key="Return" Command="{Binding OpenViewerCommand}" />
                 </ListBox.InputBindings>
                 <ListBox.ItemContainerStyle>
                     <Style TargetType="ListBoxItem" BasedOn="{StaticResource PhotoTileItem}">
-                        <!-- Screen readers announce the file name and any problem state. -->
+                        <!-- Screen readers announce the file name, problem state and decision. -->
                         <Setter Property="AutomationProperties.Name" Value="{Binding FileName}" />
-                        <Setter Property="AutomationProperties.ItemStatus" Value="{Binding StatusText}" />
+                        <Setter Property="AutomationProperties.ItemStatus" Value="{Binding AccessibleStatus}" />
                     </Style>
                 </ListBox.ItemContainerStyle>
                 <ListBox.ItemsPanel>
@@ -111,7 +167,7 @@
                 </ListBox.ItemsPanel>
                 <ListBox.ItemTemplate>
                     <DataTemplate DataType="{x:Type vm:PhotoTileViewModel}">
-                        <Grid ToolTip="{Binding ToolTipText}" AutomationProperties.Name="{Binding FileName}" Background="Transparent">
+                        <Grid x:Name="Tile" ToolTip="{Binding ToolTipText}" Background="Transparent">
                             <Grid.InputBindings>
                                 <MouseBinding Gesture="LeftDoubleClick"
                                               Command="{Binding DataContext.OpenViewerCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
@@ -122,7 +178,7 @@
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
 
-                            <Border Background="{StaticResource Brush.Surface.Sunken}" CornerRadius="2">
+                            <Border x:Name="ImageArea" Background="{StaticResource Brush.Surface.Sunken}" CornerRadius="2">
                                 <Grid>
                                     <Image Source="{Binding Thumbnail}" Stretch="Uniform"
                                            RenderOptions.BitmapScalingMode="HighQuality" />
@@ -133,16 +189,68 @@
                                 </Grid>
                             </Border>
 
-                            <TextBlock Grid.Row="1" Margin="2,6,2,0" Text="{Binding FileName}" TextTrimming="CharacterEllipsis" FontSize="12" />
+                            <DockPanel Grid.Row="1" Margin="2,6,2,0" LastChildFill="True">
+                                <ContentControl DockPanel.Dock="Right" Content="{Binding}" ContentTemplate="{StaticResource DecisionBadges}" Focusable="False" IsTabStop="False" />
+                                <TextBlock Text="{Binding FileName}" TextTrimming="CharacterEllipsis" FontSize="12" VerticalAlignment="Center" />
+                            </DockPanel>
                         </Grid>
+                        <DataTemplate.Triggers>
+                            <!-- Rejected photos recede; the ✕ glyph carries the meaning, not the dimming. -->
+                            <DataTrigger Binding="{Binding IsRejected}" Value="True">
+                                <Setter TargetName="ImageArea" Property="Opacity" Value="0.4" />
+                            </DataTrigger>
+                        </DataTemplate.Triggers>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
-            </ListBox>
+            </controls:PhotoGridListBox>
         </Grid>
 
-        <!-- Viewer mode (overlays the grid so grid scroll position is preserved) -->
+        <!-- ============================== Viewer / Compare (overlay the grid; scroll position is kept) -->
         <Grid Visibility="{Binding IsViewerOpen, Converter={StaticResource BoolToVisibility}}">
             <views:ViewerView x:Name="ViewerHost" DataContext="{Binding Viewer}" />
         </Grid>
+        <Grid Visibility="{Binding IsCompareOpen, Converter={StaticResource BoolToVisibility}}">
+            <views:CompareView x:Name="CompareHost" DataContext="{Binding Compare}" />
+        </Grid>
+
+        <!-- ============================== Side panels (non-modal) -->
+        <views:ExportPanel DataContext="{Binding Export}" HorizontalAlignment="Right"
+                           Visibility="{Binding IsOpen, Converter={StaticResource BoolToVisibility}}" />
+
+        <Border Style="{StaticResource SidePanel}" AutomationProperties.Name="Keyboard shortcuts"
+                Visibility="{Binding IsHelpOpen, Converter={StaticResource BoolToVisibility}}">
+            <DockPanel>
+                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+                    <Button DockPanel.Dock="Right" Content="Close" MinWidth="0"
+                            Command="{Binding RunShortcutCommand}" CommandParameter="{x:Static shortcuts:CullingAction.ToggleHelp}" />
+                    <TextBlock Text="Keyboard shortcuts" Style="{StaticResource Text.SectionLabel}" FontSize="16" VerticalAlignment="Center" />
+                </DockPanel>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
+                    <ItemsControl ItemsSource="{Binding ShortcutHelp}" Focusable="False">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type shortcuts:ShortcutHelpGroup}">
+                                <StackPanel Margin="0,0,0,16">
+                                    <TextBlock Text="{Binding Title}" Style="{StaticResource Text.Secondary}" FontSize="11" Margin="0,0,0,6" />
+                                    <ItemsControl ItemsSource="{Binding Items}" Focusable="False">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="{x:Type shortcuts:ShortcutHelpItem}">
+                                                <Grid Margin="0,2">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="130" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="{Binding Keys}" FontWeight="SemiBold" />
+                                                    <TextBlock Grid.Column="1" Text="{Binding Description}" Style="{StaticResource Text.Secondary}" />
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
     </Grid>
 </UserControl>

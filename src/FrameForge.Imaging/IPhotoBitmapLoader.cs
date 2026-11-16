@@ -15,4 +15,11 @@ public interface IPhotoBitmapLoader
     /// <exception cref="FrameForge.Application.Photos.PhotoReadException">The file is not a readable image.</exception>
     /// <exception cref="System.IO.FileNotFoundException">The file does not exist.</exception>
     BitmapSource LoadFull(string photoPath, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Decodes a source photo downscaled during decode so its longest side is at most
+    /// <paramref name="maxPixelSize"/>, with EXIF orientation applied. Used where several photos
+    /// are shown at once (compare), to keep memory bounded.
+    /// </summary>
+    BitmapSource LoadForDisplay(string photoPath, int maxPixelSize, CancellationToken cancellationToken);
 }

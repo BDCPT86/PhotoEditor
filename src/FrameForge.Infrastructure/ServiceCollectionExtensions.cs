@@ -1,4 +1,8 @@
+using FrameForge.Application.Decisions;
+using FrameForge.Application.Export;
 using FrameForge.Application.Photos;
+using FrameForge.Infrastructure.Decisions;
+using FrameForge.Infrastructure.Export;
 using FrameForge.Application.Settings;
 using FrameForge.Infrastructure.Logging;
 using FrameForge.Infrastructure.Persistence;
@@ -30,6 +34,9 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IPhotoRepository, SqlitePhotoRepository>();
         services.AddSingleton<IPhotoFileEnumerator, FileSystemPhotoEnumerator>();
         services.AddSingleton<IThumbnailService, DiskThumbnailService>();
+
+        services.AddSingleton<IPhotoDecisionRepository, SqliteDecisionRepository>();
+        services.AddSingleton<IExportService, FileSystemExportService>();
 
         return services;
     }

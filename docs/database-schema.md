@@ -37,6 +37,13 @@ _Implemented in Milestone 02 as table `Photos` (migration `AddPhotos`). Differen
 - `LastError` (string, nullable)
 
 ## PhotoDecision
+_Implemented in Milestone 03 as table `PhotoDecisions` (migration `AddPhotoDecisions`). Differences from the proposal below:_
+- _`Selection` is named `State` (enum `CullState`: Unset, Keep, Review, Reject, stored as a string), so the persisted culling verdict is not confused with UI selection._
+- _`Label` (enum `ColourLabel`: None, Red, Yellow, Green, Blue, stored as a string) is not nullable; `None` means no label._
+- _`Rating` has a check constraint `NULL or 1–5`. Only photos with a non-empty decision have a row; an empty decision deletes it._
+- _Foreign key to `Photos.Id` with cascade delete. An index on `State` supports state filters._
+- _`Notes` is not implemented (no UI yet)._
+
 - `PhotoId` (Guid, primary key / foreign key)
 - `Selection` (Keep / Reject / Review / Unset)
 - `Rating` (int, nullable; validate range)

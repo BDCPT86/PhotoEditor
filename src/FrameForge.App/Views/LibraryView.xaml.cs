@@ -9,8 +9,16 @@ public partial class LibraryView : UserControl
     {
         InitializeComponent();
 
-        // Focus management only: return keyboard focus to the selected tile when the viewer closes.
+        // Focus management only: return keyboard focus to the selected tile when the viewer or compare
+        // closes. Without this, focus leaves the page and page-level shortcuts stop reaching it.
         ViewerHost.IsVisibleChanged += (_, e) =>
+        {
+            if (e.NewValue is false)
+            {
+                FocusSelectedTile();
+            }
+        };
+        CompareHost.IsVisibleChanged += (_, e) =>
         {
             if (e.NewValue is false)
             {

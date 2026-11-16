@@ -118,6 +118,46 @@ namespace FrameForge.Infrastructure.Persistence.Migrations
 
                     b.ToTable("AppSettings", (string)null);
                 });
+
+            modelBuilder.Entity("FrameForge.Infrastructure.Persistence.PhotoDecisionEntity", b =>
+                {
+                    b.Property<Guid>("PhotoId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("Rating")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("PhotoId");
+
+                    b.HasIndex("State");
+
+                    b.ToTable("PhotoDecisions", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_PhotoDecisions_Rating", "\"Rating\" IS NULL OR (\"Rating\" BETWEEN 1 AND 5)");
+                        });
+                });
+
+            modelBuilder.Entity("FrameForge.Infrastructure.Persistence.PhotoDecisionEntity", b =>
+                {
+                    b.HasOne("FrameForge.Core.Photos.Photo", null)
+                        .WithOne()
+                        .HasForeignKey("FrameForge.Infrastructure.Persistence.PhotoDecisionEntity", "PhotoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
 #pragma warning restore 612, 618
         }
     }

@@ -1,3 +1,4 @@
+using FrameForge.Application.Decisions;
 using FrameForge.Application.Photos;
 using FrameForge.Application.Settings;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,6 +16,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ISettingsService, SettingsService>();
         services.AddSingleton<IPhotoImportService, PhotoImportService>();
         services.AddSingleton<IPhotoLibraryService, PhotoLibraryService>();
+        services.AddSingleton<IDecisionService, DecisionService>();
         return services;
     }
 }

@@ -38,6 +38,10 @@
                      AutomationProperties.Name="Log retention in days" />
             <TextBlock Text="{Binding LogRetentionHint}" Style="{StaticResource Text.Secondary}" Margin="0,6,0,20" FontSize="12" />
 
+            <TextBlock Text="Culling" Style="{StaticResource Text.SectionLabel}" />
+            <CheckBox Content="_Advance to the next photo after Keep / Reject / Review / Unset in the viewer"
+                      IsChecked="{Binding ViewerAutoAdvance}" Margin="0,0,0,20" />
+
             <StackPanel Orientation="Horizontal">
                 <Button Content="_Save" Command="{Binding SaveCommand}" ToolTip="Save settings (Ctrl+S)" />
             </StackPanel>

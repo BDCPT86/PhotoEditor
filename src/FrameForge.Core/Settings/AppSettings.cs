@@ -19,6 +19,10 @@ public static class AppSettings
     public static readonly SettingDefinition<string> ImportLastFolder =
         new("import.lastFolder", string.Empty);
 
+    /// <summary>In the viewer, move to the next photo after a Keep/Reject/Review/Unset decision.</summary>
+    public static readonly SettingDefinition<bool> ViewerAutoAdvance =
+        new("viewer.autoAdvance", true);
+
     /// <summary>How many days of log files are kept; older files are removed at startup.</summary>
     public static readonly SettingDefinition<int> LogRetentionDays =
         new("logging.retentionDays", DefaultLogRetentionDays, days => days is >= MinLogRetentionDays and <= MaxLogRetentionDays);

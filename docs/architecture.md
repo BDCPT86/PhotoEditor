@@ -9,7 +9,7 @@
 
 ## Solution structure
 
-### Current (Milestone 02)
+### Current (Milestone 03)
 
 ```text
 FrameForge.sln
@@ -18,23 +18,26 @@ Directory.Build.props         net10.0 defaults: nullable, warnings-as-errors, la
 Directory.Packages.props      Central package versions
 dotnet-tools.json             Local tools (dotnet-ef 10.0.15)
 src/
-  FrameForge.Core/            Settings (SettingDefinition<T>, AppSettings) and photo domain types
-                              (Photo, PhotoMetadata, ImportStatus, ImportProgress/Summary, FolderScope,
-                              SupportedPhotoFormats). No dependencies.
-  FrameForge.Application/     Ports (ISettingsStore, IPhotoRepository, IPhotoFileEnumerator,
-                              IPhotoMetadataReader, IThumbnailGenerator, IThumbnailService) and use cases
-                              (SettingsService, PhotoImportService, PhotoLibraryService, ThumbnailKey)
-  FrameForge.Infrastructure/  EF Core/SQLite (DbContext, migrations, SqlitePhotoRepository, SqliteSettingsStore),
-                              FileSystemPhotoEnumerator, DiskThumbnailService, LogFileRetention, AppDataPaths
-  FrameForge.Imaging/         WIC via WPF imaging (net10.0-windows): WicPhotoMetadataReader,
-                              WicThumbnailGenerator, WicPhotoBitmapLoader, ExifOrientation
-  FrameForge.App/             WPF: composition root, shell, Library grid, viewer, ZoomPanImage, ThumbnailLoader
+  FrameForge.Core/            Settings; photo types (Photo, PhotoMetadata, ImportStatus, FolderScope, …);
+                              decisions (PhotoDecision, CullState, ColourLabel, DecisionEdit);
+                              library query (LibraryFilter, LibrarySort, LibraryQuery). No dependencies.
+  FrameForge.Application/     Ports and use cases: settings, import, library, thumbnails (ThumbnailKey),
+                              decisions (IDecisionService/DecisionService, DecisionHistory, IPhotoDecisionRepository),
+                              export (IExportService, ExportNamePlanner, ManifestWriter)
+  FrameForge.Infrastructure/  EF Core/SQLite (DbContext, migrations, photo/decision/settings repositories),
+                              FileSystemPhotoEnumerator, DiskThumbnailService, FileSystemExportService,
+                              LogFileRetention, AppDataPaths
+  FrameForge.Imaging/         WIC via WPF imaging (net10.0-windows): metadata, thumbnails, full and display-size decode
+  FrameForge.App/             WPF: composition root, shell, Library (grid, filters, viewer, compare, export, help),
+                              DecisionController, CullingShortcuts, PhotoGridListBox, ZoomPanImage, ThumbnailLoader
 tests/
-  FrameForge.Application.Tests/     Settings rules; import idempotency, cancellation/resume, failures, missing files
-  FrameForge.Infrastructure.Tests/  Real SQLite + file system: migrations, repository, enumerator, thumbnail cache,
-                                    end-to-end import (imaging stubbed)
+  FrameForge.Application.Tests/     Settings, import, decision rules, undo history, filter/sort determinism,
+                                    export name planning, CSV manifest
+  FrameForge.Infrastructure.Tests/  Real SQLite + file system: migrations, repositories (incl. decisions across restart),
+                                    enumerator, thumbnail cache, import end-to-end, export safety
   FrameForge.Imaging.Tests/         JPEG fixtures generated in-test: EXIF parsing, orientation, thumbnails, corrupt files
-  FrameForge.App.Tests/             Viewer and tile view models, thumbnail loader, LRU cache, zoom math
+  FrameForge.App.Tests/             Culling workflow through real view models (grid, viewer, compare, export),
+                                    keyboard map, viewer, thumbnail loader, LRU cache, zoom math
 ```
 
 ### Planned additions (introduce with their milestone)
@@ -78,7 +81,7 @@ Infrastructure and Imaging never reference each other: `DiskThumbnailService` (I
 ### Settings
 - A setting is a `SettingDefinition<T>` (key, default, validation rule) declared in Core (`AppSettings`).
 - `SettingsService` serialises values to JSON (enums by name). Reads return the default when nothing is stored; when the stored value is unreadable or fails validation, the default is returned **and a warning is logged**. Writes reject invalid values with `ArgumentOutOfRangeException`.
-- Current settings: `app.startPage` (Library/Settings/About, default Library) and `logging.retentionDays` (1–365, default 14), both applied on next launch; `import.includeSubfolders` (default true) and `import.lastFolder`, remembered from the Library page.
+- Current settings: `app.startPage` (Library/Settings/About, default Library) and `logging.retentionDays` (1–365, default 14), both applied on next launch; `import.includeSubfolders` (default true) and `import.lastFolder`, remembered from the Library page; `viewer.autoAdvance` (default true), on the Settings page.
 
 ### Logging
 - Serilog file sink, daily rolling, 50 MB size roll, `%LOCALAPPDATA%\FrameForge\logs\frameforge-YYYYMMDD.log`. `Microsoft.*` categories are filtered to Warning (EF SQL is not logged).
@@ -145,17 +148,77 @@ Infrastructure and Imaging never reference each other: `DiskThumbnailService` (I
   pending, with the oldest dropped. A dropped tile requests again the next time it is realised.
 
 ### Grid and viewer
-- `ListBox` + `VirtualizingWrapPanel` (Recycling, pixel scrolling, one page of cache): with 22,000 photos only about
-  50 containers are realised. Arrow keys move by tile/row; Enter or double-click opens the viewer.
-- `LibraryViewModel` replaces `Photos` as one list per reload (one notification rather than thousands).
+- `PhotoGridListBox` (a `ListBox`) + `VirtualizingWrapPanel` (Recycling, pixel scrolling, one page of cache): with
+  22,000 photos only about 50 containers are realised. Enter or double-click opens the viewer. See Milestone 03 for
+  arrow-key and selection behaviour.
+- A full rebuild replaces `Photos` in one assignment (one notification rather than thousands).
 - `ViewerViewModel` decodes **only the current photo** at full resolution behind a one-at-a-time gate; navigation
   cancels the previous load, and the thumbnail is shown as a placeholder while decoding. Closing releases the bitmap.
   Navigation stops at the first/last photo (no wrap-around).
 - `ZoomPanImage` (presentation-only control): fit (never upscaled past 100%), 100% = one image pixel per *device*
-  pixel (DPI-aware), wheel zoom around the cursor, drag pan clamped to keep the image in view, Z / + / − / 0 keys.
+  pixel (DPI-aware), wheel zoom around the cursor, drag pan clamped to keep the image in view, Z / + / − keys
+  (digits are reserved for ratings and labels since Milestone 03).
   The image is hosted in a `Canvas` so WPF layout never clips it before the zoom transform. Pure math is in `ZoomMath`.
 - Problem states are shown with a glyph and text (`Missing`, `Unreadable`, `File not found`, `Can't display`) and
   exposed to screen readers through `AutomationProperties.ItemStatus`.
+
+## Implementation notes (Milestone 03: culling)
+
+### Selection, focus, and decision are separate
+- **Selection:** the highlighted grid tiles (extended: Shift/Ctrl+click, Shift+arrow keys). Passed to the view model
+  through `ListBoxBehaviors.SelectedItemsSink`, because WPF cannot bind `SelectedItems`.
+- **Focus:** the photo the keyboard is on: the focused tile, the viewer's current photo, or compare's active panel.
+- **Decision:** the persisted `PhotoDecision` (state, rating, label). Decision keys apply to the **selection** in the
+  grid, and to the **current photo** in the viewer and compare (`LibraryViewModel.DecisionTargets`).
+
+### Decisions
+- `PhotoDecision` is immutable and always valid (rating 1–5 or null; defined enums). `DecisionEdit` describes one kind
+  of change; `DecisionService.Plan` turns an edit plus targets into a `DecisionChange` (before/after per photo,
+  leaving out photos that would not change).
+- `DecisionController` (App, UI thread) applies a change to the tiles **immediately**, records it in `DecisionHistory`
+  (undo/redo, 200 entries, multi-photo changes undo as one step), then saves. If the save fails, the tiles are reverted
+  and the change is removed from history, so the screen, the database and undo always agree.
+- `DecisionService` serialises saves with a semaphore, so a later decision can never be overwritten by an earlier one.
+  `LoadAsync` waits for in-flight saves, so a reload never shows older state than the screen.
+- Storage: `PhotoDecisions` table (migration `AddPhotoDecisions`), one row per photo with a non-empty decision;
+  saving an empty decision deletes the row. A check constraint enforces rating 1–5; the foreign key to `Photos` cascades.
+
+### Keyboard
+- `CullingShortcuts` is the single key table. It drives both handling and the help panel. WPF `KeyBinding` cannot
+  express plain letters and digits, so `ShortcutBehavior` (attached to the Library page) resolves the bubbling `KeyDown`,
+  after focused controls (zoom, list navigation) have had their turn, and ignores keys typed into text boxes.
+- `PhotoGridListBox`: WPF's spatial navigation in a wrap layout treats ← / → as "within the row" (it stopped or cycled at
+  row ends). The grid instead moves ← / → through photos in order and extends Shift ranges from its own anchor (last
+  photo reached without Shift); ↑ / ↓, Home/End and mouse selection use the base list box, whose anchor is kept in sync.
+- Focus returns to the selected tile whenever the viewer or compare closes; otherwise page shortcuts would stop.
+
+### Filtering and sorting
+- `LibraryQuery.Apply` is a pure function over the in-memory list. Every sort ends with file path (ordinal,
+  case-insensitive) and then photo id, so equal keys never give an arbitrary order (tested with shuffled input).
+- When a decision changes in the grid, photos that **no longer match** are removed in place (scroll position kept,
+  selection moves to the next photo), so filtering on Unset works as a queue. If a change makes a hidden photo match
+  (e.g. undo), the view is rebuilt. Sort order is **not** re-applied after a rating change until F5, a filter or sort
+  change, or closing the viewer/compare, so photos do not jump under the cursor.
+- The viewer and compare work on a **snapshot** taken when they open, so navigation stays stable while deciding; the
+  grid is rebuilt when they close.
+
+### Compare
+- 2–4 selected photos, in grid order. Images are decoded at display size (longest side 2,048 px via
+  `LoadForDisplay`), at most two decodes at a time, and released on close.
+
+### Export (`FileSystemExportService`)
+- Scope: all Keep photos (ignoring the filter) or the current grid view. Modes: copy files, or a CSV manifest.
+- **Sources are only read** (read-only, sharing-friendly streams).
+- **Nothing is overwritten:** `ExportNamePlanner` picks names that do not collide, case-insensitively, with existing
+  entries or with each other (`name (2).ext`). Each file is copied to a hidden temporary file created with
+  `FileMode.CreateNew`, then moved with `overwrite: false`. If the name was taken in the meantime, the next free name
+  is used.
+- Modified time is preserved. Missing or unreadable sources are listed and the rest continue. Cancelling deletes the
+  in-progress temporary file, so only complete files remain.
+- Manifest: RFC 4180 CSV, UTF-8 with BOM. Values starting with `= + - @` are prefixed with `'` to prevent spreadsheet
+  formula injection. It refuses a path equal to any exported photo, and is written via temp file + move (the save
+  dialog has already confirmed replacing an existing manifest).
+- Exporting into (or above) an imported folder asks for confirmation, because the copies would be imported next time.
 
 ## Dependency direction
 

@@ -1,0 +1,87 @@
+<UserControl x:Class="FrameForge.App.Views.CompareView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:FrameForge.App.ViewModels"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=vm:CompareViewModel}"
+             Background="{StaticResource Brush.Surface.Sunken}"
+             Focusable="True" FocusVisualStyle="{x:Null}"
+             AutomationProperties.Name="Compare">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+    </UserControl.Resources>
+
+    <UserControl.InputBindings>
+        <KeyBinding Key="Right" Command="{Binding NextCommand}" />
+        <KeyBinding Key="Left" Command="{Binding PreviousCommand}" />
+        <KeyBinding Key="Escape" Command="{Binding RequestCloseCommand}" />
+    </UserControl.InputBindings>
+
+    <DockPanel>
+        <DockPanel DockPanel.Dock="Top" Margin="12,8">
+            <Button DockPanel.Dock="Left" Content="← Grid" ToolTip="Back to the grid (Esc)" Command="{Binding RequestCloseCommand}" />
+            <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center" Foreground="{StaticResource Brush.Text.Disabled}" FontSize="11"
+                       Text="← →  choose photo   ·   P X V U  decide   ·   1–5  rate   ·   Esc  grid" />
+            <TextBlock Margin="16,0" VerticalAlignment="Center" FontWeight="SemiBold" Text="Compare" />
+        </DockPanel>
+
+        <ItemsControl ItemsSource="{Binding Panels}" Margin="8,0,8,8" Focusable="False">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <!-- One row, one column per photo -->
+                    <UniformGrid Rows="1" />
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="{x:Type vm:ComparePanelViewModel}">
+                    <!-- Active panel: accent border + "ACTIVE" text, not colour alone. -->
+                    <Border x:Name="Frame" Margin="4" BorderThickness="2" BorderBrush="Transparent" CornerRadius="3"
+                            Background="{StaticResource Brush.Surface.Base}" Cursor="Hand"
+                            AutomationProperties.Name="{Binding Tile.FileName}" AutomationProperties.ItemStatus="{Binding Tile.AccessibleStatus}">
+                        <Border.InputBindings>
+                            <MouseBinding Gesture="LeftClick"
+                                          Command="{Binding DataContext.ActivateCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                          CommandParameter="{Binding}" />
+                        </Border.InputBindings>
+                        <DockPanel>
+                            <DockPanel DockPanel.Dock="Bottom" Margin="10,6">
+                                <ContentControl DockPanel.Dock="Right" Content="{Binding Tile}" ContentTemplate="{StaticResource DecisionBadges}" Focusable="False" IsTabStop="False" />
+                                <TextBlock x:Name="ActiveText" DockPanel.Dock="Left" Text="ACTIVE  " FontSize="10" FontWeight="Bold"
+                                           Foreground="{StaticResource Brush.Accent}" VerticalAlignment="Center" Visibility="Collapsed" />
+                                <TextBlock Text="{Binding Tile.FileName}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" ToolTip="{Binding Tile.FilePath}" />
+                            </DockPanel>
+                            <Grid>
+                                <Image Source="{Binding Tile.Thumbnail}" Stretch="Uniform" Opacity="0.6" RenderOptions.BitmapScalingMode="HighQuality"
+                                       Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}" />
+                                <Image x:Name="Photo" Source="{Binding Image}" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" />
+                                <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{StaticResource Brush.Status.Error}"
+                                           Text="{Binding Error, StringFormat='⚠ {0}'}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Error}" Value="{x:Null}">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
+                        </DockPanel>
+                    </Border>
+                    <DataTemplate.Triggers>
+                        <DataTrigger Binding="{Binding IsActive}" Value="True">
+                            <Setter TargetName="Frame" Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
+                            <Setter TargetName="ActiveText" Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding Tile.IsRejected}" Value="True">
+                            <Setter TargetName="Photo" Property="Opacity" Value="0.4" />
+                        </DataTrigger>
+                    </DataTemplate.Triggers>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </DockPanel>
+</UserControl>
