@@ -67,6 +67,16 @@ Each phase must build, test, and be documented before the next phase starts.
 - Installer, crash reporting opt-in, performance profiling
 - Commercial licensing and model licence review
 
+## Phase 8 — AI-assisted editing (draft brief: `docs/milestones/milestone-08-ai-editing.md`)
+- Deterministic Auto settings first; a model only if it measurably does better
+- Subject, sky and background masks for local adjustments (recipe schema v2)
+- Auto-straighten, auto-crop to subject (rule of thirds, chosen aspect ratio), batch reframe, zoom to faces
+- Optional learned enhancement, noise reduction or upscaling, only with clearly licensed weights
+- Can be scheduled before Phase 7; it depends only on Phases 5 and 6
+
+**Gate:** works with no model installed; suggestions are applied only by the user and are undoable; mask quality is
+measured on a human-reviewed set; preview matches export.
+
 ## Explicit non-goals for early versions
 - Cloud sync
 - Mobile apps
