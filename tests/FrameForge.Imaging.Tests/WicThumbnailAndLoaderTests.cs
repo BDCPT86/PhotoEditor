@@ -112,6 +112,31 @@ public sealed class WicThumbnailAndLoaderTests : IDisposable
     }
 
     [Fact]
+    public void AnalysisLoader_DownscalesOrientsAndReturnsBgra()
+    {
+        var source = _temp.File("analysis.jpg");
+        TestJpeg.Write(source, 1200, 800, md => md.SetQuery(WicPhotoMetadataReader.OrientationQuery, (ushort)6));
+
+        var image = new WicAnalysisImageLoader().Load(source, 512);
+
+        Assert.Equal(341, image.Width, tolerance: 1);   // rotated to portrait, longest side 512
+        Assert.Equal(512, image.Height);
+        Assert.Equal(image.Width * image.Height * 4, image.Bgra.Length);
+        // Rotating 90° clockwise puts the red left half on top.
+        var top = (image.Width / 2 * 4) + (10 * image.Width * 4);
+        Assert.True(image.Bgra[top + 2] > 150 && image.Bgra[top] < 100);
+    }
+
+    [Fact]
+    public void AnalysisLoader_RejectsCorruptFiles()
+    {
+        var source = _temp.File("corrupt-analysis.jpg");
+        File.WriteAllBytes(source, [1, 2, 3, 4]);
+
+        Assert.Throws<PhotoReadException>(() => new WicAnalysisImageLoader().Load(source, 512));
+    }
+
+    [Fact]
     public void LoadFull_ReleasesFileHandle()
     {
         var source = _temp.File("handle.jpg");

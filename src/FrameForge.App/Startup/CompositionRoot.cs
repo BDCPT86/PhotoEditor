@@ -42,12 +42,14 @@ internal static class CompositionRoot
         builder.Services.AddSingleton<ThumbnailLoader>();
         builder.Services.AddSingleton<IThumbnailSource>(sp => sp.GetRequiredService<ThumbnailLoader>());
         builder.Services.AddSingleton<DecisionController>();
+        builder.Services.AddSingleton<AnalysisController>();
 
         // View models and shell
         builder.Services.AddSingleton<LibraryFilterViewModel>();
         builder.Services.AddSingleton<ViewerViewModel>();
         builder.Services.AddSingleton<CompareViewModel>();
         builder.Services.AddSingleton<ExportViewModel>();
+        builder.Services.AddSingleton<LibraryAnalysisViewModel>();
         builder.Services.AddSingleton<LibraryViewModel>();
         builder.Services.AddSingleton<SettingsViewModel>();
         builder.Services.AddSingleton<AboutViewModel>();

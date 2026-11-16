@@ -9,7 +9,7 @@
 
 ## Solution structure
 
-### Current (Milestone 03)
+### Current (Milestone 04)
 
 ```text
 FrameForge.sln
@@ -21,16 +21,21 @@ src/
   FrameForge.Core/            Settings; photo types (Photo, PhotoMetadata, ImportStatus, FolderScope, …);
                               decisions (PhotoDecision, CullState, ColourLabel, DecisionEdit);
                               library query (LibraryFilter, LibrarySort, LibraryQuery). No dependencies.
+  FrameForge.Analysis/        Deterministic metrics on pixel buffers (net10.0, depends on Core only): SharpnessAnalyzer,
+                              ExposureAnalyzer, PerceptualHasher, SimilarityGrouper, AnalysisSettings. No WPF, no AI.
   FrameForge.Application/     Ports and use cases: settings, import, library, thumbnails (ThumbnailKey),
                               decisions (IDecisionService/DecisionService, DecisionHistory, IPhotoDecisionRepository),
-                              export (IExportService, ExportNamePlanner, ManifestWriter)
-  FrameForge.Infrastructure/  EF Core/SQLite (DbContext, migrations, photo/decision/settings repositories),
-                              FileSystemPhotoEnumerator, DiskThumbnailService, FileSystemExportService,
+                              export (IExportService, ExportNamePlanner, ManifestWriter),
+                              analysis (PhotoAnalysisService, AnalysisCache, AnalysisInsights, thresholds, ports)
+  FrameForge.Infrastructure/  EF Core/SQLite (DbContext, migrations, photo/decision/analysis/settings repositories),
+                              FileSystemPhotoEnumerator, DiskThumbnailService, FileSystemExportService, Sha256FileHasher,
                               LogFileRetention, AppDataPaths
-  FrameForge.Imaging/         WIC via WPF imaging (net10.0-windows): metadata, thumbnails, full and display-size decode
-  FrameForge.App/             WPF: composition root, shell, Library (grid, filters, viewer, compare, export, help),
-                              DecisionController, CullingShortcuts, PhotoGridListBox, ZoomPanImage, ThumbnailLoader
+  FrameForge.Imaging/         WIC via WPF imaging (net10.0-windows): metadata, thumbnails, full/display/analysis decode
+  FrameForge.App/             WPF: composition root, shell, Library (grid, filters, viewer, compare, export, help,
+                              analysis details), Decision/AnalysisController, CullingShortcuts, PhotoGridListBox, …
 tests/
+  FrameForge.Analysis.Tests/        Synthetic fixtures: blur ordering, local sharpness, clipping, pHash robustness,
+                                    Hamming distance, grouping (window, threshold, transitivity, order independence)
   FrameForge.Application.Tests/     Settings, import, decision rules, undo history, filter/sort determinism,
                                     export name planning, CSV manifest
   FrameForge.Infrastructure.Tests/  Real SQLite + file system: migrations, repositories (incl. decisions across restart),
@@ -52,10 +57,13 @@ tests/FrameForge.Core.Tests/, FrameForge.AI.Tests/  as those projects gain logic
 ### Project dependencies
 
 ```text
-App ──► Application ──► Core
+App ──► Application ──► Analysis ──► Core
  │  ──► Infrastructure ──► Application
  └────► Imaging ───────► Application
 ```
+
+`Analysis` is a pure algorithm library that Application uses directly (like a maths library); the ports Application
+defines for analysis (`IAnalysisImageLoader`, `IFileHasher`, `IAnalysisResultRepository`) cover the I/O.
 
 Infrastructure and Imaging never reference each other: `DiskThumbnailService` (Infrastructure) depends on the
 `IThumbnailGenerator` port, which Imaging implements. The App composes both.
@@ -81,7 +89,7 @@ Infrastructure and Imaging never reference each other: `DiskThumbnailService` (I
 ### Settings
 - A setting is a `SettingDefinition<T>` (key, default, validation rule) declared in Core (`AppSettings`).
 - `SettingsService` serialises values to JSON (enums by name). Reads return the default when nothing is stored; when the stored value is unreadable or fails validation, the default is returned **and a warning is logged**. Writes reject invalid values with `ArgumentOutOfRangeException`.
-- Current settings: `app.startPage` (Library/Settings/About, default Library) and `logging.retentionDays` (1–365, default 14), both applied on next launch; `import.includeSubfolders` (default true) and `import.lastFolder`, remembered from the Library page; `viewer.autoAdvance` (default true), on the Settings page.
+- Current settings: `app.startPage` (Library/Settings/About, default Library) and `logging.retentionDays` (1–365, default 14), both applied on next launch; `import.includeSubfolders` (default true) and `import.lastFolder`, remembered from the Library page; `viewer.autoAdvance` (default true), on the Settings page; `analysis.maxPixelSize` (512/1024/2048, default 1024) and the analysis thresholds `analysis.blurThreshold` (60), `analysis.highlightClipPercent` (1), `analysis.shadowClipPercent` (5), `analysis.maxHashDistance` (10), `analysis.burstWindowSeconds` (10, 0 = no limit).
 
 ### Logging
 - Serilog file sink, daily rolling, 50 MB size roll, `%LOCALAPPDATA%\FrameForge\logs\frameforge-YYYYMMDD.log`. `Microsoft.*` categories are filtered to Warning (EF SQL is not logged).
@@ -219,6 +227,50 @@ Infrastructure and Imaging never reference each other: `DiskThumbnailService` (I
   formula injection. It refuses a path equal to any exported photo, and is written via temp file + move (the save
   dialog has already confirmed replacing an existing manifest).
 - Exporting into (or above) an imported folder asks for confirmation, because the copies would be imported next time.
+
+## Implementation notes (Milestone 04: deterministic analysis)
+
+Everything here is a heuristic measurement, labelled as such in the UI, never called AI. Nothing is changed,
+decided, or deleted automatically.
+
+### Metrics (`FrameForge.Analysis`)
+| Kind | Method | Version string |
+|---|---|---|
+| Sharpness | Variance of the 4-neighbour Laplacian of luma, per cell of an N×N grid (default 4). Score = sharpest cell, so a sharp subject on a soft background scores sharp. | `laplacian-variance-grid-v1` |
+| Exposure | Mean luma; % pixels with any channel ≥ 254 (highlights); % with all channels ≤ 1 (shadows); 16-bin histogram. Measured on the JPEG as saved. | `luma-mean-channel-clip-v1` |
+| Perceptual hash | Luma area-averaged to 32×32 → 2-D DCT-II → 8×8 low frequencies → bit = above median (DC excluded from median). | `dct-phash-32x8-v1` |
+| Content hash | SHA-256 of the file bytes (streamed, read-only). | `sha256-v1` |
+| Grouping | Hamming distance ≤ limit, optionally within a burst window; union-find; deterministic order. | `phash-hamming-unionfind-v1` |
+
+### Pipeline (`PhotoAnalysisService`)
+- For each imported photo, it checks which kinds are missing or stale, decodes **once** at the analysis resolution
+  (`WicAnalysisImageLoader`: JPEG-domain downscale during decode, EXIF orientation, BGRA32), computes the needed
+  metrics, and hashes the file if needed.
+- `Parallel.For` with `MaxParallelism = min(cores/2, 4)`, in batches of 50 written in one transaction. Cancellation
+  saves the batch in progress; the next run resumes. Unreadable files are counted and logged, and the rest continue.
+- Results are stored in `AnalysisResults` with the algorithm version, a per-kind settings hash, and the source's size
+  and modified time. `AnalysisCache.IsValid` requires all four to match.
+
+### Benchmark (development machine, 20 logical cores, 4 workers)
+- 2,003 synthetic 2400×1600 JPEGs (500 four-frame bursts + 3 byte copies), analysed at 1,024 px:
+  **23.5 s, 11.7 ms per photo**, about 450 MB working set; 499 similar groups found (500 expected; not yet investigated).
+- Synthetic fixtures only. Real photos may differ in speed and in how well the default thresholds fit.
+
+### Settings vs thresholds
+- **Computation** (`AnalysisSettings`: resolution, grid) is in the settings hash. Changing the resolution makes
+  image metrics stale but **not** the content hash (it has no settings).
+- **Interpretation** (`AnalysisThresholds`: blur score, clipping limits, hash distance, burst window) is applied by
+  `AnalysisInsights.Build` in memory. Changing a threshold re-flags and regroups instantly, with no re-analysis
+  (tested).
+
+### Explainability
+- `AnalysisInsights` produces, for each photo, the flags plus `InsightLine`s: value, threshold, method, and caveats.
+  For example: the sharpest cell and the whole-image figure; clipping percentages against their limits; the nearest
+  similar photo, the bit distance and the time gap; exact-duplicate peers.
+- Within each group the sharpest photo is marked "sharpest in group", as a **suggestion** only.
+- UI: tile badges (glyph + word), an ANALYSIS filter row (Blurry?, Clipping, Similar groups, which shows groups
+  together, and Duplicates), **G** selects the focused photo's group (then **C** to compare it), and **I** opens the
+  details panel for the current photo (grid, viewer or compare).
 
 ## Dependency direction
 

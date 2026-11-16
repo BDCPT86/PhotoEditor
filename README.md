@@ -2,8 +2,10 @@
 
 A Windows-first, local-first photography application focused on photo culling and, later, editing.
 
-**Status:** Milestone 03 (Culling workflow). Import folders of JPEGs, cull them with the keyboard (keep/reject/review,
-ratings, colour labels), filter and sort, compare photos side by side, and export the selection. No AI scoring yet.
+**Status:** Milestone 04 (Deterministic analysis). Import folders of JPEGs, cull them with the keyboard
+(keep/reject/review, ratings, colour labels), filter and sort, compare photos side by side, and export the selection.
+**Analyze** measures sharpness and exposure and finds exact and near-duplicates. These are explainable heuristics,
+not AI. No AI features yet.
 
 ## Using it
 
@@ -17,6 +19,12 @@ ratings, colour labels), filter and sort, compare photos side by side, and expor
 4. **Work through what's left:** choose **Show → Unset**. Each decided photo leaves the view, and selection moves on.
 5. **Compare:** select 2–4 photos and press **C**. ← / → choose the photo that decision keys apply to.
 6. **Export…:** copy every Keep photo (or the current view) to a folder, or save a CSV manifest of the selection.
+7. **Analyze:** measures every photo once and remembers the results; later runs only analyse new or changed photos.
+   Tiles get badges: **≈ blurry?**, **◐ clip**, **▣ n** (in a group of n similar photos), **◆ sharpest** (the sharpest
+   in its group), and **= duplicate** (identical file). Use the **ANALYSIS** filter row to review them. Press **G** to
+   select a photo's group (then **C** to compare), and **I** to see the exact numbers and why each badge was given.
+   Thresholds are in **Settings → Analysis** and apply instantly. The defaults are starting points: tune them on your
+   own photos. Analysis never changes decisions or deletes anything.
 
 Originals are opened read-only and are never modified, moved, or deleted. Export never replaces an existing file: a
 clashing name is saved as `name (2).jpg`. Unreadable files are listed as **Unreadable**, and files deleted since the
@@ -70,6 +78,8 @@ Press **F1** (or **?**) on the Library page for the same list in the app.
 | Library | 6 / 7 / 8 / 9, Shift+0 | Red / yellow / green / blue label, clear label |
 | Library | Ctrl+Z / Ctrl+Y (or Ctrl+Shift+Z) | Undo / redo a decision |
 | Library | C | Compare selected photos (2–4) |
+| Library | G | Select the focused photo's similar group |
+| Library | I | Show or hide analysis details |
 | Library | F5 | Re-apply filter and sort |
 | Library | Ctrl+I | Import folder |
 | Grid | ← / → | Previous / next photo (continues onto the next row) |
@@ -104,12 +114,14 @@ A test (`Migrate_CreatesDatabase_AndModelMatchesMigrations`) fails if the EF mod
 
 ```text
 src/
-  FrameForge.Core/            Domain types (settings, photos, import results); no dependencies
+  FrameForge.Core/            Domain types (settings, photos, decisions, library query); no dependencies
+  FrameForge.Analysis/        Deterministic image metrics and grouping on pixel buffers (no WPF, no AI)
   FrameForge.Application/     Use cases and ports (import, library, settings, thumbnail keys)
   FrameForge.Infrastructure/  SQLite/EF Core, file system scanning, thumbnail disk cache, logging, app data paths
   FrameForge.Imaging/         JPEG metadata, thumbnails, and display decoding via Windows Imaging Component
   FrameForge.App/             WPF composition root, shell, grid, viewer, view models, theme
 tests/
+  FrameForge.Analysis.Tests/  (synthetic image fixtures, no binary files)
   FrameForge.Application.Tests/
   FrameForge.Infrastructure.Tests/
   FrameForge.Imaging.Tests/   (Windows only; generates its JPEG fixtures at test time)

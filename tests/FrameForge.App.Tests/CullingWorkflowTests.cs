@@ -140,8 +140,8 @@ public sealed class CullingWorkflowTests
         f.Library.TryHandle(CullingAction.Keep);
         Assert.Equal(CullState.Keep, f.Tile(0).Decision.State); // optimistic
 
-        await WaitUntil(() => f.Tile(0).Decision.State == CullState.Unset);
-        Assert.True(f.Library.StatusIsWarning);
+        // The revert and the warning are set by separate continuations: wait for both.
+        await WaitUntil(() => f.Tile(0).Decision.State == CullState.Unset && f.Library.StatusIsWarning);
         Assert.False(f.Controller.CanUndo); // the failed change is not left in history
     }
 

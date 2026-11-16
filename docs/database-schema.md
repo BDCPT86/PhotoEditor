@@ -61,7 +61,13 @@ _Not implemented (Milestone 02). Thumbnails are found by a computed key (`Thumbn
 - `GeneratedUtc` (datetime)
 - `DecoderVersion` (string)
 
-## AnalysisResult (later phase)
+## AnalysisResult
+_Implemented in Milestone 04 as table `AnalysisResults` (migration `AddAnalysisResults`). Differences from the proposal below:_
+- _Key is (`PhotoId`, `Kind`) — one current result per photo and kind (`ContentHash`, `Sharpness`, `Exposure`, `PerceptualHash`), replaced when recomputed. No separate `Id`._
+- _`SourceSizeBytes` and `SourceModifiedUtc` record the file identity the result was computed from; together with `AlgorithmVersion` and `SettingsHash` they decide whether the cached value is still valid._
+- _No separate `Score` column: values are typed JSON in `ValueJson` (e.g. sharpness score, cell scores and peak cell; exposure percentages and histogram; hash values)._
+- _Cascade delete with the photo._
+
 - `Id` (Guid, primary key)
 - `PhotoId` (Guid, foreign key)
 - `AnalysisType` (string)
@@ -71,7 +77,10 @@ _Not implemented (Milestone 02). Thumbnails are found by a computed key (`Thumbn
 - `ResultJson` (text)
 - `CreatedUtc` (datetime)
 
-## DuplicateGroup (later phase)
+## DuplicateGroup / DuplicateGroupMember
+_Not implemented (Milestone 04): groups are derived in memory from cached hashes and the current thresholds (about 1 s for 22,000 photos), so they change instantly when thresholds change and cannot go stale. Revisit if user corrections to groups (e.g. "not similar") need to be stored._
+
+## DuplicateGroup (proposal)
 - `Id` (Guid, primary key)
 - `AlgorithmVersion` (string)
 - `CreatedUtc` (datetime)

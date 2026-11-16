@@ -53,8 +53,10 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
         ViewerViewModel viewer,
         CompareViewModel compare,
         ExportViewModel export,
+        LibraryAnalysisViewModel analysis,
         ILogger<LibraryViewModel> logger)
     {
+        Analysis = analysis;
         _library = library;
         _importer = importer;
         _decisionService = decisionService;
@@ -72,7 +74,29 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
         Compare.CloseRequested += (_, _) => CloseCompare();
         Filter.Changed += (_, _) => RebuildView();
         Decisions.DecisionsChanged += (_, change) => OnDecisionsChanged(change);
+
+        Analysis.RunFinished += (_, result) => SetStatus(result.Message, result.IsWarning);
+        Analysis.Controller.InsightsChanged += (_, _) => OnInsightsChanged();
+        Viewer.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(ViewerViewModel.Current))
+            {
+                UpdateDetailsTarget();
+            }
+        };
+        Compare.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(CompareViewModel.Active))
+            {
+                UpdateDetailsTarget();
+            }
+        };
     }
+
+    public LibraryAnalysisViewModel Analysis { get; }
+
+    /// <inheritdoc />
+    public event EventHandler<IReadOnlyList<object>>? SelectionRequested;
 
     public override string Title => "Library";
 
@@ -107,8 +131,19 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
     [ObservableProperty]
     private bool _isCompareOpen;
 
+    /// <summary>Shortcut help side panel. Opening it closes the analysis details panel (they share the space).</summary>
     [ObservableProperty]
     private bool _isHelpOpen;
+
+    partial void OnIsHelpOpenChanged(bool value)
+    {
+        if (value)
+        {
+            Analysis.IsDetailsOpen = false;
+        }
+    }
+
+    partial void OnSelectedPhotoChanged(PhotoTileViewModel? value) => UpdateDetailsTarget();
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsEmpty))]
@@ -175,8 +210,9 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
     {
         if (_loaded)
         {
-            // Settings may have changed while on another page.
+            // Settings may have changed while on another page: thresholds re-evaluate instantly from cached results.
             _autoAdvance = await _settings.GetAsync(AppSettings.ViewerAutoAdvance, cancellationToken).ConfigureAwait(true);
+            await Analysis.Controller.RefreshSettingsAsync(cancellationToken).ConfigureAwait(true);
             return;
         }
 
@@ -226,6 +262,18 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
                 return true;
             case CullingAction.ToggleHelp:
                 IsHelpOpen = !IsHelpOpen;
+                return true;
+            case CullingAction.ToggleDetails:
+                Analysis.IsDetailsOpen = !Analysis.IsDetailsOpen;
+                if (Analysis.IsDetailsOpen)
+                {
+                    IsHelpOpen = false;
+                    UpdateDetailsTarget();
+                }
+
+                return true;
+            case CullingAction.SelectGroup:
+                SelectGroup();
                 return true;
         }
 
@@ -292,6 +340,60 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
         }
     }
 
+    /// <summary>Selects every photo in the focused photo's near-duplicate group (grid only).</summary>
+    private void SelectGroup()
+    {
+        if (IsViewerOpen || IsCompareOpen)
+        {
+            return;
+        }
+
+        if (SelectedPhoto is not { } focused)
+        {
+            SetStatus("Select a photo first, then press G to select its similar group.", warning: false);
+            return;
+        }
+
+        if (!focused.Insight.IsAnalysed)
+        {
+            SetStatus("This photo has not been analysed yet. Press Analyze to find similar photos.", warning: false);
+            return;
+        }
+
+        var shown = Photos.ToHashSet();
+        var members = Analysis.Controller.GroupOf(focused).Where(shown.Contains).ToList();
+        if (members.Count < 2)
+        {
+            SetStatus("No similar photos found for this one with the current thresholds (Settings → Analysis).", warning: false);
+            return;
+        }
+
+        SelectionRequested?.Invoke(this, members);
+        SetStatus(
+            string.Create(CultureInfo.CurrentCulture, $"Selected a group of {members.Count} similar photos. Press C to compare, I for why they were grouped.")
+                + (members.Count > CompareViewModel.MaxPhotos ? string.Create(CultureInfo.CurrentCulture, $" Compare shows the first {CompareViewModel.MaxPhotos}.") : string.Empty),
+            warning: false);
+    }
+
+    private void UpdateDetailsTarget()
+    {
+        Analysis.DetailsTile = IsCompareOpen ? Compare.Active?.Tile : IsViewerOpen ? Viewer.Current : SelectedPhoto;
+    }
+
+    private void OnInsightsChanged()
+    {
+        Analysis.RefreshDetails();
+        OnPropertyChanged(nameof(CountText));
+        if (Filter.Analysis != AnalysisFilterChoice.Any && !IsViewerOpen && !IsCompareOpen)
+        {
+            RebuildView();
+        }
+    }
+
+    /// <summary>Whether a tile passes every active filter (decision filters and analysis filter).</summary>
+    private bool InView(PhotoTileViewModel tile, LibraryFilter filter) =>
+        filter.Matches(tile.Photo, tile.Decision) && Filter.MatchesAnalysis(tile);
+
     private void OnDecisionsChanged(DecisionChange change)
     {
         OnPropertyChanged(nameof(CountText));
@@ -306,14 +408,14 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
         var shown = Photos.Where(t => changed.Contains(t.Id)).ToList();
 
         // A change that makes a hidden photo match (e.g. undo under a filter) needs a full rebuild to insert it.
-        if (_all.Any(t => changed.Contains(t.Id) && filter.Matches(t.Photo, t.Decision) && !shown.Contains(t)))
+        if (_all.Any(t => changed.Contains(t.Id) && InView(t, filter) && !shown.Contains(t)))
         {
             RebuildView();
             return;
         }
 
         // Otherwise remove photos that no longer match, keeping scroll position and moving selection forward.
-        var leaving = shown.Where(t => !filter.Matches(t.Photo, t.Decision)).ToList();
+        var leaving = shown.Where(t => !InView(t, filter)).ToList();
         if (leaving.Count == 0)
         {
             return;
@@ -335,7 +437,17 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
     internal void RebuildView()
     {
         var selected = SelectedPhoto;
-        var view = LibraryQuery.Apply(_all, t => t.Photo, t => t.Decision, Filter.ToFilter(), Filter.Sort);
+        IEnumerable<PhotoTileViewModel> view = LibraryQuery
+            .Apply(_all, t => t.Photo, t => t.Decision, Filter.ToFilter(), Filter.Sort)
+            .Where(Filter.MatchesAnalysis);
+
+        // "In a group" shows each group's members together, groups in a stable order (OrderBy is stable,
+        // so the chosen sort still orders photos within each group).
+        if (Filter.Analysis == AnalysisFilterChoice.InGroup)
+        {
+            view = view.OrderBy(t => t.Insight.GroupOrder);
+        }
+
         Photos = new ObservableCollection<PhotoTileViewModel>(view);
         SelectedPhoto = selected is not null && Photos.Contains(selected) ? selected : null;
         if (Export.IsOpen)
@@ -400,6 +512,7 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
                 .Select(p => new PhotoTileViewModel(p, _thumbnails, decisions.GetValueOrDefault(p.Id)))
                 .ToList();
             Decisions.Register(_all);
+            await Analysis.Controller.LoadAsync(_all, cancellationToken).ConfigureAwait(true);
             RebuildView();
         }
         finally

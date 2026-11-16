@@ -10,6 +10,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IPhotoMetadataReader, WicPhotoMetadataReader>();
         services.AddSingleton<IThumbnailGenerator, WicThumbnailGenerator>();
         services.AddSingleton<IPhotoBitmapLoader, WicPhotoBitmapLoader>();
+        services.AddSingleton<FrameForge.Application.Analysis.IAnalysisImageLoader, WicAnalysisImageLoader>();
         return services;
     }
 }

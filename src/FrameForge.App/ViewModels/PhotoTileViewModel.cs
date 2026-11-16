@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Windows.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using FrameForge.App.Services;
+using FrameForge.Application.Analysis;
 using FrameForge.Core.Decisions;
 using FrameForge.Core.Photos;
 using FrameForge.Imaging;
@@ -30,6 +31,23 @@ public sealed partial class PhotoTileViewModel : ObservableObject, IThumbnailReq
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(StateGlyph), nameof(StateText), nameof(IsRejected), nameof(RatingText), nameof(Label), nameof(LabelLetter), nameof(AccessibleStatus))]
     private PhotoDecision _decision;
+
+    /// <summary>Heuristic analysis findings, set by <see cref="Services.AnalysisController"/>.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowBlurBadge), nameof(ShowClipBadge), nameof(GroupBadgeText), nameof(ShowExactBadge), nameof(ShowSharpestBadge), nameof(HasAnalysisBadges), nameof(AccessibleStatus))]
+    private PhotoInsight _insight = PhotoInsight.NotAnalysed;
+
+    public bool ShowBlurBadge => Insight.LikelyBlurry;
+
+    public bool ShowClipBadge => Insight.HighlightsClipped || Insight.ShadowsClipped;
+
+    public string? GroupBadgeText => Insight.GroupKey is null ? null : string.Create(CultureInfo.CurrentCulture, $"▣ {Insight.GroupSize}");
+
+    public bool ShowExactBadge => Insight.ExactDuplicateCount > 0;
+
+    public bool ShowSharpestBadge => Insight.IsSharpestInGroup;
+
+    public bool HasAnalysisBadges => ShowBlurBadge || ShowClipBadge || GroupBadgeText is not null || ShowExactBadge;
 
     /// <summary>✓ Keep, ? Review, ✕ Reject; null when unset.</summary>
     public string? StateGlyph => Decision.State switch
@@ -75,6 +93,31 @@ public sealed partial class PhotoTileViewModel : ObservableObject, IThumbnailReq
             if (Decision.Label != ColourLabel.None)
             {
                 parts.Add($"{Decision.Label} label");
+            }
+
+            if (Insight.LikelyBlurry)
+            {
+                parts.Add("likely blurry");
+            }
+
+            if (ShowClipBadge)
+            {
+                parts.Add("clipping");
+            }
+
+            if (Insight.GroupKey is not null)
+            {
+                parts.Add(string.Create(CultureInfo.InvariantCulture, $"in a group of {Insight.GroupSize} similar photos"));
+            }
+
+            if (Insight.IsSharpestInGroup)
+            {
+                parts.Add("sharpest in group");
+            }
+
+            if (Insight.ExactDuplicateCount > 0)
+            {
+                parts.Add("exact duplicate");
             }
 
             return string.Join(", ", parts);

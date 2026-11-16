@@ -1,4 +1,6 @@
+using FrameForge.Application.Analysis;
 using FrameForge.Application.Decisions;
+using FrameForge.Infrastructure.Analysis;
 using FrameForge.Application.Export;
 using FrameForge.Application.Photos;
 using FrameForge.Infrastructure.Decisions;
@@ -37,6 +39,9 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<IPhotoDecisionRepository, SqliteDecisionRepository>();
         services.AddSingleton<IExportService, FileSystemExportService>();
+
+        services.AddSingleton<IAnalysisResultRepository, SqliteAnalysisRepository>();
+        services.AddSingleton<IFileHasher, Sha256FileHasher>();
 
         return services;
     }

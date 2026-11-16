@@ -1,6 +1,7 @@
 using System.IO;
 using FrameForge.App.Services;
 using FrameForge.App.ViewModels;
+using FrameForge.Application.Analysis;
 using FrameForge.Application.Decisions;
 using FrameForge.Application.Export;
 using FrameForge.Application.Photos;
@@ -18,6 +19,10 @@ internal sealed class CullingFixture : IDisposable
     public CullingFixture(int photoCount = 6, bool autoAdvance = true)
     {
         Photos = Enumerable.Range(0, photoCount).Select(i => TestPhotos.Create($"IMG_{i:00}.jpg")).ToList();
+        for (var i = 0; i < Photos.Count; i++)
+        {
+            Photos[i].CaptureLocalTime = new DateTime(2026, 5, 1, 10, 0, 0, DateTimeKind.Unspecified).AddSeconds(i);
+        }
         Settings = new SettingsService(SettingsStore, NullLogger<SettingsService>.Instance);
         Settings.SetAsync(AppSettings.ViewerAutoAdvance, autoAdvance).GetAwaiter().GetResult();
 
@@ -26,6 +31,8 @@ internal sealed class CullingFixture : IDisposable
         Viewer = new ViewerViewModel(Loader, NullLogger<ViewerViewModel>.Instance);
         Compare = new CompareViewModel(Loader, NullLogger<CompareViewModel>.Instance);
         Export = new ExportViewModel(Exporter, new NullFolderPicker(), new NullSavePicker(), NullLogger<ExportViewModel>.Instance);
+        AnalysisController = new AnalysisController(AnalysisService, Settings);
+        AnalysisPanel = new LibraryAnalysisViewModel(AnalysisController, NullLogger<LibraryAnalysisViewModel>.Instance);
 
         Library = new LibraryViewModel(
             new FixedLibrary(Photos),
@@ -39,8 +46,15 @@ internal sealed class CullingFixture : IDisposable
             Viewer,
             Compare,
             Export,
+            AnalysisPanel,
             NullLogger<LibraryViewModel>.Instance);
     }
+
+    public FakeAnalysisService AnalysisService { get; } = new();
+
+    public AnalysisController AnalysisController { get; }
+
+    public LibraryAnalysisViewModel AnalysisPanel { get; }
 
     public List<Photo> Photos { get; }
 
@@ -122,6 +136,38 @@ internal sealed class CullingFixture : IDisposable
     private sealed class NullSavePicker : IFileSavePicker
     {
         public string? PickSaveFile(string title, string defaultFileName, string filter) => null;
+    }
+}
+
+/// <summary>Analysis service returning scripted results; counts real analysis runs.</summary>
+internal sealed class FakeAnalysisService : IPhotoAnalysisService
+{
+    public Dictionary<Guid, PhotoAnalysis> Results { get; } = [];
+
+    public int AnalyzeCalls { get; private set; }
+
+    public int LoadCalls { get; private set; }
+
+    /// <summary>Gives a photo a full analysis with the given perceptual hash and sharpness.</summary>
+    public void Set(Photo photo, ulong hash, double sharpness = 200, string? content = null) =>
+        Results[photo.Id] = new PhotoAnalysis
+        {
+            ContentHash = content ?? "unique-" + photo.FileName,
+            PerceptualHash = hash,
+            Sharpness = new FrameForge.Analysis.SharpnessResult(sharpness, sharpness / 2, 4, 0, 0, new double[16], 1024, 683),
+            Exposure = new FrameForge.Analysis.ExposureResult(120, 0, 0, new int[16]),
+        };
+
+    public Task<IReadOnlyDictionary<Guid, PhotoAnalysis>> LoadAsync(IReadOnlyList<Photo> photos, FrameForge.Analysis.AnalysisSettings settings, CancellationToken cancellationToken = default)
+    {
+        LoadCalls++;
+        return Task.FromResult<IReadOnlyDictionary<Guid, PhotoAnalysis>>(new Dictionary<Guid, PhotoAnalysis>(Results));
+    }
+
+    public Task<AnalysisRunSummary> AnalyzeAsync(IReadOnlyList<Photo> photos, FrameForge.Analysis.AnalysisSettings settings, IProgress<AnalysisProgress>? progress, CancellationToken cancellationToken)
+    {
+        AnalyzeCalls++;
+        return Task.FromResult(new AnalysisRunSummary { Analysed = photos.Count - Results.Count, Cached = Results.Count });
     }
 }
 

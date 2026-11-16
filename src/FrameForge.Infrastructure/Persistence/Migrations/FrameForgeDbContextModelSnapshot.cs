@@ -101,6 +101,43 @@ namespace FrameForge.Infrastructure.Persistence.Migrations
                     b.ToTable("Photos", (string)null);
                 });
 
+            modelBuilder.Entity("FrameForge.Infrastructure.Persistence.AnalysisResultEntity", b =>
+                {
+                    b.Property<Guid>("PhotoId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Kind")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AlgorithmVersion")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SettingsHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("SourceModifiedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("SourceSizeBytes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ValueJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("PhotoId", "Kind");
+
+                    b.ToTable("AnalysisResults", (string)null);
+                });
+
             modelBuilder.Entity("FrameForge.Infrastructure.Persistence.AppSettingEntity", b =>
                 {
                     b.Property<string>("Key")
@@ -148,6 +185,15 @@ namespace FrameForge.Infrastructure.Persistence.Migrations
                         {
                             t.HasCheckConstraint("CK_PhotoDecisions_Rating", "\"Rating\" IS NULL OR (\"Rating\" BETWEEN 1 AND 5)");
                         });
+                });
+
+            modelBuilder.Entity("FrameForge.Infrastructure.Persistence.AnalysisResultEntity", b =>
+                {
+                    b.HasOne("FrameForge.Core.Photos.Photo", null)
+                        .WithMany()
+                        .HasForeignKey("PhotoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("FrameForge.Infrastructure.Persistence.PhotoDecisionEntity", b =>

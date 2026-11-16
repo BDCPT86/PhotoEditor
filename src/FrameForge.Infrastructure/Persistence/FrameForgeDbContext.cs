@@ -12,6 +12,8 @@ public sealed class FrameForgeDbContext(DbContextOptions<FrameForgeDbContext> op
 
     public DbSet<PhotoDecisionEntity> PhotoDecisions => Set<PhotoDecisionEntity>();
 
+    public DbSet<AnalysisResultEntity> AnalysisResults => Set<AnalysisResultEntity>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<AppSettingEntity>(entity =>
@@ -59,6 +61,22 @@ public sealed class FrameForgeDbContext(DbContextOptions<FrameForgeDbContext> op
             entity.HasOne<Photo>()
                 .WithOne()
                 .HasForeignKey<PhotoDecisionEntity>(d => d.PhotoId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AnalysisResultEntity>(entity =>
+        {
+            entity.ToTable("AnalysisResults");
+            entity.HasKey(r => new { r.PhotoId, r.Kind });
+            entity.Property(r => r.Kind).HasConversion<string>().HasMaxLength(32);
+            entity.Property(r => r.AlgorithmVersion).HasMaxLength(64);
+            entity.Property(r => r.SettingsHash).HasMaxLength(64);
+            entity.Property(r => r.ValueJson).IsRequired();
+
+            // Results are derived data: removing a photo removes them.
+            entity.HasOne<Photo>()
+                .WithMany()
+                .HasForeignKey(r => r.PhotoId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }

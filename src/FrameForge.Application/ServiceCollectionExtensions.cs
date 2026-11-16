@@ -1,3 +1,4 @@
+using FrameForge.Application.Analysis;
 using FrameForge.Application.Decisions;
 using FrameForge.Application.Photos;
 using FrameForge.Application.Settings;
@@ -17,6 +18,9 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IPhotoImportService, PhotoImportService>();
         services.AddSingleton<IPhotoLibraryService, PhotoLibraryService>();
         services.AddSingleton<IDecisionService, DecisionService>();
+
+        services.TryAddSingleton(new PhotoAnalysisOptions());
+        services.AddSingleton<IPhotoAnalysisService, PhotoAnalysisService>();
         return services;
     }
 }

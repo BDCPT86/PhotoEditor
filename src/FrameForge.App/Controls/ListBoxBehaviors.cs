@@ -7,6 +7,9 @@ namespace FrameForge.App.Controls;
 public interface ISelectedItemsSink
 {
     void UpdateSelection(IReadOnlyList<object> items);
+
+    /// <summary>Raised when the view model wants the list box to select these items (e.g. "select group").</summary>
+    event EventHandler<IReadOnlyList<object>>? SelectionRequested;
 }
 
 /// <summary>
@@ -33,12 +36,44 @@ public static class ListBoxBehaviors
         }
 
         listBox.SelectionChanged -= PushSelection;
+        if (e.OldValue is ISelectedItemsSink oldSink)
+        {
+            oldSink.SelectionRequested -= ApplyRequestedSelection(listBox);
+        }
+
         if (e.NewValue is ISelectedItemsSink sink)
         {
             listBox.SelectionChanged += PushSelection;
+            sink.SelectionRequested += ApplyRequestedSelection(listBox);
             sink.UpdateSelection(listBox.SelectedItems.Cast<object>().ToList());
         }
     }
+
+    // One handler per list box, so it can be unsubscribed.
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<ListBox, EventHandler<IReadOnlyList<object>>> RequestHandlers = [];
+
+    private static EventHandler<IReadOnlyList<object>> ApplyRequestedSelection(ListBox listBox) =>
+        RequestHandlers.GetValue(listBox, lb => (_, items) =>
+        {
+            if (lb.SelectionMode == SelectionMode.Single)
+            {
+                lb.SelectedItem = items.Count > 0 ? items[0] : null;
+                return;
+            }
+
+            lb.SelectedItems.Clear();
+            foreach (var item in items)
+            {
+                lb.SelectedItems.Add(item);
+            }
+
+            if (items.Count > 0)
+            {
+                lb.ScrollIntoView(items[0]);
+                lb.UpdateLayout();
+                (lb.ItemContainerGenerator.ContainerFromItem(items[0]) as ListBoxItem)?.Focus();
+            }
+        });
 
     private static void PushSelection(object sender, SelectionChangedEventArgs e)
     {

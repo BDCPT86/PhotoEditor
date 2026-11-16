@@ -21,6 +21,7 @@ internal static class TestServices
 
         services.AddSingleton<IPhotoMetadataReader, StubMetadataReader>();
         services.AddSingleton<IThumbnailGenerator, StubThumbnailGenerator>();
+        services.AddSingleton<Application.Analysis.IAnalysisImageLoader, StubAnalysisImageLoader>();
 
         return services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
     }
@@ -45,6 +46,20 @@ internal sealed class StubMetadataReader : IPhotoMetadataReader
         }
 
         return new PhotoMetadata { Width = 10, Height = 20, CaptureLocalTime = new DateTime(2026, 3, 4, 5, 6, 7, DateTimeKind.Unspecified) };
+    }
+}
+
+/// <summary>A flat grey image for any existing file (imaging itself is tested in FrameForge.Imaging.Tests).</summary>
+internal sealed class StubAnalysisImageLoader : Application.Analysis.IAnalysisImageLoader
+{
+    public FrameForge.Analysis.AnalysisImage Load(string path, int maxPixelSize)
+    {
+        if (!File.Exists(path))
+        {
+            throw new FileNotFoundException("missing", path);
+        }
+
+        return FrameForge.Analysis.AnalysisImage.Create(16, 16, (_, _) => (128, 128, 128));
     }
 }
 

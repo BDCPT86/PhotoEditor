@@ -33,9 +33,39 @@ public enum LabelFilterChoice
     Blue,
 }
 
+public enum AnalysisFilterChoice
+{
+    Any,
+    LikelyBlurry,
+    Clipping,
+    InGroup,
+    ExactDuplicate,
+}
+
 /// <summary>Filter and sort choices for the grid. Raises <see cref="Changed"/> when any choice changes.</summary>
 public sealed partial class LibraryFilterViewModel : ObservableObject
 {
+    /// <summary>Heuristic analysis filter. "In a group" also orders photos group by group.</summary>
+    [ObservableProperty]
+    private AnalysisFilterChoice _analysis = AnalysisFilterChoice.Any;
+
+    /// <summary>True when the tile passes the analysis filter.</summary>
+    public bool MatchesAnalysis(PhotoTileViewModel tile)
+    {
+        ArgumentNullException.ThrowIfNull(tile);
+        var insight = tile.Insight;
+        return Analysis switch
+        {
+            AnalysisFilterChoice.LikelyBlurry => insight.LikelyBlurry,
+            AnalysisFilterChoice.Clipping => insight.HighlightsClipped || insight.ShadowsClipped,
+            AnalysisFilterChoice.InGroup => insight.GroupKey is not null,
+            AnalysisFilterChoice.ExactDuplicate => insight.ExactDuplicateCount > 0,
+            _ => true,
+        };
+    }
+
+    partial void OnAnalysisChanged(AnalysisFilterChoice value) => RaiseChanged();
+
     [ObservableProperty]
     private StateFilterChoice _state = StateFilterChoice.All;
 
@@ -50,7 +80,7 @@ public sealed partial class LibraryFilterViewModel : ObservableObject
 
     public event EventHandler? Changed;
 
-    public bool IsFiltering => State != StateFilterChoice.All || MinRating != RatingFilterChoice.Any || Label != LabelFilterChoice.Any;
+    public bool IsFiltering => State != StateFilterChoice.All || MinRating != RatingFilterChoice.Any || Label != LabelFilterChoice.Any || Analysis != AnalysisFilterChoice.Any;
 
     public LibraryFilter ToFilter() => new()
     {

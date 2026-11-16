@@ -25,6 +25,8 @@ public enum CullingAction
     Compare,
     Refresh,
     ToggleHelp,
+    SelectGroup,
+    ToggleDetails,
 }
 
 public sealed record ShortcutHelpItem(string Keys, string Description);
@@ -86,6 +88,8 @@ public static class CullingShortcuts
             Key.D8 or Key.NumPad8 => CullingAction.LabelGreen,
             Key.D9 or Key.NumPad9 => CullingAction.LabelBlue,
             Key.C => CullingAction.Compare,
+            Key.G => CullingAction.SelectGroup,
+            Key.I => CullingAction.ToggleDetails,
             Key.F5 => CullingAction.Refresh,
             Key.F1 => CullingAction.ToggleHelp,
             _ => null,
@@ -140,6 +144,11 @@ public static class CullingShortcuts
             new("Esc", "Back to the grid"),
             new("F5", "Re-apply filter and sort"),
             new("Ctrl+I", "Import folder"),
+        ]),
+        new("Analysis (heuristics, not AI)",
+        [
+            new("G", "Select the photo's similar group (then C to compare)"),
+            new("I", "Show or hide analysis details: the numbers and why"),
         ]),
         new("Viewer",
         [

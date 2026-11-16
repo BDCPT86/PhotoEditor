@@ -42,6 +42,65 @@
             <CheckBox Content="_Advance to the next photo after Keep / Reject / Review / Unset in the viewer"
                       IsChecked="{Binding ViewerAutoAdvance}" Margin="0,0,0,20" />
 
+            <TextBlock Text="Analysis (heuristics, not AI)" Style="{StaticResource Text.SectionLabel}" />
+            <TextBlock Style="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,8"
+                       Text="Resolution changes the measurements, so photos are re-analysed on the next Analyze run. Thresholds only change how stored measurements are judged and apply instantly." />
+
+            <TextBlock Text="Analysis resolution (longest side)" Margin="0,0,0,4" />
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                <RadioButton GroupName="AnalysisResolution" Content="512 px (fast)" Margin="0,0,16,0"
+                             IsChecked="{Binding AnalysisResolution, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:AnalysisResolution.Fast}}" />
+                <RadioButton GroupName="AnalysisResolution" Content="1024 px" Margin="0,0,16,0"
+                             IsChecked="{Binding AnalysisResolution, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:AnalysisResolution.Standard}}" />
+                <RadioButton GroupName="AnalysisResolution" Content="2048 px (detailed)"
+                             IsChecked="{Binding AnalysisResolution, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:AnalysisResolution.Detailed}}" />
+            </StackPanel>
+
+            <Grid Margin="0,0,0,20">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="96" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <Grid.Resources>
+                    <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                        <Setter Property="Margin" Value="12,0,12,8" />
+                    </Style>
+                    <Style TargetType="TextBlock" x:Key="Hint" BasedOn="{StaticResource Text.Secondary}">
+                        <Setter Property="FontSize" Value="12" />
+                        <Setter Property="VerticalAlignment" Value="Center" />
+                        <Setter Property="Margin" Value="0,0,0,8" />
+                    </Style>
+                </Grid.Resources>
+
+                <TextBlock Grid.Row="0" Text="Blur threshold" VerticalAlignment="Center" Margin="0,0,0,8" />
+                <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding BlurThresholdText, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Blur threshold" />
+                <TextBlock Grid.Row="0" Grid.Column="2" Style="{StaticResource Hint}" Text="Sharpness score below this is flagged “blurry?”. Tune for your camera." />
+
+                <TextBlock Grid.Row="1" Text="Highlight clipping limit (%)" VerticalAlignment="Center" Margin="0,0,0,8" />
+                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding HighlightClipText, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Highlight clipping limit" />
+                <TextBlock Grid.Row="1" Grid.Column="2" Style="{StaticResource Hint}" Text="Share of pixels with a channel at 254–255." />
+
+                <TextBlock Grid.Row="2" Text="Shadow clipping limit (%)" VerticalAlignment="Center" Margin="0,0,0,8" />
+                <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding ShadowClipText, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Shadow clipping limit" />
+                <TextBlock Grid.Row="2" Grid.Column="2" Style="{StaticResource Hint}" Text="Share of pixels with all channels at 0–1." />
+
+                <TextBlock Grid.Row="3" Text="Similarity distance (bits)" VerticalAlignment="Center" Margin="0,0,0,8" />
+                <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding MaxHashDistanceText, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Similarity distance" />
+                <TextBlock Grid.Row="3" Grid.Column="2" Style="{StaticResource Hint}" Text="0–32 of 64. Lower = only very similar photos are grouped." />
+
+                <TextBlock Grid.Row="4" Text="Burst window (seconds)" VerticalAlignment="Center" Margin="0,0,0,8" />
+                <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding BurstWindowText, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Burst window" />
+                <TextBlock Grid.Row="4" Grid.Column="2" Style="{StaticResource Hint}" Text="Similar photos must be this close in capture time. 0 = no limit." />
+            </Grid>
+
             <StackPanel Orientation="Horizontal">
                 <Button Content="_Save" Command="{Binding SaveCommand}" ToolTip="Save settings (Ctrl+S)" />
             </StackPanel>

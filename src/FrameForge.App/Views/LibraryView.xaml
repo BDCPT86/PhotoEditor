@@ -52,6 +52,17 @@
                     <Button Content="Cancel" Command="{Binding ImportCancelCommand}" ToolTip="Stop the import; photos read so far are kept" />
                 </StackPanel>
 
+                <Button DockPanel.Dock="Left" Margin="16,0,0,0" Content="_Analyze" Command="{Binding Analysis.AnalyzeCommand}"
+                        ToolTip="Measure sharpness and exposure, and find duplicates (heuristics, not AI). Already-analysed photos are skipped." />
+                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Margin="12,0,0,0" DataContext="{Binding Analysis}"
+                            Visibility="{Binding IsAnalyzing, Converter={StaticResource BoolToVisibility}}">
+                    <ProgressBar Width="140" VerticalAlignment="Center" Minimum="0" Maximum="1"
+                                 Value="{Binding ProgressValue, Mode=OneWay}" AutomationProperties.Name="Analysis progress" />
+                    <TextBlock Margin="12,0" VerticalAlignment="Center" Text="{Binding ProgressText}"
+                               Foreground="{StaticResource Brush.Text.Secondary}" AutomationProperties.AutomationId="AnalysisStatus" />
+                    <Button Content="Cancel" Command="{Binding AnalyzeCancelCommand}" ToolTip="Stop; results so far are kept" />
+                </StackPanel>
+
                 <Button DockPanel.Dock="Right" Content="Shortcuts (F1)" Margin="8,0,0,0"
                         Command="{Binding RunShortcutCommand}" CommandParameter="{x:Static shortcuts:CullingAction.ToggleHelp}"
                         ToolTip="Show keyboard shortcuts" />
@@ -91,6 +102,14 @@
                     <RadioButton Style="{StaticResource Chip}" GroupName="Label" Content="Yellow" IsChecked="{Binding Label, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:LabelFilterChoice.Yellow}}" />
                     <RadioButton Style="{StaticResource Chip}" GroupName="Label" Content="Green" IsChecked="{Binding Label, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:LabelFilterChoice.Green}}" />
                     <RadioButton Style="{StaticResource Chip}" GroupName="Label" Content="Blue" IsChecked="{Binding Label, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:LabelFilterChoice.Blue}}" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,20,4" ToolTip="Heuristic measurements, not AI. Run Analyze first.">
+                    <TextBlock Text="ANALYSIS" Style="{StaticResource Text.ChipGroupLabel}" />
+                    <RadioButton Style="{StaticResource Chip}" GroupName="Analysis" Content="Any" AutomationProperties.Name="Any analysis" IsChecked="{Binding Analysis, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:AnalysisFilterChoice.Any}}" />
+                    <RadioButton Style="{StaticResource Chip}" GroupName="Analysis" Content="≈ Blurry?" AutomationProperties.Name="Likely blurry" IsChecked="{Binding Analysis, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:AnalysisFilterChoice.LikelyBlurry}}" />
+                    <RadioButton Style="{StaticResource Chip}" GroupName="Analysis" Content="◐ Clipping" AutomationProperties.Name="Clipping" IsChecked="{Binding Analysis, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:AnalysisFilterChoice.Clipping}}" />
+                    <RadioButton Style="{StaticResource Chip}" GroupName="Analysis" Content="▣ Similar groups" AutomationProperties.Name="Similar groups" IsChecked="{Binding Analysis, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:AnalysisFilterChoice.InGroup}}" />
+                    <RadioButton Style="{StaticResource Chip}" GroupName="Analysis" Content="= Duplicates" AutomationProperties.Name="Exact duplicates" IsChecked="{Binding Analysis, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:AnalysisFilterChoice.ExactDuplicate}}" />
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                     <TextBlock Text="SORT" Style="{StaticResource Text.ChipGroupLabel}" />
@@ -186,6 +205,35 @@
                                                Foreground="{StaticResource Brush.Status.Error}" TextAlignment="Center"
                                                Text="{Binding StatusText, StringFormat='⚠&#x0a;{0}'}"
                                                Visibility="{Binding HasProblem, Converter={StaticResource BoolToVisibility}}" />
+
+                                    <!-- Heuristic analysis badges (glyph + word). Press I for the numbers behind them. -->
+                                    <WrapPanel HorizontalAlignment="Left" VerticalAlignment="Top" Margin="4,4,0,0" IsHitTestVisible="False"
+                                               Visibility="{Binding HasAnalysisBadges, Converter={StaticResource BoolToVisibility}}">
+                                        <Border Style="{StaticResource AnalysisBadge}" Visibility="{Binding ShowBlurBadge, Converter={StaticResource BoolToVisibility}}">
+                                            <TextBlock Style="{StaticResource Text.AnalysisBadge}" Text="≈ blurry?" Foreground="{StaticResource Brush.Decision.Review}" />
+                                        </Border>
+                                        <Border Style="{StaticResource AnalysisBadge}" Visibility="{Binding ShowClipBadge, Converter={StaticResource BoolToVisibility}}">
+                                            <TextBlock Style="{StaticResource Text.AnalysisBadge}" Text="◐ clip" />
+                                        </Border>
+                                        <Border>
+                                            <Border.Style>
+                                                <Style TargetType="Border" BasedOn="{StaticResource AnalysisBadge}">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding GroupBadgeText}" Value="{x:Null}">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <TextBlock Style="{StaticResource Text.AnalysisBadge}" Text="{Binding GroupBadgeText}" />
+                                        </Border>
+                                        <Border Style="{StaticResource AnalysisBadge}" Visibility="{Binding ShowSharpestBadge, Converter={StaticResource BoolToVisibility}}">
+                                            <TextBlock Style="{StaticResource Text.AnalysisBadge}" Text="◆ sharpest" Foreground="{StaticResource Brush.Decision.Keep}" />
+                                        </Border>
+                                        <Border Style="{StaticResource AnalysisBadge}" Visibility="{Binding ShowExactBadge, Converter={StaticResource BoolToVisibility}}">
+                                            <TextBlock Style="{StaticResource Text.AnalysisBadge}" Text="= duplicate" />
+                                        </Border>
+                                    </WrapPanel>
                                 </Grid>
                             </Border>
 
@@ -216,6 +264,47 @@
         <!-- ============================== Side panels (non-modal) -->
         <views:ExportPanel DataContext="{Binding Export}" HorizontalAlignment="Right"
                            Visibility="{Binding IsOpen, Converter={StaticResource BoolToVisibility}}" />
+
+        <!-- Analysis details: the numbers, thresholds and method behind every badge. -->
+        <Border Style="{StaticResource SidePanel}" DataContext="{Binding Analysis}"
+                Visibility="{Binding IsDetailsOpen, Converter={StaticResource BoolToVisibility}}">
+            <DockPanel>
+                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                    <Button DockPanel.Dock="Right" Content="Close" MinWidth="0"
+                            Command="{Binding DataContext.RunShortcutCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            CommandParameter="{x:Static shortcuts:CullingAction.ToggleDetails}" />
+                    <TextBlock Text="Analysis details" Style="{StaticResource Text.SectionLabel}" FontSize="16" VerticalAlignment="Center" />
+                </DockPanel>
+                <TextBlock DockPanel.Dock="Top" Text="{Binding DetailsTitle}" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,0,0,4"
+                           AutomationProperties.AutomationId="DetailsTitle" />
+                <TextBlock DockPanel.Dock="Top" Text="{Binding HeuristicNote}" Style="{StaticResource Text.Secondary}" FontSize="11" Margin="0,0,0,12" />
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
+                    <ItemsControl ItemsSource="{Binding Details}" Focusable="False" AutomationProperties.Name="Analysis findings">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Margin="0,0,0,14">
+                                    <TextBlock FontWeight="SemiBold">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Text" Value="{Binding Topic}" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsFlagged}" Value="True">
+                                                        <Setter Property="Text" Value="{Binding Topic, StringFormat='⚠ {0}'}" />
+                                                        <Setter Property="Foreground" Value="{StaticResource Brush.Decision.Review}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <TextBlock Text="{Binding Value}" TextWrapping="Wrap" Margin="0,2,0,2" />
+                                    <TextBlock Text="{Binding Explanation}" TextWrapping="Wrap" Style="{StaticResource Text.Secondary}" FontSize="12" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
 
         <Border Style="{StaticResource SidePanel}" AutomationProperties.Name="Keyboard shortcuts"
                 Visibility="{Binding IsHelpOpen, Converter={StaticResource BoolToVisibility}}">
