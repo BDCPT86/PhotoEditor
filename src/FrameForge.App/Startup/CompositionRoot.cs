@@ -46,10 +46,13 @@ internal static class CompositionRoot
         builder.Services.AddSingleton<IThumbnailSource>(sp => sp.GetRequiredService<ThumbnailLoader>());
         builder.Services.AddSingleton<DecisionController>();
         builder.Services.AddSingleton<AnalysisController>();
+        builder.Services.AddSingleton<EditController>();
 
         // View models and shell
         builder.Services.AddSingleton<LibraryFilterViewModel>();
+        builder.Services.AddSingleton<DevelopViewModel>();
         builder.Services.AddSingleton<ViewerViewModel>();
+        builder.Services.AddSingleton<PresetPanelViewModel>();
         builder.Services.AddSingleton<CompareViewModel>();
         builder.Services.AddSingleton<ExportViewModel>();
         builder.Services.AddSingleton<LibraryAnalysisViewModel>();

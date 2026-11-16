@@ -90,6 +90,21 @@ _Not implemented (Milestone 04): groups are derived in memory from cached hashes
 - `PhotoId` (Guid, foreign key)
 - `Similarity` (double, nullable)
 
+## PhotoEdits
+_Implemented in Milestone 06 (migration `AddPhotoEditsAndPresets`). One row per edited photo; a neutral recipe has no row._
+- `PhotoId` (Guid, primary key / foreign key to `Photos`, cascade delete)
+- `SchemaVersion` (int) — recipe format version
+- `RecipeJson` (text) — validated `EditRecipe` (exposure, white balance, tone, colour, quarter turns, straighten, crop)
+- `UpdatedUtc` (datetime)
+
+## EditPresets
+_Implemented in Milestone 06._
+- `Id` (Guid, primary key)
+- `Name` (string ≤ 80, NOCASE, unique)
+- `Groups` (string) — which settings the preset applies: Exposure, WhiteBalance, Tone, Colour, Geometry
+- `SchemaVersion` (int), `RecipeJson` (text)
+- `CreatedUtc`, `UpdatedUtc` (datetime)
+
 ## Notes
 - Use UTC for stored timestamps.
 - Store paths, not image bytes.

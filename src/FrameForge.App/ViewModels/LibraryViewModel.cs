@@ -54,9 +54,11 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
         CompareViewModel compare,
         ExportViewModel export,
         LibraryAnalysisViewModel analysis,
+        PresetPanelViewModel presets,
         ILogger<LibraryViewModel> logger)
     {
         Analysis = analysis;
+        Presets = presets;
         _library = library;
         _importer = importer;
         _decisionService = decisionService;
@@ -70,7 +72,7 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
         Compare = compare;
         Export = export;
 
-        Viewer.CloseRequested += (_, _) => CloseViewer();
+        Viewer.CloseRequested += (_, _) => _ = CloseViewerAsync();
         Compare.CloseRequested += (_, _) => CloseCompare();
         Filter.Changed += (_, _) => RebuildView();
         Decisions.DecisionsChanged += (_, change) => OnDecisionsChanged(change);
@@ -94,6 +96,13 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
     }
 
     public LibraryAnalysisViewModel Analysis { get; }
+
+    /// <summary>Preset batch panel; its controller also owns every tile's edit recipe.</summary>
+    public PresetPanelViewModel Presets { get; }
+
+    public EditController Edits => Presets.Edits;
+
+    private bool IsDeveloping => IsViewerOpen && Viewer.Develop.IsOpen;
 
     /// <inheritdoc />
     public event EventHandler<IReadOnlyList<object>>? SelectionRequested;
@@ -231,8 +240,14 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
         }
     }
 
-    void ISelectedItemsSink.UpdateSelection(IReadOnlyList<object> items) =>
+    void ISelectedItemsSink.UpdateSelection(IReadOnlyList<object> items)
+    {
         _selection = items.OfType<PhotoTileViewModel>().ToList();
+        if (Presets.IsOpen)
+        {
+            Presets.RefreshTargets();
+        }
+    }
 
     partial void OnIncludeSubfoldersChanged(bool value)
     {
@@ -248,12 +263,43 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
     {
         switch (action)
         {
+            case CullingAction.Undo when IsDeveloping:
+                Viewer.Develop.UndoCommand.Execute(null);
+                return true;
+            case CullingAction.Redo when IsDeveloping:
+                Viewer.Develop.RedoCommand.Execute(null);
+                return true;
             case CullingAction.Undo:
                 _ = ReportAsync(Decisions.UndoAsync(), "Undid");
                 return true;
             case CullingAction.Redo:
                 _ = ReportAsync(Decisions.RedoAsync(), "Redid");
                 return true;
+            case CullingAction.ToggleDevelop:
+                if (IsCompareOpen)
+                {
+                    return false;
+                }
+
+                if (!IsViewerOpen)
+                {
+                    OpenViewer(null);
+                }
+
+                if (IsViewerOpen)
+                {
+                    Viewer.ToggleDevelopCommand.Execute(null);
+                }
+
+                return true;
+            case CullingAction.ToggleCrop when IsDeveloping:
+                Viewer.Develop.ToggleCropModeCommand.Execute(null);
+                return true;
+            case CullingAction.BeforeAfter when IsDeveloping:
+                Viewer.Develop.ToggleBeforeAfterCommand.Execute(null);
+                return true;
+            case CullingAction.ToggleCrop or CullingAction.BeforeAfter:
+                return false;
             case CullingAction.Compare:
                 OpenCompare();
                 return true;
@@ -512,6 +558,7 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
                 .Select(p => new PhotoTileViewModel(p, _thumbnails, decisions.GetValueOrDefault(p.Id)))
                 .ToList();
             Decisions.Register(_all);
+            await Edits.LoadAsync(_all, cancellationToken).ConfigureAwait(true);
             await Analysis.Controller.LoadAsync(_all, cancellationToken).ConfigureAwait(true);
             RebuildView();
         }
@@ -608,7 +655,7 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
     }
 
     [RelayCommand]
-    private void CloseViewer()
+    private async Task CloseViewerAsync()
     {
         if (!IsViewerOpen)
         {
@@ -616,7 +663,12 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
         }
 
         var current = Viewer.Current;
-        Viewer.Close();
+        await Viewer.CloseAsync().ConfigureAwait(true); // saves a pending Develop change first
+        if (!IsViewerOpen)
+        {
+            return; // closed meanwhile
+        }
+
         IsViewerOpen = false;
         SelectedPhoto = current;
         RebuildView();
@@ -659,12 +711,21 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
         SelectedPhoto ??= FirstAtOrAfter(active);
     }
 
+    /// <summary>Opens the preset panel; it applies to the selected photos (or the focused one).</summary>
+    [RelayCommand]
+    private void OpenPresets()
+    {
+        IsHelpOpen = false;
+        Analysis.IsDetailsOpen = false;
+        Presets.Open(DecisionTargets);
+    }
+
     [RelayCommand]
     private void OpenExport() => Export.Open(
         scope => (scope == ExportScope.Keep
                 ? LibraryQuery.Apply(_all, t => t.Photo, t => t.Decision, new LibraryFilter { States = new HashSet<CullState> { CullState.Keep } }, Filter.Sort)
                 : Photos.ToList())
-            .Select(t => new ExportItem(t.Photo, t.Decision))
+            .Select(t => new ExportItem(t.Photo, t.Decision, t.Recipe))
             .ToList(),
         _all.Select(t => t.Photo.FolderPath).Distinct(StringComparer.OrdinalIgnoreCase).ToList());
 

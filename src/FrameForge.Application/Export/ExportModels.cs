@@ -1,10 +1,11 @@
 using FrameForge.Core.Decisions;
+using FrameForge.Core.Editing;
 using FrameForge.Core.Photos;
 
 namespace FrameForge.Application.Export;
 
-/// <summary>A photo to export, with its decision (used by the manifest).</summary>
-public sealed record ExportItem(Photo Photo, PhotoDecision Decision);
+/// <summary>A photo to export, with its decision (used by the manifest) and edit (used when exporting edited JPEGs).</summary>
+public sealed record ExportItem(Photo Photo, PhotoDecision Decision, EditRecipe? Recipe = null);
 
 public sealed record ExportProgress(int Total, int Completed, int Failed, long BytesCopied, string? CurrentFile);
 

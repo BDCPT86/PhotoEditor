@@ -119,7 +119,7 @@ public sealed class PhotoTileAndLoaderTests
         var error = await requester.Completion.WaitAsync(TimeSpan.FromSeconds(5), Ct);
 
         Assert.Null(error);
-        Assert.NotNull(loader.TryGetCached(requester.Photo.Id));
+        Assert.NotNull(loader.TryGetCached(requester.Photo.Id, FrameForge.Core.Editing.EditRecipe.Neutral, out _));
     }
 
     [Fact]
@@ -135,7 +135,7 @@ public sealed class PhotoTileAndLoaderTests
         loader.Request(requester);
 
         Assert.Equal("File not found", await requester.Completion.WaitAsync(TimeSpan.FromSeconds(5), Ct));
-        Assert.Null(loader.TryGetCached(requester.Photo.Id));
+        Assert.Null(loader.TryGetCached(requester.Photo.Id, FrameForge.Core.Editing.EditRecipe.Neutral, out _));
     }
 
     [Fact]

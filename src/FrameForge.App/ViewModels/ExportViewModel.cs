@@ -3,6 +3,7 @@ using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FrameForge.App.Services;
+using FrameForge.Application.Editing;
 using FrameForge.Application.Export;
 using FrameForge.Core.Photos;
 using Microsoft.Extensions.Logging;
@@ -22,15 +23,30 @@ public enum ExportMode
 {
     CopyFiles,
     Manifest,
+
+    /// <summary>Render each photo's edit into a new JPEG.</summary>
+    EditedJpegs,
 }
 
 /// <summary>Non-modal export panel: choose scope and mode, then a destination; shows progress and a summary.</summary>
 public sealed partial class ExportViewModel(
     IExportService exporter,
+    IEditedExportService editedExporter,
     IFolderPicker folderPicker,
     IFileSavePicker savePicker,
     ILogger<ExportViewModel> logger) : ObservableObject
 {
+    /// <summary>JPEG quality for edited exports.</summary>
+    [ObservableProperty]
+    private int _quality = EditedExportOptions.Default.Quality;
+
+    /// <summary>Optional longest side for edited exports; empty keeps full size.</summary>
+    [ObservableProperty]
+    private string _maxLongSideText = string.Empty;
+
+    [ObservableProperty]
+    private bool _keepMetadata = true;
+
     private Func<ExportScope, IReadOnlyList<ExportItem>> _source = _ => [];
     private IReadOnlyCollection<string> _libraryFolders = [];
     private CancellationTokenSource? _cts;
@@ -134,7 +150,13 @@ public sealed partial class ExportViewModel(
             return;
         }
 
-        var folder = folderPicker.PickFolder("Choose a folder to copy photos into", null);
+        if (Mode == ExportMode.EditedJpegs && EditedOptions() is null)
+        {
+            SetResult($"The longest side must be a whole number of pixels (64–65,000), or empty for full size.", warning: true);
+            return;
+        }
+
+        var folder = folderPicker.PickFolder(Mode == ExportMode.EditedJpegs ? "Choose a folder for the edited JPEGs" : "Choose a folder to copy photos into", null);
         if (folder is null)
         {
             return;
@@ -176,10 +198,23 @@ public sealed partial class ExportViewModel(
 
         try
         {
-            var summary = manifest
-                ? await exporter.WriteManifestAsync(items, destination, cts.Token).ConfigureAwait(true)
-                : await exporter.CopyAsync(items, destination, new Progress<ExportProgress>(OnProgress), cts.Token).ConfigureAwait(true);
-            SetResult(Describe(summary, manifest), warning: summary.Failures.Count > 0 || summary.WasCancelled);
+            var progress = new Progress<ExportProgress>(OnProgress);
+            ExportSummary summary;
+            if (manifest)
+            {
+                summary = await exporter.WriteManifestAsync(items, destination, cts.Token).ConfigureAwait(true);
+            }
+            else if (Mode == ExportMode.EditedJpegs && EditedOptions() is { } options)
+            {
+                var edited = items.Select(i => new EditedExportItem(i.Photo, i.Recipe ?? Core.Editing.EditRecipe.Neutral)).ToList();
+                summary = await editedExporter.ExportAsync(edited, destination, options, progress, cts.Token).ConfigureAwait(true);
+            }
+            else
+            {
+                summary = await exporter.CopyAsync(items, destination, progress, cts.Token).ConfigureAwait(true);
+            }
+
+            SetResult(Describe(summary, manifest, Mode == ExportMode.EditedJpegs), warning: summary.Failures.Count > 0 || summary.WasCancelled);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
         {
@@ -206,7 +241,30 @@ public sealed partial class ExportViewModel(
             $"{progress.Completed:N0} / {progress.Total:N0}  ·  {progress.BytesCopied / (1024.0 * 1024.0):N0} MB");
     }
 
-    internal static string Describe(ExportSummary summary, bool manifest)
+    /// <summary>Options for an edited export, or null when the long-side text is not valid.</summary>
+    internal EditedExportOptions? EditedOptions()
+    {
+        int? maxSide = null;
+        if (!string.IsNullOrWhiteSpace(MaxLongSideText))
+        {
+            if (!int.TryParse(MaxLongSideText, NumberStyles.Integer, CultureInfo.CurrentCulture, out var parsed))
+            {
+                return null;
+            }
+
+            maxSide = parsed;
+        }
+
+        var options = new EditedExportOptions
+        {
+            Quality = Math.Clamp(Quality, EditedExportOptions.MinQuality, EditedExportOptions.MaxQuality),
+            MaxLongSide = maxSide,
+            KeepMetadata = KeepMetadata,
+        };
+        return options.Validate().Count == 0 ? options : null;
+    }
+
+    internal static string Describe(ExportSummary summary, bool manifest, bool edited = false)
     {
         var culture = CultureInfo.CurrentCulture;
         if (manifest)
@@ -214,9 +272,12 @@ public sealed partial class ExportViewModel(
             return string.Create(culture, $"Manifest of {summary.Exported:N0} photo(s) saved to {summary.Destination}.");
         }
 
+        var verb = edited ? "saved as edited JPEGs" : "copied";
         var text = summary.WasCancelled
-            ? string.Create(culture, $"Export cancelled: {summary.Exported:N0} of {summary.Requested:N0} copied to {summary.Destination}.")
-            : string.Create(culture, $"Copied {summary.Exported:N0} photo(s) to {summary.Destination}.");
+            ? string.Create(culture, $"Export cancelled: {summary.Exported:N0} of {summary.Requested:N0} {verb} to {summary.Destination}.")
+            : edited
+                ? string.Create(culture, $"Saved {summary.Exported:N0} edited JPEG(s) to {summary.Destination}.")
+                : string.Create(culture, $"Copied {summary.Exported:N0} photo(s) to {summary.Destination}.");
 
         if (summary.Renamed > 0)
         {

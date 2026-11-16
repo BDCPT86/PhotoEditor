@@ -14,6 +14,10 @@ public sealed class FrameForgeDbContext(DbContextOptions<FrameForgeDbContext> op
 
     public DbSet<AnalysisResultEntity> AnalysisResults => Set<AnalysisResultEntity>();
 
+    public DbSet<PhotoEditEntity> PhotoEdits => Set<PhotoEditEntity>();
+
+    public DbSet<EditPresetEntity> EditPresets => Set<EditPresetEntity>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<AppSettingEntity>(entity =>
@@ -78,6 +82,29 @@ public sealed class FrameForgeDbContext(DbContextOptions<FrameForgeDbContext> op
                 .WithMany()
                 .HasForeignKey(r => r.PhotoId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PhotoEditEntity>(entity =>
+        {
+            entity.ToTable("PhotoEdits");
+            entity.HasKey(e => e.PhotoId);
+            entity.Property(e => e.RecipeJson).IsRequired();
+
+            // An edit belongs to one photo and goes with it. Neutral recipes have no row.
+            entity.HasOne<Photo>()
+                .WithOne()
+                .HasForeignKey<PhotoEditEntity>(e => e.PhotoId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<EditPresetEntity>(entity =>
+        {
+            entity.ToTable("EditPresets");
+            entity.HasKey(p => p.Id);
+            entity.Property(p => p.Name).IsRequired().HasMaxLength(80).UseCollation("NOCASE");
+            entity.HasIndex(p => p.Name).IsUnique();
+            entity.Property(p => p.Groups).IsRequired().HasMaxLength(128);
+            entity.Property(p => p.RecipeJson).IsRequired();
         });
     }
 

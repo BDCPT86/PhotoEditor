@@ -2,6 +2,8 @@ using FrameForge.Application.Ai;
 using FrameForge.Application.Analysis;
 using FrameForge.Infrastructure.Ai;
 using FrameForge.Application.Decisions;
+using FrameForge.Application.Editing;
+using FrameForge.Infrastructure.Editing;
 using FrameForge.Infrastructure.Analysis;
 using FrameForge.Application.Export;
 using FrameForge.Application.Photos;
@@ -44,6 +46,10 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<IAnalysisResultRepository, SqliteAnalysisRepository>();
         services.AddSingleton<IFileHasher, Sha256FileHasher>();
+
+        services.AddSingleton<IEditRepository, SqliteEditRepository>();
+        services.AddSingleton<IPresetRepository, SqlitePresetRepository>();
+        services.AddSingleton<IEditedExportService, FileSystemEditedExportService>();
 
         // Used only for user-initiated model downloads. Generic agent; no user data is sent.
         services.AddSingleton<IModelStore>(sp => new FileSystemModelStore(

@@ -27,6 +27,9 @@ public enum CullingAction
     ToggleHelp,
     SelectGroup,
     ToggleDetails,
+    ToggleDevelop,
+    ToggleCrop,
+    BeforeAfter,
 }
 
 public sealed record ShortcutHelpItem(string Keys, string Description);
@@ -90,6 +93,9 @@ public static class CullingShortcuts
             Key.C => CullingAction.Compare,
             Key.G => CullingAction.SelectGroup,
             Key.I => CullingAction.ToggleDetails,
+            Key.D => CullingAction.ToggleDevelop,
+            Key.R => CullingAction.ToggleCrop,
+            Key.OemBackslash or Key.Oem5 => CullingAction.BeforeAfter,
             Key.F5 => CullingAction.Refresh,
             Key.F1 => CullingAction.ToggleHelp,
             _ => null,
@@ -149,6 +155,14 @@ public static class CullingShortcuts
         [
             new("G", "Select the photo's similar group (then C to compare)"),
             new("I", "Show or hide analysis details: the numbers and why"),
+        ]),
+        new("Edit (non-destructive: originals are never changed)",
+        [
+            new("D", "Open or close Develop for the current photo (grid: opens the viewer)"),
+            new("R", "Crop and straighten (in Develop)"),
+            new("\\", "Before / after (in Develop)"),
+            new("Ctrl+Z / Ctrl+Y", "Undo / redo edits while Develop is open"),
+            new("Double-click a slider", "Reset that setting"),
         ]),
         new("Viewer",
         [

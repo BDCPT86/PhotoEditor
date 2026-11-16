@@ -28,9 +28,10 @@ internal sealed class CullingFixture : IDisposable
 
         DecisionService = new DecisionService(Decisions);
         Controller = new DecisionController(DecisionService, NullLogger<DecisionController>.Instance);
-        Viewer = new ViewerViewModel(Loader, NullLogger<ViewerViewModel>.Instance);
+        Viewer = new ViewerViewModel(Loader, Edit.Renderer, Edit.Develop, NullLogger<ViewerViewModel>.Instance);
         Compare = new CompareViewModel(Loader, NullLogger<CompareViewModel>.Instance);
-        Export = new ExportViewModel(Exporter, new NullFolderPicker(), new NullSavePicker(), NullLogger<ExportViewModel>.Instance);
+        Export = new ExportViewModel(Exporter, EditedExporter, FolderPicker, new NullSavePicker(), NullLogger<ExportViewModel>.Instance);
+        PresetPanel = new PresetPanelViewModel(Edit.Controller, NullLogger<PresetPanelViewModel>.Instance);
         AnalysisController = new AnalysisController(AnalysisService, AiService, AiRuntime, Settings);
         AnalysisPanel = new LibraryAnalysisViewModel(AnalysisController, NullLogger<LibraryAnalysisViewModel>.Instance);
 
@@ -47,8 +48,17 @@ internal sealed class CullingFixture : IDisposable
             Compare,
             Export,
             AnalysisPanel,
+            PresetPanel,
             NullLogger<LibraryViewModel>.Instance);
     }
+
+    public EditStack Edit { get; } = new();
+
+    public RecordingEditedExporter EditedExporter { get; } = new();
+
+    public ChoosingFolderPicker FolderPicker { get; } = new();
+
+    public PresetPanelViewModel PresetPanel { get; }
 
     public FakeAnalysisService AnalysisService { get; } = new();
 
@@ -130,6 +140,14 @@ internal sealed class CullingFixture : IDisposable
     {
         public Task<ImportSummary> ImportFolderAsync(string folderPath, bool includeSubfolders, IProgress<ImportProgress>? progress, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
+    }
+
+    internal sealed class ChoosingFolderPicker : IFolderPicker
+    {
+        /// <summary>The folder the next pick returns (null = cancelled).</summary>
+        public string? Next { get; set; }
+
+        public string? PickFolder(string title, string? initialFolder) => Next;
     }
 
     private sealed class NullFolderPicker : IFolderPicker

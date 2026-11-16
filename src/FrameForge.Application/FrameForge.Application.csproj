@@ -7,6 +7,7 @@
   <ItemGroup>
     <ProjectReference Include="..\FrameForge.Core\FrameForge.Core.csproj" />
     <ProjectReference Include="..\FrameForge.Analysis\FrameForge.Analysis.csproj" />
+    <ProjectReference Include="..\FrameForge.Rendering\FrameForge.Rendering.csproj" />
   </ItemGroup>
 
   <ItemGroup>

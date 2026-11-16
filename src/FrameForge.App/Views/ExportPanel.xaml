@@ -37,9 +37,46 @@
                 <TextBlock Text="Export as" Style="{StaticResource Text.SectionLabel}" />
                 <RadioButton GroupName="ExportMode" Content="Copy files to a folder"
                              IsChecked="{Binding Mode, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:ExportMode.CopyFiles}}" />
+                <RadioButton GroupName="ExportMode" Content="Edited JPEGs (applies each photo's edits)"
+                             IsChecked="{Binding Mode, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:ExportMode.EditedJpegs}}" />
                 <RadioButton GroupName="ExportMode" Content="Selection manifest (CSV)" Margin="0,0,0,8"
                              IsChecked="{Binding Mode, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:ExportMode.Manifest}}" />
-                <TextBlock Style="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,16"
+
+                <!-- Edited JPEG options -->
+                <Grid Margin="20,0,0,12">
+                    <Grid.Style>
+                        <Style TargetType="Grid">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Mode}" Value="{x:Static vm:ExportMode.EditedJpegs}">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Grid.Style>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Text="Quality" VerticalAlignment="Center" Margin="0,0,12,6" />
+                    <DockPanel Grid.Row="0" Grid.Column="1" Margin="0,0,0,6">
+                        <TextBlock DockPanel.Dock="Right" Width="32" TextAlignment="Right" VerticalAlignment="Center" Text="{Binding Quality}" />
+                        <Slider Minimum="50" Maximum="100" SmallChange="1" LargeChange="5" IsSnapToTickEnabled="True" TickFrequency="1"
+                                Value="{Binding Quality}" AutomationProperties.Name="JPEG quality" />
+                    </DockPanel>
+                    <TextBlock Grid.Row="1" Text="Longest side (px)" VerticalAlignment="Center" Margin="0,0,12,6" />
+                    <TextBox Grid.Row="1" Grid.Column="1" Width="96" HorizontalAlignment="Left" Margin="0,0,0,6"
+                             Text="{Binding MaxLongSideText, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Longest side in pixels, empty for full size"
+                             ToolTip="Leave empty for full size. Never upscales." />
+                    <CheckBox Grid.Row="2" Grid.ColumnSpan="2" Content="Keep camera metadata (EXIF)" IsChecked="{Binding KeepMetadata}" />
+                </Grid>
+
+                <TextBlock Style="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,16" TextWrapping="Wrap"
                            Text="Originals are only read. Existing files are never replaced: name clashes are saved as “name (2).jpg”." />
 
                 <Button Content="Choose destination and export…" HorizontalAlignment="Left" Command="{Binding StartCommand}" />

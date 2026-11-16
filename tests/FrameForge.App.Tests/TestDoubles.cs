@@ -3,6 +3,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using FrameForge.App.Services;
 using FrameForge.Application.Photos;
+using FrameForge.Core.Editing;
 using FrameForge.Core.Photos;
 using FrameForge.Imaging;
 
@@ -33,7 +34,15 @@ internal sealed class FakeThumbnailSource : IThumbnailSource
 
     public List<IThumbnailRequester> Requests { get; } = [];
 
-    public BitmapSource? TryGetCached(Guid photoId) => Cached.GetValueOrDefault(photoId);
+    /// <summary>The recipe each cached thumbnail was rendered for (neutral when absent).</summary>
+    public Dictionary<Guid, EditRecipe> CachedRecipes { get; } = [];
+
+    public BitmapSource? TryGetCached(Guid photoId, EditRecipe recipe, out bool isCurrent)
+    {
+        var cached = Cached.GetValueOrDefault(photoId);
+        isCurrent = cached is not null && Equals(CachedRecipes.GetValueOrDefault(photoId) ?? EditRecipe.Neutral, recipe);
+        return cached;
+    }
 
     public void Request(IThumbnailRequester requester) => Requests.Add(requester);
 }
@@ -85,6 +94,8 @@ internal sealed class AwaitableRequester(Photo photo) : IThumbnailRequester
     private readonly TaskCompletionSource<string?> _done = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     public Photo Photo { get; } = photo;
+
+    public EditRecipe Recipe { get; set; } = EditRecipe.Neutral;
 
     /// <summary>Completes with null on success, or the failure message.</summary>
     public Task<string?> Completion => _done.Task;

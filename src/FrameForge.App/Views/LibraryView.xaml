@@ -67,12 +67,11 @@
                         Command="{Binding RunShortcutCommand}" CommandParameter="{x:Static shortcuts:CullingAction.ToggleHelp}"
                         ToolTip="Show keyboard shortcuts" />
                 <Button DockPanel.Dock="Right" Content="_Export…" Margin="8,0,0,0" Command="{Binding OpenExportCommand}"
-                        ToolTip="Copy kept photos to a folder, or save a selection manifest" />
+                        ToolTip="Copy kept photos, export edited JPEGs, or save a selection manifest" />
+                <Button DockPanel.Dock="Right" Content="_Presets…" Margin="8,0,0,0" Command="{Binding OpenPresetsCommand}"
+                        ToolTip="Apply a saved edit preset to the selected photos" />
                 <Button DockPanel.Dock="Right" Content="_Compare (C)" Margin="8,0,0,0" Command="{Binding OpenCompareCommand}"
                         ToolTip="Compare 2–4 selected photos side by side" />
-                <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center" Margin="0,0,16,0" Text="{Binding CountText}"
-                           Foreground="{StaticResource Brush.Text.Secondary}"
-                           AutomationProperties.AutomationId="LibraryCount" />
             </DockPanel>
 
             <!-- Filter and sort -->
@@ -122,8 +121,12 @@
                 </StackPanel>
             </WrapPanel>
 
-            <!-- Status: glyph + text, so warnings are not conveyed by colour alone. -->
-            <TextBlock Grid.Row="2" Margin="0,0,0,10" TextWrapping="Wrap" AutomationProperties.AutomationId="LibraryStatus">
+            <!-- Count (right) and status: glyph + text, so warnings are not conveyed by colour alone. -->
+            <DockPanel Grid.Row="2" Margin="0,0,0,10">
+            <TextBlock DockPanel.Dock="Right" VerticalAlignment="Top" Margin="16,0,0,0" Text="{Binding CountText}"
+                       Foreground="{StaticResource Brush.Text.Secondary}"
+                       AutomationProperties.AutomationId="LibraryCount" />
+            <TextBlock TextWrapping="Wrap" AutomationProperties.AutomationId="LibraryStatus">
                 <TextBlock.Style>
                     <Style TargetType="TextBlock">
                         <Setter Property="Foreground" Value="{StaticResource Brush.Text.Secondary}" />
@@ -140,6 +143,7 @@
                     </Style>
                 </TextBlock.Style>
             </TextBlock>
+            </DockPanel>
 
             <!-- Empty states -->
             <StackPanel Grid.Row="3" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="420"
@@ -259,6 +263,8 @@
 
                             <DockPanel Grid.Row="1" Margin="2,6,2,0" LastChildFill="True">
                                 <ContentControl DockPanel.Dock="Right" Content="{Binding}" ContentTemplate="{StaticResource DecisionBadges}" Focusable="False" IsTabStop="False" />
+                                <TextBlock DockPanel.Dock="Left" Text="✎" Margin="0,0,4,0" FontSize="12" VerticalAlignment="Center" ToolTip="Edited (the original file is unchanged)"
+                                           Foreground="{StaticResource Brush.Accent}" Visibility="{Binding IsEdited, Converter={StaticResource BoolToVisibility}}" />
                                 <TextBlock Text="{Binding FileName}" TextTrimming="CharacterEllipsis" FontSize="12" VerticalAlignment="Center" />
                             </DockPanel>
                         </Grid>
@@ -283,6 +289,8 @@
 
         <!-- ============================== Side panels (non-modal) -->
         <views:ExportPanel DataContext="{Binding Export}" HorizontalAlignment="Right"
+                           Visibility="{Binding IsOpen, Converter={StaticResource BoolToVisibility}}" />
+        <views:PresetPanel DataContext="{Binding Presets}" HorizontalAlignment="Right"
                            Visibility="{Binding IsOpen, Converter={StaticResource BoolToVisibility}}" />
 
         <!-- Analysis details: the numbers, thresholds and method behind every badge. -->

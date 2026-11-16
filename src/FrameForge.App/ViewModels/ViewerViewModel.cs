@@ -1,8 +1,10 @@
+using System.ComponentModel;
 using System.Globalization;
 using System.IO;
 using System.Windows.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using FrameForge.Application.Editing;
 using FrameForge.Application.Photos;
 using FrameForge.Imaging;
 using Microsoft.Extensions.Logging;
@@ -12,13 +14,28 @@ namespace FrameForge.App.ViewModels;
 /// <summary>
 /// Single-photo viewer. Only the current photo is decoded at full resolution; moving to another
 /// photo cancels any pending load, and at most one decode runs at a time so rapid key-repeat
-/// cannot stack up full-resolution bitmaps.
+/// cannot stack up full-resolution bitmaps. Edited photos are shown with their edit applied.
+/// While the Develop panel is open, the live preview is shown instead.
 /// </summary>
-public sealed partial class ViewerViewModel(IPhotoBitmapLoader loader, ILogger<ViewerViewModel> logger) : ObservableObject, IDisposable
+public sealed partial class ViewerViewModel : ObservableObject, IDisposable
 {
+    private readonly IPhotoBitmapLoader _loader;
+    private readonly IEditRenderService _renderer;
+    private readonly ILogger<ViewerViewModel> _logger;
     private readonly SemaphoreSlim _decodeGate = new(1, 1);
     private IReadOnlyList<PhotoTileViewModel> _items = [];
     private CancellationTokenSource? _loadCts;
+
+    public ViewerViewModel(IPhotoBitmapLoader loader, IEditRenderService renderer, DevelopViewModel develop, ILogger<ViewerViewModel> logger)
+    {
+        _loader = loader;
+        _renderer = renderer;
+        _logger = logger;
+        Develop = develop;
+        Develop.PropertyChanged += OnDevelopChanged;
+    }
+
+    public DevelopViewModel Develop { get; }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(PositionText))]
@@ -29,6 +46,7 @@ public sealed partial class ViewerViewModel(IPhotoBitmapLoader loader, ILogger<V
     private PhotoTileViewModel? _current;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DisplayImage))]
     private BitmapSource? _image;
 
     [ObservableProperty]
@@ -36,6 +54,9 @@ public sealed partial class ViewerViewModel(IPhotoBitmapLoader loader, ILogger<V
 
     [ObservableProperty]
     private string? _errorMessage;
+
+    /// <summary>What the image area shows: the Develop preview while developing, otherwise the full-size photo.</summary>
+    public BitmapSource? DisplayImage => Develop.IsOpen ? Develop.DisplayImage : Image;
 
     public string PositionText => _items.Count == 0
         ? string.Empty
@@ -58,18 +79,51 @@ public sealed partial class ViewerViewModel(IPhotoBitmapLoader loader, ILogger<V
         MoveTo(index);
     }
 
-    public void Close()
+    /// <summary>Closes the viewer; any pending Develop change is saved first.</summary>
+    public async Task CloseAsync()
     {
+        if (Develop.IsOpen)
+        {
+            await Develop.CloseAsync().ConfigureAwait(true);
+        }
+
         CancelLoad();
         Image = null; // release the full-resolution bitmap
         ErrorMessage = null;
         IsLoading = false;
     }
 
+    /// <summary>Opens or closes the Develop panel for the current photo.</summary>
+    [RelayCommand]
+    private async Task ToggleDevelopAsync()
+    {
+        if (Develop.IsOpen)
+        {
+            await Develop.CloseAsync().ConfigureAwait(true);
+            if (Current is { } shown)
+            {
+                CurrentLoad = LoadCurrentAsync(shown); // show the final edit at full resolution
+            }
+        }
+        else if (Current is { } tile)
+        {
+            await Develop.OpenAsync(tile).ConfigureAwait(true);
+        }
+    }
+
     public void Dispose()
     {
         CancelLoad();
         _decodeGate.Dispose();
+        Develop.PropertyChanged -= OnDevelopChanged;
+    }
+
+    private void OnDevelopChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(DevelopViewModel.DisplayImage) or nameof(DevelopViewModel.IsOpen))
+        {
+            OnPropertyChanged(nameof(DisplayImage));
+        }
     }
 
     private bool CanGoNext() => CurrentIndex < _items.Count - 1;
@@ -104,6 +158,10 @@ public sealed partial class ViewerViewModel(IPhotoBitmapLoader loader, ILogger<V
         CurrentIndex = index;
         Current = _items[index];
         CurrentLoad = LoadCurrentAsync(Current);
+        if (Develop.IsOpen)
+        {
+            _ = Develop.OpenAsync(Current); // saves the previous photo's pending change first
+        }
     }
 
     /// <summary>
@@ -133,8 +191,11 @@ public sealed partial class ViewerViewModel(IPhotoBitmapLoader loader, ILogger<V
             await _decodeGate.WaitAsync(token).ConfigureAwait(true);
             acquired = true;
 
-            var path = tile.FilePath;
-            var bitmap = await Task.Run(() => loader.LoadFull(path, token), token).ConfigureAwait(true);
+            var photo = tile.Photo;
+            var recipe = tile.Recipe;
+            var bitmap = recipe.IsNeutral
+                ? await Task.Run(() => _loader.LoadFull(photo.FilePath, token), token).ConfigureAwait(true)
+                : BitmapConversions.ToBitmap(await _renderer.RenderAsync(photo, recipe, null, token).ConfigureAwait(true));
             if (!token.IsCancellationRequested)
             {
                 Image = bitmap;

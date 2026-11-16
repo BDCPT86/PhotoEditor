@@ -6,13 +6,14 @@ namespace FrameForge.App.Tests;
 public sealed class ViewerViewModelTests : IDisposable
 {
     private readonly ScriptedBitmapLoader _loader = new();
+    private readonly EditStack _edit = new();
     private readonly FakeThumbnailSource _thumbnails = new();
     private readonly ViewerViewModel _viewer;
     private readonly List<PhotoTileViewModel> _tiles;
 
     public ViewerViewModelTests()
     {
-        _viewer = new ViewerViewModel(_loader, NullLogger<ViewerViewModel>.Instance);
+        _viewer = new ViewerViewModel(_loader, _edit.Renderer, _edit.Develop, NullLogger<ViewerViewModel>.Instance);
         _tiles = Enumerable.Range(1, 4)
             .Select(i => new PhotoTileViewModel(TestPhotos.Create($"IMG_{i}.jpg"), _thumbnails))
             .ToList();
@@ -118,7 +119,7 @@ public sealed class ViewerViewModelTests : IDisposable
         _viewer.Open(_tiles, 2);
         await _viewer.CurrentLoad;
 
-        _viewer.Close();
+        await _viewer.CloseAsync();
 
         Assert.Null(_viewer.Image);
     }

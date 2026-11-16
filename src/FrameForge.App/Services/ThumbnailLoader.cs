@@ -1,6 +1,7 @@
 using System.IO;
 using System.Windows.Media.Imaging;
 using FrameForge.Application.Photos;
+using FrameForge.Core.Editing;
 using FrameForge.Core.Photos;
 using FrameForge.Imaging;
 using Microsoft.Extensions.Logging;
@@ -12,6 +13,9 @@ public interface IThumbnailRequester
 {
     Photo Photo { get; }
 
+    /// <summary>The edit to show. Read on a worker thread; recipes are immutable.</summary>
+    EditRecipe Recipe { get; }
+
     void OnThumbnailLoaded();
 
     void OnThumbnailFailed(string message);
@@ -21,8 +25,11 @@ public interface IThumbnailRequester
 
 public interface IThumbnailSource
 {
-    /// <summary>UI thread only. Returns a thumbnail already in memory, or null.</summary>
-    BitmapSource? TryGetCached(Guid photoId);
+    /// <summary>
+    /// UI thread only. Returns the thumbnail in memory, or null. <paramref name="isCurrent"/> is false when it was
+    /// rendered for a different recipe: show it until the up-to-date one arrives, and request a reload.
+    /// </summary>
+    BitmapSource? TryGetCached(Guid photoId, EditRecipe recipe, out bool isCurrent);
 
     /// <summary>UI thread only. Queues a load; the most recent requests are served first.</summary>
     void Request(IThumbnailRequester requester);
@@ -43,7 +50,7 @@ internal sealed partial class ThumbnailLoader : IThumbnailSource, IDisposable
     private readonly IPhotoBitmapLoader _bitmaps;
     private readonly IUiDispatcher _dispatcher;
     private readonly ILogger<ThumbnailLoader> _logger;
-    private readonly LruCache<Guid, BitmapSource> _memory = new(MemoryCapacity);
+    private readonly LruCache<Guid, (BitmapSource Bitmap, EditRecipe Recipe)> _memory = new(MemoryCapacity);
     private readonly Lock _gate = new();
     private readonly LinkedList<IThumbnailRequester> _pending = new();
     private readonly Dictionary<Guid, LinkedListNode<IThumbnailRequester>> _pendingById = [];
@@ -61,7 +68,17 @@ internal sealed partial class ThumbnailLoader : IThumbnailSource, IDisposable
         _workers = Enumerable.Range(0, WorkerCount).Select(_ => Task.Run(WorkerLoopAsync)).ToArray();
     }
 
-    public BitmapSource? TryGetCached(Guid photoId) => _memory.TryGet(photoId, out var bitmap) ? bitmap : null;
+    public BitmapSource? TryGetCached(Guid photoId, EditRecipe recipe, out bool isCurrent)
+    {
+        if (_memory.TryGet(photoId, out var entry))
+        {
+            isCurrent = Equals(entry.Recipe, recipe);
+            return entry.Bitmap;
+        }
+
+        isCurrent = false;
+        return null;
+    }
 
     public void Request(IThumbnailRequester requester)
     {
@@ -157,9 +174,16 @@ internal sealed partial class ThumbnailLoader : IThumbnailSource, IDisposable
         {
             var path = await _thumbnails.GetOrCreateAsync(photo, token).ConfigureAwait(false);
             var bitmap = _bitmaps.LoadThumbnail(path);
+            var recipe = requester.Recipe;
+            if (!recipe.IsNeutral)
+            {
+                // Edited thumbnails are rendered from the cached thumbnail with the same renderer as export.
+                bitmap = BitmapConversions.ToBitmap(Rendering.EditRenderer.Render(BitmapConversions.ToBuffer(bitmap), recipe, null, token));
+            }
+
             _dispatcher.Post(() =>
             {
-                _memory.Set(photo.Id, bitmap);
+                _memory.Set(photo.Id, (bitmap, recipe));
                 requester.OnThumbnailLoaded();
             });
         }

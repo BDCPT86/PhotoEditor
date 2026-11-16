@@ -11,6 +11,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IThumbnailGenerator, WicThumbnailGenerator>();
         services.AddSingleton<IPhotoBitmapLoader, WicPhotoBitmapLoader>();
         services.AddSingleton<FrameForge.Application.Analysis.IAnalysisImageLoader, WicAnalysisImageLoader>();
+        services.AddSingleton<FrameForge.Application.Editing.IJpegEncoder, WicJpegEncoder>();
         return services;
     }
 }

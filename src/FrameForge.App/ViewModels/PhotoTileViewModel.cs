@@ -5,6 +5,7 @@ using FrameForge.App.Services;
 using FrameForge.Application.Ai;
 using FrameForge.Application.Analysis;
 using FrameForge.Core.Decisions;
+using FrameForge.Core.Editing;
 using FrameForge.Core.Photos;
 using FrameForge.Imaging;
 
@@ -148,6 +149,11 @@ public sealed partial class PhotoTileViewModel : ObservableObject, IThumbnailReq
                 parts.Add($"AI suggested pick, {Ai.PickConfidence} confidence");
             }
 
+            if (IsEdited)
+            {
+                parts.Add("edited");
+            }
+
             return string.Join(", ", parts);
         }
     }
@@ -178,12 +184,20 @@ public sealed partial class PhotoTileViewModel : ObservableObject, IThumbnailReq
     [NotifyPropertyChangedFor(nameof(StatusText), nameof(HasProblem), nameof(AccessibleStatus))]
     private string? _thumbnailError;
 
+    /// <summary>The photo's non-destructive edit, set by <see cref="Services.EditController"/>.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsEdited), nameof(Thumbnail), nameof(AccessibleStatus))]
+    private EditRecipe _recipe = EditRecipe.Neutral;
+
+    public bool IsEdited => !Recipe.IsNeutral;
+
     public BitmapSource? Thumbnail
     {
         get
         {
-            var cached = _thumbnails.TryGetCached(Id);
-            if (cached is null && !_requested && ThumbnailError is null && Photo.Status == ImportStatus.Imported)
+            // A thumbnail rendered for an older recipe is shown until the current one arrives.
+            var cached = _thumbnails.TryGetCached(Id, Recipe, out var isCurrent);
+            if (!isCurrent && !_requested && ThumbnailError is null && Photo.Status == ImportStatus.Imported)
             {
                 _requested = true;
                 _thumbnails.Request(this);

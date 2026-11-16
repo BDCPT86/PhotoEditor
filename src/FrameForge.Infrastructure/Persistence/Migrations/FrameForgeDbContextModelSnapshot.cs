@@ -156,6 +156,44 @@ namespace FrameForge.Infrastructure.Persistence.Migrations
                     b.ToTable("AppSettings", (string)null);
                 });
 
+            modelBuilder.Entity("FrameForge.Infrastructure.Persistence.EditPresetEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Groups")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("TEXT")
+                        .UseCollation("NOCASE");
+
+                    b.Property<string>("RecipeJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("SchemaVersion")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("UpdatedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("EditPresets", (string)null);
+                });
+
             modelBuilder.Entity("FrameForge.Infrastructure.Persistence.PhotoDecisionEntity", b =>
                 {
                     b.Property<Guid>("PhotoId")
@@ -187,6 +225,26 @@ namespace FrameForge.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("FrameForge.Infrastructure.Persistence.PhotoEditEntity", b =>
+                {
+                    b.Property<Guid>("PhotoId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RecipeJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("SchemaVersion")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("UpdatedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("PhotoId");
+
+                    b.ToTable("PhotoEdits", (string)null);
+                });
+
             modelBuilder.Entity("FrameForge.Infrastructure.Persistence.AnalysisResultEntity", b =>
                 {
                     b.HasOne("FrameForge.Core.Photos.Photo", null)
@@ -201,6 +259,15 @@ namespace FrameForge.Infrastructure.Persistence.Migrations
                     b.HasOne("FrameForge.Core.Photos.Photo", null)
                         .WithOne()
                         .HasForeignKey("FrameForge.Infrastructure.Persistence.PhotoDecisionEntity", "PhotoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FrameForge.Infrastructure.Persistence.PhotoEditEntity", b =>
+                {
+                    b.HasOne("FrameForge.Core.Photos.Photo", null)
+                        .WithOne()
+                        .HasForeignKey("FrameForge.Infrastructure.Persistence.PhotoEditEntity", "PhotoId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

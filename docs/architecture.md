@@ -9,7 +9,7 @@
 
 ## Solution structure
 
-### Current (Milestone 05)
+### Current (Milestone 06)
 
 ```text
 FrameForge.sln
@@ -21,6 +21,7 @@ src/
   FrameForge.Core/            Settings; photo types (Photo, PhotoMetadata, ImportStatus, FolderScope, …);
                               decisions (PhotoDecision, CullState, ColourLabel, DecisionEdit);
                               library query (LibraryFilter, LibrarySort, LibraryQuery). No dependencies.
+  FrameForge.Rendering/       Non-destructive edit rendering (net10.0, pure): EditRenderer, EditGeometry, ToneOps, OKLab
   FrameForge.Analysis/        Deterministic metrics on pixel buffers (net10.0, depends on Core only): SharpnessAnalyzer,
                               ExposureAnalyzer, PerceptualHasher, SimilarityGrouper, AnalysisSettings. No WPF, no AI.
   FrameForge.Application/     Ports and use cases: settings, import, library, thumbnails (ThumbnailKey),
@@ -28,10 +29,12 @@ src/
                               export (IExportService, ExportNamePlanner, ManifestWriter),
                               analysis (PhotoAnalysisService, AnalysisCache, AnalysisInsights, thresholds, ports),
                               AI ports and use cases (AiModelCatalog, IModelStore, IAiRuntime, AiAnalysisService,
-                              EmbeddingGrouper, AiInsights)
+                              EmbeddingGrouper, AiInsights), editing (EditService, EditRenderService, EditHistory,
+                              presets, RecipeJson, edited-export port)
   FrameForge.Infrastructure/  EF Core/SQLite (DbContext, migrations, photo/decision/analysis/settings repositories),
                               FileSystemPhotoEnumerator, DiskThumbnailService, FileSystemExportService, Sha256FileHasher,
-                              LogFileRetention, AppDataPaths, FileSystemModelStore (consent-gated, SHA-256 verified)
+                              LogFileRetention, AppDataPaths, FileSystemModelStore (consent-gated, SHA-256 verified),
+                              SqliteEdit/PresetRepository, FileSystemEditedExportService
   FrameForge.Imaging/         WIC via WPF imaging (net10.0-windows): metadata, thumbnails, full/display/analysis decode
   FrameForge.AI/              ONNX Runtime (CPU): OnnxAiRuntime, YuNetFaceDetector + YuNetDecoder, DinoV2Embedder, ImageOps
   FrameForge.App/             WPF: composition root, shell, Library (grid, filters, viewer, compare, export, help,
@@ -49,6 +52,7 @@ tests/
   FrameForge.AI.Tests/              YuNet decoding/NMS on synthetic tensors, preprocessing, runtime failure handling;
                                     real-model tests run only when FRAMEFORGE_TEST_MODELS points at the model files
   FrameForge.Evaluation.Tests/      Evaluation metric maths and labels parsing
+  FrameForge.Rendering.Tests/       Every adjustment's maths, geometry, recipe validation, preview≈export, golden pixels
 tools/
   FrameForge.Evaluation/            Developer tool: model benchmark and labelled-set evaluation (not shipped)
 ```
@@ -64,7 +68,7 @@ tests/FrameForge.Core.Tests/  when Core gains logic of its own
 ### Project dependencies
 
 ```text
-App ──► Application ──► Analysis ──► Core
+App ──► Application ──► Rendering ──► Analysis ──► Core
  │  ──► Infrastructure ──► Application
  ├────► Imaging ───────► Application
  └────► AI ────────────► Application   (ONNX Runtime; implements IAiRuntime)
@@ -367,6 +371,64 @@ AI produces is ever written to `PhotoDecisions` (tested). Model choices, licence
   count, pick agreement, false-rejection rate, latency per 1,000 photos and peak memory.
 - **No human-reviewed evaluation set exists yet, so no quality claims are made.**
 
+## Implementation notes (Milestone 06: non-destructive editing)
+
+Originals are never written to. An edit is a recipe stored in the database and applied when a photo is shown or
+exported. Design and alternatives are in [ADR 0006](decisions/0006-non-destructive-editing.md); the visual check is
+in [visual-review-m06.md](visual-review-m06.md).
+
+### Recipe and rendering
+- `EditRecipe` (Core) holds:
+  - exposure (EV), temperature, tint, contrast, highlights, shadows, saturation, vibrance
+  - quarter turns, straighten (±45°), and a crop normalised to the straightened frame's inscribed rectangle
+
+  It is neutral when every field is 0 and is validated at every boundary.
+- `EditRenderer.Render(source, recipe, maxLongSide)` works in this order:
+  1. geometry (inverse mapping + bilinear sampling)
+  2. linear light
+  3. white-balance/exposure gains
+  4. tone curve on luminance (applied as a gain, so hue is kept)
+  5. OKLab chroma
+  6. sRGB
+
+  The source is never modified, and a neutral recipe returns identical bytes.
+- **Same code everywhere:** the viewer (full size), Develop preview (2048 px), edited thumbnails (from the cached
+  thumbnail) and export (full size, or the chosen long side) all use it.
+- **Decode size:** `EditGeometry.DecodeLongSide` decodes at the smallest size the output needs, so WIC does the
+  downscaling, which filters better than bilinear sampling.
+
+### Storage and services
+- `PhotoEdits` (one row per edited photo; neutral = no row; cascade delete) and `EditPresets` (unique name, ignoring
+  case) are added by migration `AddPhotoEditsAndPresets`. Recipes are stored as validated JSON; unreadable rows are
+  logged and skipped.
+- `EditService`: load, save, and batch preset apply (batches of 100, progress, cancel keeps finished batches,
+  before/after recorded).
+- `EditRenderService`: decode + render.
+- `FileSystemEditedExportService`: render → `WicJpegEncoder` (EXIF/XMP copied, orientation reset, EXIF thumbnail
+  dropped; falls back to no metadata) → temporary file → move without overwrite.
+
+### UI
+- `EditController` keeps every tile's `Recipe` (the **✎** badge, thumbnails, viewer) in step with storage and owns
+  presets. A failed save reverts the tile.
+- **Develop** (`DevelopViewModel`, **D** in the viewer, or from the grid):
+  - sliders render a live preview off the UI thread, latest request wins
+  - a change becomes one undo step when the sliders rest for 600 ms; commits run in sequence; leaving the photo or
+    the viewer saves first
+  - **Ctrl+Z / Ctrl+Y** undo and redo edits while Develop is open (decisions otherwise)
+  - **\\** shows before/after; double-clicking a slider resets it
+- **Crop** (**R**): shows the whole straightened frame with `CropOverlay`.
+  - Drag the inside to move, or a corner or edge to resize.
+  - Arrow keys move the crop and Ctrl+arrows resize it.
+  - Aspect presets keep their ratio while resizing.
+  - A quarter turn resets the crop.
+- **Presets:**
+  - saved in Develop with chosen groups, and applied there to the current photo
+  - applied from the grid through the **Presets…** panel to the selection, with progress, cancel and **Undo last apply**
+- **Export → Edited JPEGs:** quality, longest side, and keep metadata. Every photo is rendered (unedited ones are
+  re-encoded), so the output is uniform.
+- **Thumbnails:** the thumbnail cache entry records the recipe it was rendered for. A stale one stays visible while
+  the new one renders.
+
 ## Dependency direction
 
 - `Core`: depends on no application/UI/infrastructure projects.
@@ -421,7 +483,7 @@ Do not add all interfaces in Phase 1 without a real use. Introduce them with the
 
 ## Architecture decision records
 Existing: 0001 foundation stack · 0002 imaging and thumbnails · 0003 culling and export · 0004 deterministic
-analysis · 0005 local AI models.
+analysis · 0005 local AI models · 0006 non-destructive editing.
 
 Record major decisions in `docs/decisions/` using:
 - Context

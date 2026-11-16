@@ -2,11 +2,14 @@
 
 A Windows-first, local-first photography application focused on photo culling and, later, editing.
 
-**Status:** Milestone 05 (Optional AI). Import folders of JPEGs, cull them with the keyboard
+**Status:** Milestone 06 (Non-destructive editing). Import folders of JPEGs, cull them with the keyboard
 (keep/reject/review, ratings, colour labels), filter and sort, compare photos side by side, and export the selection.
 **Analyze** measures sharpness and exposure and finds exact and near-duplicates. These are explainable heuristics,
 not AI. Optional local AI models (face detection and scene similarity, off by default, installed only with your consent)
 add advisory badges and a suggested pick per group. They never change your decisions.
+**Develop** edits exposure, white balance, contrast, highlights/shadows, saturation and vibrance, plus crop and
+straighten, without ever changing the original file. Presets apply a look to many photos at once, and **Export** can
+save edited JPEGs.
 
 ## Using it
 
@@ -36,6 +39,18 @@ add advisory badges and a suggested pick per group. They never change your decis
 
    AI runs only on this computer. Its quality has not yet been evaluated on a human-reviewed set, so treat it as a
    hint.
+9. **Edit (Develop):** open a photo (Enter) and press **D**, or press **D** in the grid.
+   - Move the sliders; the preview updates as you drag. Double-click a slider to reset it.
+   - **Ctrl+Z / Ctrl+Y** undo and redo edits, **\\** shows the original, and **Reset all** goes back to it.
+   - **R** opens crop: drag the frame or its corners, pick an aspect ratio, and use **Straighten** and ⟲ ⟳ to rotate.
+   - Edits save automatically. Edited photos show **✎** in the grid, and their thumbnails show the edit.
+   - **Presets:** in Develop, name the current settings and tick which groups to include. In the grid, **Presets…**
+     applies one to the selected photos (with cancel and **Undo last apply**).
+   - **Export… → Edited JPEGs** saves new JPEGs with the edits, at a quality and size you choose, keeping the camera
+     metadata.
+
+   Edits are stored separately and the original file is never written to. JPEGs are 8-bit, so highlights that are
+   already blown cannot be recovered.
 
 Originals are opened read-only and are never modified, moved, or deleted. Export never replaces an existing file: a
 clashing name is saved as `name (2).jpg`. Unreadable files are listed as **Unreadable**, and files deleted since the
@@ -95,6 +110,10 @@ Press **F1** (or **?**) on the Library page for the same list in the app.
 | Library | C | Compare selected photos (2–4) |
 | Library | G | Select the focused photo's similar group |
 | Library | I | Show or hide analysis details |
+| Library / viewer | D | Open or close Develop (edit) |
+| Develop | R | Crop and straighten |
+| Develop | \ | Before / after |
+| Develop | Ctrl+Z / Ctrl+Y | Undo / redo an edit |
 | Library | F5 | Re-apply filter and sort |
 | Library | Ctrl+I | Import folder |
 | Grid | ← / → | Previous / next photo (continues onto the next row) |
@@ -130,6 +149,7 @@ A test (`Migrate_CreatesDatabase_AndModelMatchesMigrations`) fails if the EF mod
 ```text
 src/
   FrameForge.Core/            Domain types (settings, photos, decisions, library query); no dependencies
+  FrameForge.Rendering/       Non-destructive edit rendering (recipe → pixels), shared by preview and export
   FrameForge.Analysis/        Deterministic image metrics and grouping on pixel buffers (no WPF, no AI)
   FrameForge.Application/     Use cases and ports (import, library, settings, thumbnail keys)
   FrameForge.Infrastructure/  SQLite/EF Core, file system scanning, thumbnail disk cache, logging, app data paths
@@ -144,8 +164,9 @@ tests/
   FrameForge.App.Tests/       (Windows only)
   FrameForge.AI.Tests/        (real-model tests run only if FRAMEFORGE_TEST_MODELS points at the model files)
   FrameForge.Evaluation.Tests/
+  FrameForge.Rendering.Tests/  (adjustment maths, geometry, golden pixels)
 tools/
-  FrameForge.Evaluation/      Model benchmark and labelled-set evaluation (developer tool, not shipped)
+  FrameForge.Evaluation/      Model benchmark, labelled-set evaluation, face annotation, edit review sheets (developer tool)
 docs/                         Architecture, roadmap, milestones, design system, decisions
 ```
 
@@ -161,4 +182,5 @@ See [docs/architecture.md](docs/architecture.md) for boundaries and [docs/roadma
 - `docs/database-schema.md` — data model proposal
 - `docs/ui-design-system.md` — UX principles and visual direction
 - `docs/ai-models.md` — AI model strategy, selected models, how to run an evaluation
+- `docs/visual-review-m06.md` — how edits were checked by eye, and how to repeat it
 - `THIRD-PARTY-NOTICES.md` — licences and attributions (also shown on the About page)

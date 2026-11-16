@@ -17,26 +17,28 @@ using Microsoft.Extensions.Logging.Abstractions;
 //   benchmark --models <dir> [--count 100] [--out report.md]
 //   evaluate  --models <dir> --photos <dir> --labels <labels.csv> [--out report.md]
 //   annotate  --models <dir> --photos <dir> --annotations <dir>   (faces.csv + marked-up copies for visual checks)
+//   review    --photos <dir> --sheets <dir> [--count 6]           (edit contact sheets + render timings; no models needed)
 // <dir> holds the catalogued model files (verified by SHA-256 before use). Photos are opened read-only.
 var culture = CultureInfo.InvariantCulture;
-if (args.Length == 0 || args[0] is not ("benchmark" or "evaluate" or "annotate"))
+if (args.Length == 0 || args[0] is not ("benchmark" or "evaluate" or "annotate" or "review"))
 {
-    Console.Error.WriteLine("Usage:\n  benchmark --models <dir> [--count 100] [--out report.md]\n  evaluate --models <dir> --photos <dir> --labels <labels.csv> [--out report.md]\n  annotate --models <dir> --photos <dir> --annotations <dir>");
+    Console.Error.WriteLine("Usage:\n  benchmark --models <dir> [--count 100] [--out report.md]\n  evaluate --models <dir> --photos <dir> --labels <labels.csv> [--out report.md]\n  annotate --models <dir> --photos <dir> --annotations <dir>\n  review --photos <dir> --sheets <dir> [--count 6]");
     return 2;
 }
 
 var options = ParseOptions(args.Skip(1).ToArray());
-if (!options.TryGetValue("models", out var modelsDir))
+var needsModels = args[0] != "review";
+if (!options.TryGetValue("models", out var modelsDir) && needsModels)
 {
     Console.Error.WriteLine("--models <dir> is required.");
     return 2;
 }
 
-var store = new FolderModelStore(modelsDir);
+var store = new FolderModelStore(modelsDir ?? string.Empty);
 using var runtime = new OnnxAiRuntime(store, NullLogger<OnnxAiRuntime>.Instance);
-var detector = runtime.GetFaceDetector();
-var embedder = runtime.GetImageEmbedder();
-if (detector is null && embedder is null)
+var detector = needsModels ? runtime.GetFaceDetector() : null;
+var embedder = needsModels ? runtime.GetImageEmbedder() : null;
+if (needsModels && detector is null && embedder is null)
 {
     Console.Error.WriteLine("No verified model found in " + modelsDir + (runtime.LastError is { } e ? ": " + e : "."));
     return 1;
@@ -55,6 +57,7 @@ var exit = args[0] switch
 {
     "benchmark" => Benchmark(int.Parse(options.GetValueOrDefault("count", "100"), culture)),
     "annotate" => Annotate(options),
+    "review" => Review(options),
     _ => Evaluate(options),
 };
 
@@ -210,6 +213,97 @@ int Evaluate(Dictionary<string, string> opts)
     report.AppendLine();
     report.AppendLine("Metrics are only as good as the labels and the size of the set; report them with the set's size and content.");
     return 0;
+}
+
+int Review(Dictionary<string, string> opts)
+{
+    if (!opts.TryGetValue("photos", out var photosDir) || !opts.TryGetValue("sheets", out var outDir))
+    {
+        Console.Error.WriteLine("review needs --photos <dir> and --sheets <dir>.");
+        return 2;
+    }
+
+    if (Path.GetFullPath(outDir).StartsWith(Path.GetFullPath(photosDir), StringComparison.OrdinalIgnoreCase))
+    {
+        Console.Error.WriteLine("--sheets must not be inside the photos folder (originals stay untouched).");
+        return 2;
+    }
+
+    Directory.CreateDirectory(outDir);
+    var count = int.Parse(opts.GetValueOrDefault("count", "6"), culture);
+    var files = Directory.EnumerateFiles(photosDir, "*.jp*g").Order().ToList();
+    var step = Math.Max(1, files.Count / count);
+    var chosen = files.Where((_, i) => i % step == 0).Take(count).ToList();
+    var loader = new WicAnalysisImageLoader();
+    var encoder = new WicJpegEncoder();
+    var variants = new (string Name, FrameForge.Core.Editing.EditRecipe Recipe)[]
+    {
+        ("original", FrameForge.Core.Editing.EditRecipe.Neutral),
+        ("+1 EV", FrameForge.Core.Editing.EditRecipe.Neutral with { Exposure = 1 }),
+        ("-1 EV", FrameForge.Core.Editing.EditRecipe.Neutral with { Exposure = -1 }),
+        ("warm +50", FrameForge.Core.Editing.EditRecipe.Neutral with { Temperature = 50 }),
+        ("cool -50", FrameForge.Core.Editing.EditRecipe.Neutral with { Temperature = -50 }),
+        ("contrast +50", FrameForge.Core.Editing.EditRecipe.Neutral with { Contrast = 50 }),
+        ("highlights -100, shadows +100", FrameForge.Core.Editing.EditRecipe.Neutral with { Highlights = -100, Shadows = 100 }),
+        ("saturation -100", FrameForge.Core.Editing.EditRecipe.Neutral with { Saturation = -100 }),
+        ("vibrance +80", FrameForge.Core.Editing.EditRecipe.Neutral with { Vibrance = 80 }),
+        ("straighten 5°, crop 4:5", FrameForge.Core.Editing.EditRecipe.Neutral with { Straighten = 5, Crop = new FrameForge.Core.Editing.CropRect(0.2, 0, 0.6, 1) }),
+    };
+
+    var previewMs = new List<double>();
+    var fullMs = new List<double>();
+    report.AppendLine(culture, $"Contact sheets for {chosen.Count} photo(s): each tile is one recipe rendered at preview size (columns: {string.Join(" · ", variants.Select(v => v.Name))}).");
+    report.AppendLine();
+    foreach (var file in chosen)
+    {
+        var source = loader.Load(file, 2048);
+        const int tile = 480;
+        var rendered = variants.Select(v =>
+        {
+            var sw = Stopwatch.StartNew();
+            var image = FrameForge.Rendering.EditRenderer.Render(source, v.Recipe);
+            previewMs.Add(sw.Elapsed.TotalMilliseconds);
+            return FrameForge.Rendering.EditRenderer.Render(image, FrameForge.Core.Editing.EditRecipe.Neutral, tile);
+        }).ToList();
+
+        // Full-resolution render of one combined recipe, as export does.
+        var full = loader.Load(file, int.MaxValue);
+        var fullTimer = Stopwatch.StartNew();
+        FrameForge.Rendering.EditRenderer.Render(full, FrameForge.Core.Editing.EditRecipe.Neutral with { Exposure = 0.3, Contrast = 20, Shadows = 30, Saturation = 10, Straighten = 2 });
+        fullMs.Add(fullTimer.Elapsed.TotalMilliseconds);
+
+        var sheet = ContactSheet(rendered, tile, columns: 5);
+        using var stream = File.Create(Path.Combine(outDir, Path.GetFileNameWithoutExtension(file) + "_sheet.jpg"));
+        encoder.Write(sheet, null, stream, 88);
+        report.AppendLine(culture, $"- {Path.GetFileName(file)}: {full.Width}×{full.Height}");
+    }
+
+    previewMs.Sort();
+    fullMs.Sort();
+    report.AppendLine();
+    report.AppendLine(culture, $"Preview render at 2048 px: median {previewMs[previewMs.Count / 2]:0} ms (max {previewMs[^1]:0} ms) over {previewMs.Count} renders.");
+    report.AppendLine(culture, $"Full-resolution render (tone + colour + straighten, decode excluded): median {fullMs[fullMs.Count / 2]:0} ms over {fullMs.Count} photos.");
+    report.AppendLine(culture, $"Peak working set: {Process.GetCurrentProcess().PeakWorkingSet64 / 1024d / 1024d:0} MB.");
+    return 0;
+
+    static FrameForge.Analysis.AnalysisImage ContactSheet(List<FrameForge.Analysis.AnalysisImage> tiles, int size, int columns)
+    {
+        var rows = (tiles.Count + columns - 1) / columns;
+        int width = columns * size, height = rows * size;
+        var pixels = new byte[width * height * 4];
+        Array.Fill(pixels, (byte)32);
+        for (var t = 0; t < tiles.Count; t++)
+        {
+            var img = tiles[t];
+            int ox = ((t % columns) * size) + ((size - img.Width) / 2), oy = ((t / columns) * size) + ((size - img.Height) / 2);
+            for (var y = 0; y < img.Height; y++)
+            {
+                Buffer.BlockCopy(img.Bgra, y * img.Width * 4, pixels, (((oy + y) * width) + ox) * 4, img.Width * 4);
+            }
+        }
+
+        return new FrameForge.Analysis.AnalysisImage(width, height, pixels);
+    }
 }
 
 int Annotate(Dictionary<string, string> opts)

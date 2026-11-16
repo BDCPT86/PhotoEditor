@@ -1,6 +1,7 @@
 using FrameForge.Application.Ai;
 using FrameForge.Application.Analysis;
 using FrameForge.Application.Decisions;
+using FrameForge.Application.Editing;
 using FrameForge.Application.Photos;
 using FrameForge.Application.Settings;
 using Microsoft.Extensions.DependencyInjection;
@@ -25,6 +26,9 @@ public static class ServiceCollectionExtensions
 
         services.TryAddSingleton(new AiAnalysisOptions());
         services.AddSingleton<IAiAnalysisService, AiAnalysisService>();
+
+        services.AddSingleton<IEditService, EditService>();
+        services.AddSingleton<IEditRenderService, EditRenderService>();
         return services;
     }
 }

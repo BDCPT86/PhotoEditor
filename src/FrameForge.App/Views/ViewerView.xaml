@@ -5,12 +5,15 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:FrameForge.App.ViewModels"
              xmlns:controls="clr-namespace:FrameForge.App.Controls"
+             xmlns:views="clr-namespace:FrameForge.App.Views"
+             xmlns:conv="clr-namespace:FrameForge.App.Converters"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance Type=vm:ViewerViewModel}"
              Background="{StaticResource Brush.Surface.Sunken}"
              AutomationProperties.Name="Photo viewer">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+        <conv:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVisibility" />
     </UserControl.Resources>
 
     <UserControl.InputBindings>
@@ -31,6 +34,10 @@
         <!-- Header -->
         <DockPanel Grid.Row="0" Margin="12,8">
             <Button DockPanel.Dock="Left" Content="← Grid" ToolTip="Back to the grid (Esc)" Command="{Binding RequestCloseCommand}" />
+            <ToggleButton DockPanel.Dock="Right" Margin="16,0,0,0" Content="Develop (D)" IsChecked="{Binding Develop.IsOpen, Mode=OneWay}"
+                          Command="{Binding ToggleDevelopCommand}" ToolTip="Edit this photo (non-destructive)" AutomationProperties.Name="Develop" />
+            <TextBlock DockPanel.Dock="Right" Margin="16,0,0,0" VerticalAlignment="Center" Text="✎ edited" Foreground="{StaticResource Brush.Accent}"
+                       Visibility="{Binding Current.IsEdited, Converter={StaticResource BoolToVisibility}}" AutomationProperties.AutomationId="ViewerEdited" />
             <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center" Foreground="{StaticResource Brush.Text.Secondary}"
                        Text="{Binding ZoomText, ElementName=Zoom}" AutomationProperties.AutomationId="ZoomLevel" />
             <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center" Margin="0,0,24,0" Foreground="{StaticResource Brush.Text.Secondary}"
@@ -43,14 +50,31 @@
                        Text="{Binding Current.FileName}" ToolTip="{Binding Current.FilePath}" AutomationProperties.AutomationId="FileName" />
         </DockPanel>
 
-        <!-- Image area -->
+        <!-- Image area, with the Develop panel on the right while editing -->
         <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <views:DevelopPanel Grid.Column="1" Width="320" DataContext="{Binding Develop}"
+                                Visibility="{Binding IsOpen, Converter={StaticResource BoolToVisibility}}" />
+
             <!-- Thumbnail placeholder while the full-resolution image decodes. -->
             <Image Source="{Binding Current.Thumbnail}" Stretch="Uniform" Margin="8" Opacity="0.6"
                    RenderOptions.BitmapScalingMode="HighQuality"
                    Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}" />
 
-            <controls:ZoomPanImage x:Name="Zoom" Source="{Binding Image}" AutomationProperties.Name="Photo" />
+            <controls:ZoomPanImage x:Name="Zoom" Source="{Binding DisplayImage}" AutomationProperties.Name="Photo"
+                                   Visibility="{Binding Develop.IsCropMode, Converter={StaticResource InverseBoolToVisibility}}" />
+
+            <controls:CropOverlay Margin="16" Source="{Binding Develop.DisplayImage}" Crop="{Binding Develop.Crop}"
+                                  LockedRatio="{Binding Develop.LockedCropRatio}"
+                                  Visibility="{Binding Develop.IsCropMode, Converter={StaticResource BoolToVisibility}}" />
+
+            <TextBlock HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,8,0,0" Padding="8,2"
+                       Background="{StaticResource Brush.Surface.Raised}" Text="Before (original)"
+                       Visibility="{Binding Develop.ShowOriginal, Converter={StaticResource BoolToVisibility}}" />
 
             <TextBlock HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,16"
                        Text="Loading full resolution…" Foreground="{StaticResource Brush.Text.Secondary}"
@@ -74,7 +98,7 @@
         <!-- Footer: metadata and shortcuts -->
         <DockPanel Grid.Row="2" Margin="16,8">
             <TextBlock DockPanel.Dock="Right" Foreground="{StaticResource Brush.Text.Disabled}" FontSize="11" VerticalAlignment="Center"
-                       Text="← →  photo  ·  P X V U  decide  ·  1–5  rate  ·  F1  help  ·  Esc  grid" />
+                       Text="← →  photo  ·  P X V U  decide  ·  1–5  rate  ·  D  develop  ·  F1  help  ·  Esc  grid" />
             <TextBlock Foreground="{StaticResource Brush.Text.Secondary}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
                        Text="{Binding Current.DetailsText}" AutomationProperties.AutomationId="PhotoDetails" />
         </DockPanel>

@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Non-destructive edit rendering: recipe → pixels. Pure managed code on 8-bit BGRA buffers (the same buffer type the
+    analysis code uses), no WPF and no native dependencies, so preview and export share it and it is fully unit-testable.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FrameForge.Core\FrameForge.Core.csproj" />
+    <ProjectReference Include="..\FrameForge.Analysis\FrameForge.Analysis.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="FrameForge.Rendering.Tests" />
+  </ItemGroup>
+
+</Project>

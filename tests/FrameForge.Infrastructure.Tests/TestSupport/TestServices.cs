@@ -23,6 +23,7 @@ internal static class TestServices
         services.AddSingleton<IThumbnailGenerator, StubThumbnailGenerator>();
         services.AddSingleton<Application.Analysis.IAnalysisImageLoader, StubAnalysisImageLoader>();
         services.AddSingleton<Application.Ai.IAiRuntime, NoModelsAiRuntime>();
+        services.AddSingleton<Application.Editing.IJpegEncoder, StubJpegEncoder>();
 
         return services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
     }
@@ -61,6 +62,17 @@ internal sealed class StubAnalysisImageLoader : Application.Analysis.IAnalysisIm
         }
 
         return FrameForge.Analysis.AnalysisImage.Create(16, 16, (_, _) => (128, 128, 128));
+    }
+}
+
+/// <summary>Writes the raw BGRA bytes after a marker (real JPEG encoding is tested in FrameForge.Imaging.Tests).</summary>
+internal sealed class StubJpegEncoder : Application.Editing.IJpegEncoder
+{
+    public bool Write(FrameForge.Analysis.AnalysisImage image, string? metadataSourcePath, Stream destination, int quality)
+    {
+        destination.Write("STUBJPEG"u8);
+        destination.Write(image.Bgra);
+        return true;
     }
 }
 

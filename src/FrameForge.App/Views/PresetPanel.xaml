@@ -1,0 +1,80 @@
+<UserControl x:Class="FrameForge.App.Views.PresetPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:FrameForge.App.ViewModels"
+             xmlns:conv="clr-namespace:FrameForge.App.Converters"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=vm:PresetPanelViewModel}"
+             AutomationProperties.Name="Presets">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+        <conv:InverseBooleanConverter x:Key="InverseBool" />
+    </UserControl.Resources>
+
+    <UserControl.InputBindings>
+        <KeyBinding Key="Escape" Command="{Binding CloseCommand}" />
+    </UserControl.InputBindings>
+
+    <Border Style="{StaticResource SidePanel}">
+        <StackPanel>
+            <DockPanel Margin="0,0,0,16">
+                <Button DockPanel.Dock="Right" Content="Close" MinWidth="0" Command="{Binding CloseCommand}"
+                        IsEnabled="{Binding IsApplying, Converter={StaticResource InverseBool}}" />
+                <TextBlock Text="Presets" Style="{StaticResource Text.SectionLabel}" FontSize="16" VerticalAlignment="Center" />
+            </DockPanel>
+
+            <TextBlock Style="{StaticResource Text.Secondary}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,12"
+                       Text="A preset changes only the settings it was saved with. Create presets in Develop (open a photo, press D). Originals are never changed." />
+
+            <TextBlock Text="Preset" Style="{StaticResource Text.SectionLabel}" />
+            <ListBox ItemsSource="{Binding Presets}" SelectedItem="{Binding SelectedPreset}" DisplayMemberPath="Name"
+                     MinHeight="80" MaxHeight="240" Margin="0,0,0,8" AutomationProperties.Name="Saved presets"
+                     IsEnabled="{Binding IsApplying, Converter={StaticResource InverseBool}}" />
+            <TextBlock FontSize="12" Margin="0,0,0,12" Text="No presets yet.">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Secondary}">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Presets.Count}" Value="0">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+
+            <TextBlock Style="{StaticResource Text.Secondary}" Margin="0,0,0,8" AutomationProperties.AutomationId="PresetTargetCount"
+                       Text="{Binding TargetCount, StringFormat='Applies to {0:N0} selected photo(s)'}" />
+            <StackPanel Orientation="Horizontal">
+                <Button Content="Apply to selected" Command="{Binding ApplyCommand}" Margin="0,0,8,0" />
+                <Button Content="Undo last apply" Command="{Binding UndoBatchCommand}"
+                        Visibility="{Binding Edits.CanUndoBatch, Converter={StaticResource BoolToVisibility}}" />
+            </StackPanel>
+
+            <StackPanel Margin="0,16,0,0" Visibility="{Binding IsApplying, Converter={StaticResource BoolToVisibility}}">
+                <ProgressBar Minimum="0" Maximum="1" Value="{Binding ProgressValue, Mode=OneWay}" AutomationProperties.Name="Preset progress" />
+                <Button Content="Cancel" HorizontalAlignment="Right" Margin="0,8,0,0" Command="{Binding CancelCommand}" />
+            </StackPanel>
+
+            <TextBlock Margin="0,16,0,0" TextWrapping="Wrap" AutomationProperties.AutomationId="PresetResult">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Foreground" Value="{StaticResource Brush.Status.Success}" />
+                        <Setter Property="Text" Value="{Binding ResultText, StringFormat='✓ {0}'}" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding ResultIsWarning}" Value="True">
+                                <Setter Property="Foreground" Value="{StaticResource Brush.Status.Error}" />
+                                <Setter Property="Text" Value="{Binding ResultText, StringFormat='⚠ {0}'}" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding ResultText}" Value="{x:Null}">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+        </StackPanel>
+    </Border>
+</UserControl>
