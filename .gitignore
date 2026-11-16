@@ -1,0 +1,18 @@
+# Build output
+bin/
+obj/
+artifacts/
+TestResults/
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+
+# Local databases / logs produced by tooling
+*.db
+*.db-shm
+*.db-wal
+*.log

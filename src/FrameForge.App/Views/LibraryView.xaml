@@ -1,0 +1,15 @@
+<UserControl x:Class="FrameForge.App.Views.LibraryView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:FrameForge.App.ViewModels"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=vm:LibraryViewModel}">
+    <Grid>
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="420">
+            <TextBlock Text="{Binding EmptyStateHeading}" Style="{StaticResource Text.PageTitle}" HorizontalAlignment="Center" />
+            <TextBlock Text="{Binding EmptyStateMessage}" Style="{StaticResource Text.Secondary}" TextAlignment="Center" />
+        </StackPanel>
+    </Grid>
+</UserControl>

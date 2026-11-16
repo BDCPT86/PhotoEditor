@@ -1,0 +1,41 @@
+using FrameForge.Application;
+using FrameForge.App.ViewModels;
+using FrameForge.Infrastructure;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Serilog;
+
+namespace FrameForge.App.Startup;
+
+/// <summary>The single place where the application's object graph is composed.</summary>
+internal static class CompositionRoot
+{
+    public static IHost BuildHost(string[] args, AppDataPaths paths)
+    {
+        var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
+        {
+            Args = args,
+            ContentRootPath = AppContext.BaseDirectory,
+        });
+
+        // A desktop app has no console; suppress the host's "Press Ctrl+C" status messages.
+        builder.Services.Configure<ConsoleLifetimeOptions>(options => options.SuppressStatusMessages = true);
+        builder.Logging.ClearProviders();
+        builder.Services.AddSerilog();
+
+        builder.Services.AddFrameForgeApplication();
+        builder.Services.AddFrameForgeInfrastructure(paths);
+
+        builder.Services.AddSingleton(AppInfo.Create(paths));
+        builder.Services.AddSingleton<AppStartup>();
+
+        builder.Services.AddSingleton<LibraryViewModel>();
+        builder.Services.AddSingleton<SettingsViewModel>();
+        builder.Services.AddSingleton<AboutViewModel>();
+        builder.Services.AddSingleton<ShellViewModel>();
+        builder.Services.AddSingleton<MainWindow>();
+
+        return builder.Build();
+    }
+}

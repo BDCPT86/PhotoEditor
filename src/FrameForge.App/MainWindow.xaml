@@ -1,0 +1,105 @@
+<Window x:Class="FrameForge.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:FrameForge.App.ViewModels"
+        xmlns:views="clr-namespace:FrameForge.App.Views"
+        xmlns:core="clr-namespace:FrameForge.Core.Settings;assembly=FrameForge.Core"
+        mc:Ignorable="d"
+        d:DataContext="{d:DesignInstance Type=vm:ShellViewModel}"
+        Title="FrameForge AI"
+        Width="1280" Height="800" MinWidth="800" MinHeight="500"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource Brush.Surface.Base}"
+        Foreground="{StaticResource Brush.Text.Primary}"
+        FontFamily="{StaticResource Font.UI}"
+        FontSize="{StaticResource FontSize.Body}"
+        UseLayoutRounding="True"
+        TextOptions.TextFormattingMode="Display">
+
+    <Window.InputBindings>
+        <KeyBinding Modifiers="Control" Key="D1" Command="{Binding NavigateCommand}" CommandParameter="{x:Static core:AppPage.Library}" />
+        <KeyBinding Modifiers="Control" Key="D2" Command="{Binding NavigateCommand}" CommandParameter="{x:Static core:AppPage.Settings}" />
+        <KeyBinding Modifiers="Control" Key="D3" Command="{Binding NavigateCommand}" CommandParameter="{x:Static core:AppPage.About}" />
+        <KeyBinding Modifiers="Control" Key="NumPad1" Command="{Binding NavigateCommand}" CommandParameter="{x:Static core:AppPage.Library}" />
+        <KeyBinding Modifiers="Control" Key="NumPad2" Command="{Binding NavigateCommand}" CommandParameter="{x:Static core:AppPage.Settings}" />
+        <KeyBinding Modifiers="Control" Key="NumPad3" Command="{Binding NavigateCommand}" CommandParameter="{x:Static core:AppPage.About}" />
+    </Window.InputBindings>
+
+    <Window.Resources>
+        <!-- Page view model → view mapping. Navigation is entirely data-driven. -->
+        <DataTemplate DataType="{x:Type vm:LibraryViewModel}">
+            <views:LibraryView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:SettingsViewModel}">
+            <views:SettingsView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:AboutViewModel}">
+            <views:AboutView />
+        </DataTemplate>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="200" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Top bar -->
+        <Border Grid.Row="0" Grid.ColumnSpan="2"
+                Background="{StaticResource Brush.Surface.Sunken}"
+                BorderBrush="{StaticResource Brush.Border}" BorderThickness="0,0,0,1"
+                Padding="16,10">
+            <TextBlock Text="FrameForge" FontWeight="SemiBold" FontSize="14" />
+        </Border>
+
+        <!-- Left navigation -->
+        <Border Grid.Row="1" Grid.Column="0"
+                Background="{StaticResource Brush.Surface.Sunken}"
+                BorderBrush="{StaticResource Brush.Border}" BorderThickness="0,0,1,0"
+                Padding="0,8">
+            <ListBox Style="{StaticResource NavigationList}"
+                     ItemsSource="{Binding Pages}"
+                     SelectedItem="{Binding SelectedPage}"
+                     IsEnabled="{Binding IsReady}"
+                     AutomationProperties.Name="Main navigation">
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem" BasedOn="{StaticResource NavigationListItem}">
+                        <Setter Property="AutomationProperties.Name" Value="{Binding Title}" />
+                        <Setter Property="AutomationProperties.AcceleratorKey" Value="{Binding ShortcutText}" />
+                    </Style>
+                </ListBox.ItemContainerStyle>
+                <ListBox.ItemTemplate>
+                    <DataTemplate DataType="{x:Type vm:NavigationItem}">
+                        <DockPanel ToolTip="{Binding ShortcutText}">
+                            <TextBlock DockPanel.Dock="Right" Text="{Binding ShortcutText}"
+                                       Foreground="{StaticResource Brush.Text.Disabled}" FontWeight="Normal" FontSize="11"
+                                       VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding Title}" VerticalAlignment="Center" />
+                        </DockPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Border>
+
+        <!-- Current page -->
+        <ContentControl Grid.Row="1" Grid.Column="1"
+                        Content="{Binding CurrentPage}"
+                        Focusable="False"
+                        Margin="32,24" />
+
+        <!-- Status bar -->
+        <Border Grid.Row="2" Grid.ColumnSpan="2"
+                Background="{StaticResource Brush.Surface.Sunken}"
+                BorderBrush="{StaticResource Brush.Border}" BorderThickness="0,1,0,0"
+                Padding="16,4">
+            <TextBlock Text="{Binding StatusMessage}" Style="{StaticResource Text.Secondary}" FontSize="12" />
+        </Border>
+    </Grid>
+</Window>
