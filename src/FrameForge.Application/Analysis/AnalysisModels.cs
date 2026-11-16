@@ -9,6 +9,12 @@ public enum AnalysisKind
     Sharpness = 1,
     Exposure = 2,
     PerceptualHash = 3,
+
+    /// <summary>AI: detected faces (see <c>AiAnalysisService</c>).</summary>
+    Faces = 10,
+
+    /// <summary>AI: image embedding for scene similarity.</summary>
+    SceneEmbedding = 11,
 }
 
 /// <summary>

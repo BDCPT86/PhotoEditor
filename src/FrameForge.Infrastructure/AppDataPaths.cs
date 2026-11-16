@@ -13,7 +13,11 @@ public sealed class AppDataPaths
         DatabasePath = Path.Combine(RootDirectory, DatabaseFileName);
         LogsDirectory = Path.Combine(RootDirectory, "logs");
         ThumbnailsDirectory = Path.Combine(RootDirectory, "thumbnails");
+        ModelsDirectory = Path.Combine(RootDirectory, "models");
     }
+
+    /// <summary>Optional AI model files, installed only with the user's consent.</summary>
+    public string ModelsDirectory { get; }
 
     public string RootDirectory { get; }
 

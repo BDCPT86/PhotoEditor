@@ -22,6 +22,7 @@ internal static class TestServices
         services.AddSingleton<IPhotoMetadataReader, StubMetadataReader>();
         services.AddSingleton<IThumbnailGenerator, StubThumbnailGenerator>();
         services.AddSingleton<Application.Analysis.IAnalysisImageLoader, StubAnalysisImageLoader>();
+        services.AddSingleton<Application.Ai.IAiRuntime, NoModelsAiRuntime>();
 
         return services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
     }
@@ -60,6 +61,20 @@ internal sealed class StubAnalysisImageLoader : Application.Analysis.IAnalysisIm
         }
 
         return FrameForge.Analysis.AnalysisImage.Create(16, 16, (_, _) => (128, 128, 128));
+    }
+}
+
+/// <summary>AI runtime with no models installed (ONNX inference is tested in FrameForge.AI.Tests).</summary>
+internal sealed class NoModelsAiRuntime : Application.Ai.IAiRuntime
+{
+    public string? LastError => null;
+
+    public Application.Ai.IFaceDetector? GetFaceDetector() => null;
+
+    public Application.Ai.IImageEmbedder? GetImageEmbedder() => null;
+
+    public void Reset()
+    {
     }
 }
 

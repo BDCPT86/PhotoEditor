@@ -15,9 +15,28 @@ public enum AnalysisResolution
     Detailed = 2048,
 }
 
-public sealed partial class SettingsViewModel(ISettingsService settings, ILogger<SettingsViewModel> logger) : PageViewModel
+public sealed partial class SettingsViewModel(ISettingsService settings, AiModelsViewModel aiModels, ILogger<SettingsViewModel> logger) : PageViewModel
 {
     public override string Title => "Settings";
+
+    /// <summary>Optional AI models: status, licence, consent-gated download, import and removal.</summary>
+    public AiModelsViewModel AiModels { get; } = aiModels;
+
+    // AI (optional, off by default; each needs its model installed)
+    [ObservableProperty]
+    private bool _aiFacesEnabled;
+
+    [ObservableProperty]
+    private bool _aiScenesEnabled;
+
+    [ObservableProperty]
+    private string _aiFaceMinScoreText = string.Empty;
+
+    [ObservableProperty]
+    private string _aiFaceSoftBelowText = string.Empty;
+
+    [ObservableProperty]
+    private string _aiSceneSimilarityText = string.Empty;
 
     public string LogRetentionHint { get; } =
         $"Whole days, {AppSettings.MinLogRetentionDays}–{AppSettings.MaxLogRetentionDays}. Older log files are removed when FrameForge starts.";
@@ -73,6 +92,13 @@ public sealed partial class SettingsViewModel(ISettingsService settings, ILogger
             ShadowClipText = (await settings.GetAsync(AppSettings.AnalysisShadowClipPercent, cancellationToken).ConfigureAwait(true)).ToString(culture);
             MaxHashDistanceText = (await settings.GetAsync(AppSettings.AnalysisMaxHashDistance, cancellationToken).ConfigureAwait(true)).ToString(culture);
             BurstWindowText = (await settings.GetAsync(AppSettings.AnalysisBurstWindowSeconds, cancellationToken).ConfigureAwait(true)).ToString(culture);
+
+            AiFacesEnabled = await settings.GetAsync(AppSettings.AiFacesEnabled, cancellationToken).ConfigureAwait(true);
+            AiScenesEnabled = await settings.GetAsync(AppSettings.AiScenesEnabled, cancellationToken).ConfigureAwait(true);
+            AiFaceMinScoreText = (await settings.GetAsync(AppSettings.AiFaceMinScore, cancellationToken).ConfigureAwait(true)).ToString(culture);
+            AiFaceSoftBelowText = (await settings.GetAsync(AppSettings.AiFaceSoftBelow, cancellationToken).ConfigureAwait(true)).ToString(culture);
+            AiSceneSimilarityText = (await settings.GetAsync(AppSettings.AiSceneSimilarityMin, cancellationToken).ConfigureAwait(true)).ToString(culture);
+            AiModels.Refresh();
             SetStatus(null, isError: false);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -116,8 +142,26 @@ public sealed partial class SettingsViewModel(ISettingsService settings, ILogger
             return;
         }
 
+        if (!TryDouble(AiFaceMinScoreText, AppSettings.AiFaceMinScore, out var faceScore)
+            || !TryDouble(AiSceneSimilarityText, AppSettings.AiSceneSimilarityMin, out var sceneSimilarity))
+        {
+            SetStatus("AI face score and scene similarity must be numbers from 0.5 to 1.", isError: true);
+            return;
+        }
+
+        if (!TryDouble(AiFaceSoftBelowText, AppSettings.AiFaceSoftBelow, out var faceSoft))
+        {
+            SetStatus("Soft-face threshold must be a number greater than 0.", isError: true);
+            return;
+        }
+
         try
         {
+            await settings.SetAsync(AppSettings.AiFacesEnabled, AiFacesEnabled, cancellationToken).ConfigureAwait(true);
+            await settings.SetAsync(AppSettings.AiScenesEnabled, AiScenesEnabled, cancellationToken).ConfigureAwait(true);
+            await settings.SetAsync(AppSettings.AiFaceMinScore, faceScore, cancellationToken).ConfigureAwait(true);
+            await settings.SetAsync(AppSettings.AiFaceSoftBelow, faceSoft, cancellationToken).ConfigureAwait(true);
+            await settings.SetAsync(AppSettings.AiSceneSimilarityMin, sceneSimilarity, cancellationToken).ConfigureAwait(true);
             await settings.SetAsync(AppSettings.StartPage, StartPage, cancellationToken).ConfigureAwait(true);
             await settings.SetAsync(AppSettings.LogRetentionDays, days, cancellationToken).ConfigureAwait(true);
             await settings.SetAsync(AppSettings.ViewerAutoAdvance, ViewerAutoAdvance, cancellationToken).ConfigureAwait(true);

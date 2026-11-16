@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Windows.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using FrameForge.App.Services;
+using FrameForge.Application.Ai;
 using FrameForge.Application.Analysis;
 using FrameForge.Core.Decisions;
 using FrameForge.Core.Photos;
@@ -37,6 +38,17 @@ public sealed partial class PhotoTileViewModel : ObservableObject, IThumbnailReq
     [NotifyPropertyChangedFor(nameof(ShowBlurBadge), nameof(ShowClipBadge), nameof(GroupBadgeText), nameof(ShowExactBadge), nameof(ShowSharpestBadge), nameof(HasAnalysisBadges), nameof(AccessibleStatus))]
     private PhotoInsight _insight = PhotoInsight.NotAnalysed;
 
+    /// <summary>Optional AI findings (advisory), set by <see cref="Services.AnalysisController"/>.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(FaceBadgeText), nameof(ShowAiPickBadge), nameof(ShowFacesSoftBadge), nameof(HasAnalysisBadges), nameof(AccessibleStatus))]
+    private AiInsight _ai = AiInsight.None;
+
+    public string? FaceBadgeText => Ai.HasFaces ? string.Create(CultureInfo.CurrentCulture, $"☺ {Ai.FaceCount}") : null;
+
+    public bool ShowAiPickBadge => Ai.IsSuggestedPick;
+
+    public bool ShowFacesSoftBadge => Ai.FacesSoft;
+
     public bool ShowBlurBadge => Insight.LikelyBlurry;
 
     public bool ShowClipBadge => Insight.HighlightsClipped || Insight.ShadowsClipped;
@@ -47,7 +59,8 @@ public sealed partial class PhotoTileViewModel : ObservableObject, IThumbnailReq
 
     public bool ShowSharpestBadge => Insight.IsSharpestInGroup;
 
-    public bool HasAnalysisBadges => ShowBlurBadge || ShowClipBadge || GroupBadgeText is not null || ShowExactBadge;
+    public bool HasAnalysisBadges => ShowBlurBadge || ShowClipBadge || GroupBadgeText is not null || ShowExactBadge
+        || FaceBadgeText is not null || ShowAiPickBadge || ShowFacesSoftBadge;
 
     /// <summary>✓ Keep, ? Review, ✕ Reject; null when unset.</summary>
     public string? StateGlyph => Decision.State switch
@@ -118,6 +131,21 @@ public sealed partial class PhotoTileViewModel : ObservableObject, IThumbnailReq
             if (Insight.ExactDuplicateCount > 0)
             {
                 parts.Add("exact duplicate");
+            }
+
+            if (Ai.HasFaces)
+            {
+                parts.Add(string.Create(CultureInfo.InvariantCulture, $"AI: {Ai.FaceCount} face(s)"));
+            }
+
+            if (Ai.FacesSoft)
+            {
+                parts.Add("AI: faces soft");
+            }
+
+            if (Ai.IsSuggestedPick)
+            {
+                parts.Add($"AI suggested pick, {Ai.PickConfidence} confidence");
             }
 
             return string.Join(", ", parts);

@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Local model inference (ONNX Runtime, CPU). Implements the AI ports defined in FrameForge.Application.
+    Model files are never bundled: they are downloaded or imported by the user with consent (see AiModelCatalog).
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FrameForge.Application\FrameForge.Application.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="FrameForge.AI.Tests" />
+  </ItemGroup>
+
+</Project>

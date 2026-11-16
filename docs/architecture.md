@@ -9,7 +9,7 @@
 
 ## Solution structure
 
-### Current (Milestone 04)
+### Current (Milestone 05)
 
 ```text
 FrameForge.sln
@@ -26,11 +26,14 @@ src/
   FrameForge.Application/     Ports and use cases: settings, import, library, thumbnails (ThumbnailKey),
                               decisions (IDecisionService/DecisionService, DecisionHistory, IPhotoDecisionRepository),
                               export (IExportService, ExportNamePlanner, ManifestWriter),
-                              analysis (PhotoAnalysisService, AnalysisCache, AnalysisInsights, thresholds, ports)
+                              analysis (PhotoAnalysisService, AnalysisCache, AnalysisInsights, thresholds, ports),
+                              AI ports and use cases (AiModelCatalog, IModelStore, IAiRuntime, AiAnalysisService,
+                              EmbeddingGrouper, AiInsights)
   FrameForge.Infrastructure/  EF Core/SQLite (DbContext, migrations, photo/decision/analysis/settings repositories),
                               FileSystemPhotoEnumerator, DiskThumbnailService, FileSystemExportService, Sha256FileHasher,
-                              LogFileRetention, AppDataPaths
+                              LogFileRetention, AppDataPaths, FileSystemModelStore (consent-gated, SHA-256 verified)
   FrameForge.Imaging/         WIC via WPF imaging (net10.0-windows): metadata, thumbnails, full/display/analysis decode
+  FrameForge.AI/              ONNX Runtime (CPU): OnnxAiRuntime, YuNetFaceDetector + YuNetDecoder, DinoV2Embedder, ImageOps
   FrameForge.App/             WPF: composition root, shell, Library (grid, filters, viewer, compare, export, help,
                               analysis details), Decision/AnalysisController, CullingShortcuts, PhotoGridListBox, …
 tests/
@@ -42,14 +45,18 @@ tests/
                                     enumerator, thumbnail cache, import end-to-end, export safety
   FrameForge.Imaging.Tests/         JPEG fixtures generated in-test: EXIF parsing, orientation, thumbnails, corrupt files
   FrameForge.App.Tests/             Culling workflow through real view models (grid, viewer, compare, export),
-                                    keyboard map, viewer, thumbnail loader, LRU cache, zoom math
+                                    keyboard map, viewer, thumbnail loader, LRU cache, zoom math, AI badges/filters
+  FrameForge.AI.Tests/              YuNet decoding/NMS on synthetic tensors, preprocessing, runtime failure handling;
+                                    real-model tests run only when FRAMEFORGE_TEST_MODELS points at the model files
+  FrameForge.Evaluation.Tests/      Evaluation metric maths and labels parsing
+tools/
+  FrameForge.Evaluation/            Developer tool: model benchmark and labelled-set evaluation (not shipped)
 ```
 
 ### Planned additions (introduce with their milestone)
 
 ```text
-src/FrameForge.AI/        model loading, inference, scoring                   (Phase 5)
-tests/FrameForge.Core.Tests/, FrameForge.AI.Tests/  as those projects gain logic
+tests/FrameForge.Core.Tests/  when Core gains logic of its own
 ```
 
 `FrameForge.Core.Tests` does not exist yet: Core's rules are small and are tested from the Application and App test projects. Preserve boundaries, not project count.
@@ -59,7 +66,8 @@ tests/FrameForge.Core.Tests/, FrameForge.AI.Tests/  as those projects gain logic
 ```text
 App ──► Application ──► Analysis ──► Core
  │  ──► Infrastructure ──► Application
- └────► Imaging ───────► Application
+ ├────► Imaging ───────► Application
+ └────► AI ────────────► Application   (ONNX Runtime; implements IAiRuntime)
 ```
 
 `Analysis` is a pure algorithm library that Application uses directly (like a maths library); the ports Application
@@ -292,6 +300,73 @@ active. Use this for any test run, so a real library is never touched.
   keyboard focus on the photo you were on (moving focus during the key press would make the list collapse the
   selection, and selection and focus are meant to be separate).
 
+## Implementation notes (Milestone 05: optional AI)
+
+AI is **optional and advisory**. It is off by default, the app is fully usable with no model installed, and nothing
+AI produces is ever written to `PhotoDecisions` (tested). Model choices, licences and checksums are in
+[ADR 0005](decisions/0005-local-ai-models.md) and [ai-models.md](ai-models.md).
+
+### Models and acquisition
+- `AiModelCatalog` (Application) lists each model with its pinned download URL (an immutable commit or revision),
+  size, SHA-256, licence, copyright and source page. `VersionTag` = `id@version#sha12` is stored with every result.
+- `FileSystemModelStore` (Infrastructure) keeps files in `%LOCALAPPDATA%\FrameForge\models\<id>\<version>\`.
+  - **Download** requires a `ModelDownloadConsent` for that exact model. The UI creates it only from the consent
+    panel's "I agree, download" button, after showing the size, URL, SHA-256 and licence. The download is written to
+    a `.partial` file, checked for size and SHA-256, and then moved into place. A mismatch is deleted and reported.
+  - **Import** works the same way for offline installs (the user's file is copied, never moved).
+  - **Remove** deletes the model folder.
+  - Status checks the file size on every load (cheap); the full hash is verified at install.
+- `OnnxAiRuntime` (FrameForge.AI) loads models lazily on the CPU execution provider (2 intra-op threads, 1 inter-op).
+  A missing model gives `null`. A model that fails to load gives `null` plus `LastError`, is logged, and is not
+  retried until `Reset()` (called after install, remove or a capability change).
+
+### Inference
+| Model | Pre-processing | Output used |
+|---|---|---|
+| YuNet (2026may, dynamic input) | Longest side 1024 (640 missed most distant faces in a real sports set), BGR 0–255, zero-pad right/bottom to a multiple of 32 | `cls/obj/bbox/kps` at strides 8/16/32. Decoded as OpenCV's FaceDetectorYN does: score = √(cls·obj), then greedy NMS with IoU 0.3. |
+| DINOv2-small | Shortest edge 256 (bilinear; the reference uses bicubic), centre crop 224, RGB, ImageNet mean/std | CLS token of `last_hidden_state` (384 values), L2-normalised |
+
+- Each face's sharpness is the M04 Laplacian-variance measure on the face crop. It is not measured (null) for faces
+  under 16 px at the analysis resolution, because such crops are mostly noise. The detector's `VersionTag` includes
+  its input size (`…@in1024`), so changing it re-runs face detection.
+- `AiAnalysisService` runs after the deterministic pass in the same Analyze command. It decodes each photo
+  again at the analysis resolution (the deterministic pass's image is not shared), runs `Parallel.For` with 2 photos at a time, and batches of 25 saved even on cancellation. A photo that fails
+  inference is counted and logged, and the rest continue.
+- **Cache:** the `AnalysisResults` rows have kinds `Faces` (10) and `SceneEmbedding` (11). Validity requires the
+  model `VersionTag`, the settings hash (resolution, and the stored face-score floor of 0.5), and the source's size and
+  modified time to match. A different model file invalidates results automatically (tested). Embeddings are stored as
+  base64 float32.
+
+### Interpretation (`AiInsights`, pure)
+- Faces are counted at the current score threshold (default 0.6); the badge shows all counted faces.
+- **Main faces** are counted faces that are measurable and at least half the width of the largest one. Only main
+  faces decide "faces soft" (**all** main faces below the soft threshold, default 40) and the pick, so a blurred
+  spectator in the background never makes a sharp subject look soft.
+- **Scene groups:** cosine similarity ≥ 0.9 within the shared burst window, using union-find (`EmbeddingGrouper`,
+  deterministic).
+- **Suggested pick:** one per group (the scene group, otherwise the M04 similar-photo group).
+  - If at least two members have main faces, the pick is the photo whose softest main face is sharpest. Otherwise it is the
+    photo with the highest whole-photo sharpness. A single face may be a false detection; one was seen on a synthetic
+    texture during testing.
+  - Confidence comes from the margin to the runner-up: ≥ 30 % High, ≥ 10 % Medium, otherwise Low.
+- Every AI line in the details panel says *"advisory only, not yet evaluated on a human-reviewed set"*.
+- Threshold changes re-interpret stored results instantly. Turning a capability on or off reloads from the cache.
+
+### UI
+- Tile badges: **☺ n** (faces), **AI faces soft**, **AI pick**, all with tooltips. Filter chips: **AI pick** and
+  **AI faces soft**. AI lines are added to the **I** details panel.
+- The status bar after Analyze reports the AI counts, or why AI was skipped (model not installed or failed to load).
+- Settings → *AI models*: status, version, size, licence, source, SHA-256, **Download…** (opens the consent panel),
+  **Import file…**, **Remove**, with download progress and cancel. Below that are the two capability toggles (off by
+  default) and three thresholds.
+
+### Benchmark and evaluation
+- `tools/FrameForge.Evaluation benchmark` measured median CPU time per photo on synthetic 1024×683 images:
+  YuNet 36.1 ms (at 1024 px input), DINOv2-small 87.7 ms. Peak working set was 357 MB. See [m05-ai-benchmark.md](benchmarks/m05-ai-benchmark.md).
+- `… evaluate --photos <dir> --labels <csv>` reports scene-grouping pairwise precision and recall, face recall by
+  count, pick agreement, false-rejection rate, latency per 1,000 photos and peak memory.
+- **No human-reviewed evaluation set exists yet, so no quality claims are made.**
+
 ## Dependency direction
 
 - `Core`: depends on no application/UI/infrastructure projects.
@@ -345,6 +420,9 @@ Do not add all interfaces in Phase 1 without a real use. Introduce them with the
 - A failed file should not abort the entire folder import unless the failure is systemic.
 
 ## Architecture decision records
+Existing: 0001 foundation stack · 0002 imaging and thumbnails · 0003 culling and export · 0004 deterministic
+analysis · 0005 local AI models.
+
 Record major decisions in `docs/decisions/` using:
 - Context
 - Decision

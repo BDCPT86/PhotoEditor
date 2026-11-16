@@ -39,12 +39,16 @@ public static class AnalysisCache
         };
     }
 
+    /// <summary>The deterministic kinds this cache handles; AI kinds are validated by the AI service.</summary>
+    public static bool Handles(AnalysisKind kind) => AllKinds.Contains(kind);
+
     public static bool IsValid(StoredAnalysis stored, Photo photo, AnalysisSettings settings)
     {
         ArgumentNullException.ThrowIfNull(stored);
         ArgumentNullException.ThrowIfNull(photo);
 
-        return stored.PhotoId == photo.Id
+        return Handles(stored.Kind)
+            && stored.PhotoId == photo.Id
             && stored.AlgorithmVersion == VersionOf(stored.Kind)
             && stored.SettingsHash == SettingsHashOf(stored.Kind, settings)
             && stored.SourceSizeBytes == photo.FileSizeBytes

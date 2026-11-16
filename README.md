@@ -2,10 +2,11 @@
 
 A Windows-first, local-first photography application focused on photo culling and, later, editing.
 
-**Status:** Milestone 04 (Deterministic analysis). Import folders of JPEGs, cull them with the keyboard
+**Status:** Milestone 05 (Optional AI). Import folders of JPEGs, cull them with the keyboard
 (keep/reject/review, ratings, colour labels), filter and sort, compare photos side by side, and export the selection.
 **Analyze** measures sharpness and exposure and finds exact and near-duplicates. These are explainable heuristics,
-not AI. No AI features yet.
+not AI. Optional local AI models (face detection and scene similarity, off by default, installed only with your consent)
+add advisory badges and a suggested pick per group. They never change your decisions.
 
 ## Using it
 
@@ -25,6 +26,16 @@ not AI. No AI features yet.
    select a photo's group (then **C** to compare), and **I** to see the exact numbers and why each badge was given.
    Thresholds are in **Settings → Analysis** and apply instantly. The defaults are starting points: tune them on your
    own photos. Analysis never changes decisions or deletes anything.
+8. **Optional AI:**
+   - In **Settings → AI models**, choose **Download…** to see the model's size, source, licence and checksum, then
+     confirm. If you already have the file, use **Import file…** instead.
+   - Turn on *faces* and/or *scenes*, save, and run **Analyze**.
+   - Tiles get **☺ n** (faces found), **AI faces soft**, and **AI pick** (the suggested keep in its group). An AI
+     pick shows a Low/Medium/High confidence, and **I** shows the reason.
+   - The **AI pick** and **AI faces soft** chips filter by these badges.
+
+   AI runs only on this computer. Its quality has not yet been evaluated on a human-reviewed set, so treat it as a
+   hint.
 
 Originals are opened read-only and are never modified, moved, or deleted. Export never replaces an existing file: a
 clashing name is saved as `name (2).jpg`. Unreadable files are listed as **Unreadable**, and files deleted since the
@@ -61,6 +72,7 @@ dotnet run --project src/FrameForge.App
 | Database (SQLite) | `%LOCALAPPDATA%\FrameForge\frameforge.db` |
 | Logs (daily rolling) | `%LOCALAPPDATA%\FrameForge\logs\frameforge-YYYYMMDD.log` |
 | Thumbnail cache | `%LOCALAPPDATA%\FrameForge\thumbnails\` |
+| Optional AI models | `%LOCALAPPDATA%\FrameForge\models\<id>\<version>\` |
 
 For development and testing, set the environment variable `FRAMEFORGE_DATA_DIR` to another folder before starting
 the app. All of the above then go there instead, so test runs never touch your real library.
@@ -122,6 +134,7 @@ src/
   FrameForge.Application/     Use cases and ports (import, library, settings, thumbnail keys)
   FrameForge.Infrastructure/  SQLite/EF Core, file system scanning, thumbnail disk cache, logging, app data paths
   FrameForge.Imaging/         JPEG metadata, thumbnails, and display decoding via Windows Imaging Component
+  FrameForge.AI/              Optional local models via ONNX Runtime (CPU): YuNet faces, DINOv2 scene embeddings
   FrameForge.App/             WPF composition root, shell, grid, viewer, view models, theme
 tests/
   FrameForge.Analysis.Tests/  (synthetic image fixtures, no binary files)
@@ -129,6 +142,10 @@ tests/
   FrameForge.Infrastructure.Tests/
   FrameForge.Imaging.Tests/   (Windows only; generates its JPEG fixtures at test time)
   FrameForge.App.Tests/       (Windows only)
+  FrameForge.AI.Tests/        (real-model tests run only if FRAMEFORGE_TEST_MODELS points at the model files)
+  FrameForge.Evaluation.Tests/
+tools/
+  FrameForge.Evaluation/      Model benchmark and labelled-set evaluation (developer tool, not shipped)
 docs/                         Architecture, roadmap, milestones, design system, decisions
 ```
 
@@ -143,4 +160,5 @@ See [docs/architecture.md](docs/architecture.md) for boundaries and [docs/roadma
 - `docs/milestones/` — implementation briefs
 - `docs/database-schema.md` — data model proposal
 - `docs/ui-design-system.md` — UX principles and visual direction
-- `docs/ai-models.md` — AI model strategy and licensing checks
+- `docs/ai-models.md` — AI model strategy, selected models, how to run an evaluation
+- `THIRD-PARTY-NOTICES.md` — licences and attributions (also shown on the About page)

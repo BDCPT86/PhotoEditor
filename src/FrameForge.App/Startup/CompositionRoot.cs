@@ -1,4 +1,5 @@
 using System.Windows.Threading;
+using FrameForge.AI;
 using FrameForge.Application;
 using FrameForge.App.Services;
 using FrameForge.App.ViewModels;
@@ -31,6 +32,7 @@ internal static class CompositionRoot
         builder.Services.AddFrameForgeApplication();
         builder.Services.AddFrameForgeInfrastructure(paths);
         builder.Services.AddFrameForgeImaging();
+        builder.Services.AddFrameForgeAi();
 
         builder.Services.AddSingleton(AppInfo.Create(paths));
         builder.Services.AddSingleton<AppStartup>();
@@ -39,6 +41,7 @@ internal static class CompositionRoot
         builder.Services.AddSingleton<IUiDispatcher>(new WpfUiDispatcher(Dispatcher.CurrentDispatcher));
         builder.Services.AddSingleton<IFolderPicker, WindowsFolderPicker>();
         builder.Services.AddSingleton<IFileSavePicker, WindowsFileSavePicker>();
+        builder.Services.AddSingleton<IFileOpenPicker, WindowsFileOpenPicker>();
         builder.Services.AddSingleton<ThumbnailLoader>();
         builder.Services.AddSingleton<IThumbnailSource>(sp => sp.GetRequiredService<ThumbnailLoader>());
         builder.Services.AddSingleton<DecisionController>();
@@ -51,6 +54,7 @@ internal static class CompositionRoot
         builder.Services.AddSingleton<ExportViewModel>();
         builder.Services.AddSingleton<LibraryAnalysisViewModel>();
         builder.Services.AddSingleton<LibraryViewModel>();
+        builder.Services.AddSingleton<AiModelsViewModel>();
         builder.Services.AddSingleton<SettingsViewModel>();
         builder.Services.AddSingleton<AboutViewModel>();
         builder.Services.AddSingleton<ShellViewModel>();

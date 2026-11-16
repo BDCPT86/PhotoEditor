@@ -15,6 +15,28 @@ public interface IFileSavePicker
     string? PickSaveFile(string title, string defaultFileName, string filter);
 }
 
+public interface IFileOpenPicker
+{
+    /// <returns>The chosen existing file, or null if cancelled.</returns>
+    string? PickOpenFile(string title, string filter);
+}
+
+internal sealed class WindowsFileOpenPicker : IFileOpenPicker
+{
+    public string? PickOpenFile(string title, string filter)
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = title,
+            Filter = filter,
+            CheckFileExists = true,
+            Multiselect = false,
+        };
+
+        return dialog.ShowDialog(System.Windows.Application.Current?.MainWindow) == true ? dialog.FileName : null;
+    }
+}
+
 internal sealed class WindowsFileSavePicker : IFileSavePicker
 {
     public string? PickSaveFile(string title, string defaultFileName, string filter)

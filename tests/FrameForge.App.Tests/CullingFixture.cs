@@ -31,7 +31,7 @@ internal sealed class CullingFixture : IDisposable
         Viewer = new ViewerViewModel(Loader, NullLogger<ViewerViewModel>.Instance);
         Compare = new CompareViewModel(Loader, NullLogger<CompareViewModel>.Instance);
         Export = new ExportViewModel(Exporter, new NullFolderPicker(), new NullSavePicker(), NullLogger<ExportViewModel>.Instance);
-        AnalysisController = new AnalysisController(AnalysisService, Settings);
+        AnalysisController = new AnalysisController(AnalysisService, AiService, AiRuntime, Settings);
         AnalysisPanel = new LibraryAnalysisViewModel(AnalysisController, NullLogger<LibraryAnalysisViewModel>.Instance);
 
         Library = new LibraryViewModel(
@@ -51,6 +51,10 @@ internal sealed class CullingFixture : IDisposable
     }
 
     public FakeAnalysisService AnalysisService { get; } = new();
+
+    public FakeAiAnalysisService AiService { get; } = new();
+
+    public FakeAiRuntime AiRuntime { get; } = new();
 
     public AnalysisController AnalysisController { get; }
 
@@ -169,6 +173,41 @@ internal sealed class FakeAnalysisService : IPhotoAnalysisService
         AnalyzeCalls++;
         return Task.FromResult(new AnalysisRunSummary { Analysed = photos.Count - Results.Count, Cached = Results.Count });
     }
+}
+
+/// <summary>AI service returning scripted results. With no models (default) a run reports every photo as not eligible.</summary>
+internal sealed class FakeAiAnalysisService : FrameForge.Application.Ai.IAiAnalysisService
+{
+    public Dictionary<Guid, FrameForge.Application.Ai.AiPhotoAnalysis> Results { get; } = [];
+
+    public bool ModelsAvailable { get; set; }
+
+    public int AnalyzeCalls { get; private set; }
+
+    public Task<IReadOnlyDictionary<Guid, FrameForge.Application.Ai.AiPhotoAnalysis>> LoadAsync(IReadOnlyList<Photo> photos, FrameForge.Application.Ai.AiCapabilities capabilities, FrameForge.Analysis.AnalysisSettings settings, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyDictionary<Guid, FrameForge.Application.Ai.AiPhotoAnalysis>>(
+            capabilities.Any ? new Dictionary<Guid, FrameForge.Application.Ai.AiPhotoAnalysis>(Results) : []);
+
+    public Task<AnalysisRunSummary> AnalyzeAsync(IReadOnlyList<Photo> photos, FrameForge.Application.Ai.AiCapabilities capabilities, FrameForge.Analysis.AnalysisSettings settings, IProgress<AnalysisProgress>? progress, CancellationToken cancellationToken)
+    {
+        AnalyzeCalls++;
+        return Task.FromResult(ModelsAvailable
+            ? new AnalysisRunSummary { Analysed = photos.Count - Results.Count, Cached = Results.Count }
+            : new AnalysisRunSummary { NotEligible = photos.Count });
+    }
+}
+
+internal sealed class FakeAiRuntime : FrameForge.Application.Ai.IAiRuntime
+{
+    public string? LastError { get; set; }
+
+    public int Resets { get; private set; }
+
+    public FrameForge.Application.Ai.IFaceDetector? GetFaceDetector() => null;
+
+    public FrameForge.Application.Ai.IImageEmbedder? GetImageEmbedder() => null;
+
+    public void Reset() => Resets++;
 }
 
 internal sealed class MemorySettingsStore : ISettingsStore

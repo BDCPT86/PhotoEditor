@@ -249,6 +249,7 @@ public sealed partial class PhotoImportService(
     {
         private readonly Lock _gate = new();
         private long _lastReport = long.MinValue;
+        private int _lastProcessed;
         private int _discovered;
         private int _total;
         private int _processed;
@@ -275,8 +276,15 @@ public sealed partial class PhotoImportService(
                 return;
             }
 
+            // Reported under the lock, and never older than what was already reported: otherwise a slower thread's
+            // "24 / 25" could arrive after the final "25 / 25".
             lock (_gate)
             {
+                if (value.Phase == ImportPhase.Reading && value.Processed < _lastProcessed)
+                {
+                    return;
+                }
+
                 var now = timeProvider.GetTimestamp();
                 if (!force && _lastReport != long.MinValue && timeProvider.GetElapsedTime(_lastReport, now) < interval)
                 {
@@ -284,9 +292,13 @@ public sealed partial class PhotoImportService(
                 }
 
                 _lastReport = now;
-            }
+                if (value.Phase == ImportPhase.Reading)
+                {
+                    _lastProcessed = value.Processed;
+                }
 
-            progress.Report(value);
+                progress.Report(value);
+            }
         }
     }
 

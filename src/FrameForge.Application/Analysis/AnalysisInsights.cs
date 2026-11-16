@@ -62,7 +62,7 @@ public sealed record PhotoInsight
 /// </summary>
 public static class AnalysisInsights
 {
-    public const string HeuristicNote = "Heuristic measurement, not AI. It can be wrong; nothing is changed or deleted automatically.";
+    public const string HeuristicNote = "Measurements are heuristics, not AI; only lines marked “AI ·” come from the optional models. Either can be wrong; nothing is changed or deleted automatically.";
 
     public static IReadOnlyDictionary<Guid, PhotoInsight> Build(
         IReadOnlyList<Photo> photos,

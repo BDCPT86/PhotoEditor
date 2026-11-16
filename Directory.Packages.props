@@ -17,6 +17,8 @@
     <PackageVersion Include="Serilog.Extensions.Hosting" Version="10.0.0" />
     <PackageVersion Include="Serilog.Sinks.File" Version="7.0.0" />
     <PackageVersion Include="VirtualizingWrapPanel" Version="2.5.4" />
+    <!-- 1.31.1 (2026-10-28) rather than 1.32.0 (released 3 days before adoption). CPU only. MIT. -->
+    <PackageVersion Include="Microsoft.ML.OnnxRuntime" Version="1.31.1" />
   </ItemGroup>
 
   <ItemGroup Label="Testing">

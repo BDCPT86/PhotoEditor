@@ -51,6 +51,26 @@ public static class AppSettings
     public static readonly SettingDefinition<int> AnalysisBurstWindowSeconds =
         new("analysis.burstWindowSeconds", 10, v => v is >= 0 and <= 86_400);
 
+    // ---- AI (optional, advisory; off by default) ----
+
+    /// <summary>Run the face detector during Analyze (requires the model to be installed).</summary>
+    public static readonly SettingDefinition<bool> AiFacesEnabled = new("ai.faces.enabled", false);
+
+    /// <summary>Compute scene embeddings during Analyze (requires the model to be installed).</summary>
+    public static readonly SettingDefinition<bool> AiScenesEnabled = new("ai.scenes.enabled", false);
+
+    /// <summary>Detector score at or above which a face counts (0.5–1).</summary>
+    public static readonly SettingDefinition<double> AiFaceMinScore =
+        new("ai.faceMinScore", 0.6, v => v is >= 0.5 and <= 1);
+
+    /// <summary>A face region's sharpness score below which the face is "soft".</summary>
+    public static readonly SettingDefinition<double> AiFaceSoftBelow =
+        new("ai.faceSoftBelow", 40.0, v => v is > 0 and <= 100_000);
+
+    /// <summary>Cosine similarity at or above which two photos count as the same scene (0.5–1).</summary>
+    public static readonly SettingDefinition<double> AiSceneSimilarityMin =
+        new("ai.sceneSimilarityMin", 0.9, v => v is >= 0.5 and <= 1);
+
     /// <summary>How many days of log files are kept; older files are removed at startup.</summary>
     public static readonly SettingDefinition<int> LogRetentionDays =
         new("logging.retentionDays", DefaultLogRetentionDays, days => days is >= MinLogRetentionDays and <= MaxLogRetentionDays);

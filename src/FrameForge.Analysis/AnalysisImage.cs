@@ -42,6 +42,31 @@ public sealed class AnalysisImage
         return luminance;
     }
 
+    /// <summary>
+    /// Copies a region given in normalised coordinates (0–1). Returns null when the region is smaller than
+    /// 8×8 pixels after clamping to the image.
+    /// </summary>
+    public AnalysisImage? Crop(float x, float y, float width, float height)
+    {
+        var left = Math.Clamp((int)MathF.Floor(x * Width), 0, Width);
+        var top = Math.Clamp((int)MathF.Floor(y * Height), 0, Height);
+        var right = Math.Clamp((int)MathF.Ceiling((x + width) * Width), 0, Width);
+        var bottom = Math.Clamp((int)MathF.Ceiling((y + height) * Height), 0, Height);
+        int w = right - left, h = bottom - top;
+        if (w < 8 || h < 8)
+        {
+            return null;
+        }
+
+        var pixels = new byte[w * h * 4];
+        for (var row = 0; row < h; row++)
+        {
+            Buffer.BlockCopy(Bgra, (((top + row) * Width) + left) * 4, pixels, row * w * 4, w * 4);
+        }
+
+        return new AnalysisImage(w, h, pixels);
+    }
+
     /// <summary>Builds an image from a per-pixel colour function. Intended for tests and fixtures.</summary>
     public static AnalysisImage Create(int width, int height, Func<int, int, (byte R, byte G, byte B)> pixel)
     {

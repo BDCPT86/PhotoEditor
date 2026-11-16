@@ -1,4 +1,6 @@
+using FrameForge.Application.Ai;
 using FrameForge.Application.Analysis;
+using FrameForge.Infrastructure.Ai;
 using FrameForge.Application.Decisions;
 using FrameForge.Infrastructure.Analysis;
 using FrameForge.Application.Export;
@@ -42,6 +44,12 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<IAnalysisResultRepository, SqliteAnalysisRepository>();
         services.AddSingleton<IFileHasher, Sha256FileHasher>();
+
+        // Used only for user-initiated model downloads. Generic agent; no user data is sent.
+        services.AddSingleton<IModelStore>(sp => new FileSystemModelStore(
+            sp.GetRequiredService<AppDataPaths>(),
+            new HttpClient { Timeout = TimeSpan.FromMinutes(30), DefaultRequestHeaders = { { "User-Agent", "FrameForge-ModelDownloader/1.0" } } },
+            sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<FileSystemModelStore>>()));
 
         return services;
     }

@@ -1,3 +1,4 @@
+using FrameForge.Application.Ai;
 using FrameForge.Application.Analysis;
 using FrameForge.Application.Decisions;
 using FrameForge.Application.Photos;
@@ -21,6 +22,9 @@ public static class ServiceCollectionExtensions
 
         services.TryAddSingleton(new PhotoAnalysisOptions());
         services.AddSingleton<IPhotoAnalysisService, PhotoAnalysisService>();
+
+        services.TryAddSingleton(new AiAnalysisOptions());
+        services.AddSingleton<IAiAnalysisService, AiAnalysisService>();
         return services;
     }
 }

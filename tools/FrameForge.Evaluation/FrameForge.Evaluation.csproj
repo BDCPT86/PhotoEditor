@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Developer tool: benchmarks the optional AI models and evaluates them against a human-labelled photo set.
+    Not shipped with the app. Reads photos read-only; writes only the report file you name.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\FrameForge.AI\FrameForge.AI.csproj" />
+    <ProjectReference Include="..\..\src\FrameForge.Imaging\FrameForge.Imaging.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="FrameForge.Evaluation.Tests" />
+  </ItemGroup>
+
+</Project>

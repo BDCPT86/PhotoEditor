@@ -34,7 +34,7 @@ public sealed partial class LibraryAnalysisViewModel(AnalysisController controll
     [NotifyPropertyChangedFor(nameof(Details), nameof(DetailsTitle), nameof(HasDetails))]
     private PhotoTileViewModel? _detailsTile;
 
-    public IReadOnlyList<InsightLine> Details => DetailsTile?.Insight.Details ?? [];
+    public IReadOnlyList<InsightLine> Details => DetailsTile is null ? [] : [.. DetailsTile.Insight.Details, .. DetailsTile.Ai.Details];
 
     public bool HasDetails => Details.Count > 0;
 
@@ -58,8 +58,12 @@ public sealed partial class LibraryAnalysisViewModel(AnalysisController controll
         ProgressText = "Preparing…";
         try
         {
-            var summary = await Controller.RunAsync(new Progress<AnalysisProgress>(OnProgress), cancellationToken).ConfigureAwait(true);
-            RunFinished?.Invoke(this, (Describe(summary, Controller.GroupCount), summary.Failed > 0 || summary.WasCancelled));
+            var (summary, ai) = await Controller.RunAsync(
+                new Progress<AnalysisProgress>(p => OnProgress(p, "Analysing")),
+                new Progress<AnalysisProgress>(p => OnProgress(p, "AI analysis")),
+                cancellationToken).ConfigureAwait(true);
+            var message = Describe(summary, Controller.GroupCount) + DescribeAi(ai, Controller.AiUnavailableReason);
+            RunFinished?.Invoke(this, (message, summary.Failed > 0 || summary.WasCancelled || ai?.WasCancelled == true || Controller.AiUnavailableReason is not null));
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -74,14 +78,32 @@ public sealed partial class LibraryAnalysisViewModel(AnalysisController controll
         }
     }
 
-    private void OnProgress(AnalysisProgress progress)
+    private void OnProgress(AnalysisProgress progress, string phase)
     {
         var culture = CultureInfo.CurrentCulture;
         ProgressValue = progress.Total == 0 ? 1 : (double)progress.Processed / progress.Total;
         ProgressText = progress.Total == 0
-            ? "All photos already analysed"
-            : string.Create(culture, $"Analysing {progress.Processed:N0} / {progress.Total:N0}")
+            ? phase + ": all photos already up to date"
+            : string.Create(culture, $"{phase} {progress.Processed:N0} / {progress.Total:N0}")
                 + (progress.Failed > 0 ? string.Create(culture, $"  ·  {progress.Failed:N0} unreadable") : string.Empty);
+    }
+
+    internal static string DescribeAi(AnalysisRunSummary? ai, string? unavailableReason)
+    {
+        if (ai is null)
+        {
+            return string.Empty;
+        }
+
+        if (unavailableReason is not null)
+        {
+            return " AI analysis skipped: " + unavailableReason + ".";
+        }
+
+        var culture = CultureInfo.CurrentCulture;
+        return string.Create(culture, $" AI: {ai.Analysed:N0} analysed, {ai.Cached:N0} up to date")
+            + (ai.Failed > 0 ? string.Create(culture, $", {ai.Failed:N0} failed") : string.Empty)
+            + (ai.WasCancelled ? " (cancelled)." : ".");
     }
 
     internal static string Describe(AnalysisRunSummary summary, int groupCount)

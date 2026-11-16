@@ -40,6 +40,8 @@ public enum AnalysisFilterChoice
     Clipping,
     InGroup,
     ExactDuplicate,
+    AiPick,
+    AiFacesSoft,
 }
 
 /// <summary>Filter and sort choices for the grid. Raises <see cref="Changed"/> when any choice changes.</summary>
@@ -60,6 +62,8 @@ public sealed partial class LibraryFilterViewModel : ObservableObject
             AnalysisFilterChoice.Clipping => insight.HighlightsClipped || insight.ShadowsClipped,
             AnalysisFilterChoice.InGroup => insight.GroupKey is not null,
             AnalysisFilterChoice.ExactDuplicate => insight.ExactDuplicateCount > 0,
+            AnalysisFilterChoice.AiPick => tile.Ai.IsSuggestedPick,
+            AnalysisFilterChoice.AiFacesSoft => tile.Ai.FacesSoft,
             _ => true,
         };
     }

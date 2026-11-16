@@ -13,10 +13,15 @@
     <ProjectReference Include="..\FrameForge.Application\FrameForge.Application.csproj" />
     <ProjectReference Include="..\FrameForge.Infrastructure\FrameForge.Infrastructure.csproj" />
     <ProjectReference Include="..\FrameForge.Imaging\FrameForge.Imaging.csproj" />
+    <ProjectReference Include="..\FrameForge.AI\FrameForge.AI.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="FrameForge.App.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\..\THIRD-PARTY-NOTICES.md" Link="THIRD-PARTY-NOTICES.md" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

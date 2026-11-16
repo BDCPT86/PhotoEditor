@@ -10,6 +10,7 @@
              d:DataContext="{d:DesignInstance Type=vm:SettingsViewModel}">
     <UserControl.Resources>
         <conv:EnumEqualsConverter x:Key="EnumEquals" />
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
     </UserControl.Resources>
 
     <UserControl.InputBindings>
@@ -99,6 +100,117 @@
                 <TextBlock Grid.Row="4" Text="Burst window (seconds)" VerticalAlignment="Center" Margin="0,0,0,8" />
                 <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding BurstWindowText, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Burst window" />
                 <TextBlock Grid.Row="4" Grid.Column="2" Style="{StaticResource Hint}" Text="Similar photos must be this close in capture time. 0 = no limit." />
+            </Grid>
+
+            <TextBlock Text="AI models (optional, run on this computer)" Style="{StaticResource Text.SectionLabel}" />
+            <TextBlock Style="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,8" TextWrapping="Wrap"
+                       Text="FrameForge works fully without these. Models are free to use and are never downloaded unless you confirm. Photos never leave this computer. AI results are suggestions only: they never change your Keep / Reject / Review decisions, and their quality has not yet been evaluated on a human-reviewed set." />
+            <ItemsControl ItemsSource="{Binding AiModels.Models}" Focusable="False" Margin="0,0,0,12">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="{x:Type vm:AiModelItemViewModel}">
+                        <Border BorderBrush="{StaticResource Brush.Border}" BorderThickness="1" CornerRadius="4" Padding="12" Margin="0,0,0,8">
+                            <StackPanel>
+                                <TextBlock Text="{Binding Model.Name}" FontWeight="SemiBold" />
+                                <TextBlock Text="{Binding Model.Purpose}" Style="{StaticResource Text.Secondary}" FontSize="12" TextWrapping="Wrap" Margin="0,2,0,6" />
+                                <TextBlock Text="{Binding StateText}" Margin="0,0,0,4" />
+                                <TextBlock Style="{StaticResource Text.Secondary}" FontSize="12" TextWrapping="Wrap">
+                                    <Run Text="Version" /> <Run Text="{Binding Model.Version, Mode=OneWay}" /> <Run Text="·" /> <Run Text="{Binding SizeText, Mode=OneWay}" />
+                                    <LineBreak /><Run Text="Licence:" /> <Run Text="{Binding LicenceText, Mode=OneWay}" />
+                                    <LineBreak /><Run Text="Source:" /> <Run Text="{Binding Model.SourcePage, Mode=OneWay}" />
+                                    <LineBreak /><Run Text="SHA-256:" /> <Run Text="{Binding Model.Sha256, Mode=OneWay}" />
+                                </TextBlock>
+
+                                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                    <Button Content="Download…" Command="{Binding ShowConsentCommand}" Margin="0,0,8,0"
+                                            AutomationProperties.Name="{Binding Model.Name, StringFormat='Download {0}'}"
+                                            ToolTip="Shows size, source and licence first; nothing downloads until you confirm" />
+                                    <Button Content="Import file…" Command="{Binding ImportCommand}" Margin="0,0,8,0"
+                                            AutomationProperties.Name="{Binding Model.Name, StringFormat='Import {0} from a file'}"
+                                            ToolTip="Install from a file you already have (checked against the SHA-256)" />
+                                    <Button Content="Remove" Command="{Binding RemoveCommand}"
+                                            AutomationProperties.Name="{Binding Model.Name, StringFormat='Remove {0}'}" />
+                                </StackPanel>
+
+                                <!-- Consent panel: the only way to start a download. -->
+                                <Border Margin="0,8,0,0" Padding="10" BorderThickness="1" CornerRadius="4"
+                                        BorderBrush="{StaticResource Brush.Border}"
+                                        Visibility="{Binding IsConsentOpen, Converter={StaticResource BoolToVisibility}}">
+                                    <StackPanel>
+                                        <TextBlock Text="Download this model?" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                        <TextBlock Text="{Binding ConsentText}" TextWrapping="Wrap" FontSize="12" Margin="0,0,0,8" />
+                                        <StackPanel Orientation="Horizontal">
+                                            <Button Content="I agree, download" Command="{Binding DownloadCommand}" Margin="0,0,8,0"
+                                                    AutomationProperties.Name="{Binding Model.Name, StringFormat='Agree and download {0}'}" />
+                                            <Button Content="Not now" Command="{Binding DeclineConsentCommand}" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+
+                                <StackPanel Orientation="Horizontal" Margin="0,8,0,0"
+                                            Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}">
+                                    <ProgressBar Width="240" Height="6" Minimum="0" Maximum="1" Value="{Binding Progress}" VerticalAlignment="Center"
+                                                 AutomationProperties.Name="Model download progress" />
+                                    <Button Content="Cancel" Command="{Binding DownloadCancelCommand}" Margin="8,0,0,0" />
+                                </StackPanel>
+
+                                <TextBlock Margin="0,6,0,0" TextWrapping="Wrap" FontSize="12">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="{StaticResource Brush.Text.Secondary}" />
+                                            <Setter Property="Text" Value="{Binding Message}" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding HasError}" Value="True">
+                                                    <Setter Property="Foreground" Value="{StaticResource Brush.Status.Error}" />
+                                                    <Setter Property="Text" Value="{Binding Message, StringFormat='⚠ {0}'}" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Message}" Value="{x:Null}">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <TextBlock Text="AI analysis (off by default)" Margin="0,0,0,4" FontWeight="SemiBold" />
+            <CheckBox Content="Find _faces and check whether they are sharp (needs YuNet)" IsChecked="{Binding AiFacesEnabled}" Margin="0,0,0,4" />
+            <CheckBox Content="Group similar _scenes and suggest a pick (needs DINOv2)" IsChecked="{Binding AiScenesEnabled}" Margin="0,0,0,8" />
+            <Grid Margin="0,0,0,20">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="96" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <Grid.Resources>
+                    <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                        <Setter Property="Margin" Value="12,0,12,8" />
+                    </Style>
+                    <Style TargetType="TextBlock" x:Key="AiHint" BasedOn="{StaticResource Text.Secondary}">
+                        <Setter Property="FontSize" Value="12" />
+                        <Setter Property="VerticalAlignment" Value="Center" />
+                        <Setter Property="Margin" Value="0,0,0,8" />
+                    </Style>
+                </Grid.Resources>
+                <TextBlock Grid.Row="0" Text="Face score" VerticalAlignment="Center" Margin="0,0,0,8" />
+                <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding AiFaceMinScoreText, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="AI face score" />
+                <TextBlock Grid.Row="0" Grid.Column="2" Style="{StaticResource AiHint}" Text="0.5–1. Detections below this are ignored." />
+
+                <TextBlock Grid.Row="1" Text="Soft face below" VerticalAlignment="Center" Margin="0,0,0,8" />
+                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding AiFaceSoftBelowText, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Soft face threshold" />
+                <TextBlock Grid.Row="1" Grid.Column="2" Style="{StaticResource AiHint}" Text="Face-region sharpness score below this is “soft”." />
+
+                <TextBlock Grid.Row="2" Text="Scene similarity" VerticalAlignment="Center" Margin="0,0,0,8" />
+                <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding AiSceneSimilarityText, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="AI scene similarity" />
+                <TextBlock Grid.Row="2" Grid.Column="2" Style="{StaticResource AiHint}" Text="0.5–1. Higher = only very similar scenes are grouped." />
             </Grid>
 
             <StackPanel Orientation="Horizontal">
