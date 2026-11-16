@@ -61,18 +61,24 @@ public static class ListBoxBehaviors
                 return;
             }
 
-            lb.SelectedItems.Clear();
-            foreach (var item in items)
+            if (items.Count == 0)
+            {
+                lb.SelectedItems.Clear();
+                return;
+            }
+
+            // Set the primary item first, then add the rest. SelectedItem is two-way bound to the view model;
+            // if it changed after the others were added, the binding would write it back and
+            // ListBox.SelectedItem's setter would deselect everything else.
+            lb.SelectedItem = items[0];
+            foreach (var item in items.Skip(1))
             {
                 lb.SelectedItems.Add(item);
             }
 
-            if (items.Count > 0)
-            {
-                lb.ScrollIntoView(items[0]);
-                lb.UpdateLayout();
-                (lb.ItemContainerGenerator.ContainerFromItem(items[0]) as ListBoxItem)?.Focus();
-            }
+            // Keyboard focus is deliberately left where it is: selection (the group) and focus (the photo the
+            // user is on) are separate. Moving focus here, during the key press that requested the selection,
+            // makes the list treat it as keyboard navigation and collapse the selection to the focused item.
         });
 
     private static void PushSelection(object sender, SelectionChangedEventArgs e)

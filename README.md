@@ -62,6 +62,9 @@ dotnet run --project src/FrameForge.App
 | Logs (daily rolling) | `%LOCALAPPDATA%\FrameForge\logs\frameforge-YYYYMMDD.log` |
 | Thumbnail cache | `%LOCALAPPDATA%\FrameForge\thumbnails\` |
 
+For development and testing, set the environment variable `FRAMEFORGE_DATA_DIR` to another folder before starting
+the app. All of the above then go there instead, so test runs never touch your real library.
+
 The database is created and migrated automatically on startup. The thumbnail cache can be deleted at any time; it is
 rebuilt as needed. Deleting the whole `FrameForge` folder resets the app (your photos are not affected). The About
 page also shows these paths.

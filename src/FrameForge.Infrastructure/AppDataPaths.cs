@@ -24,9 +24,22 @@ public sealed class AppDataPaths
     /// <summary>Disposable cache; safe to delete at any time, thumbnails are regenerated on demand.</summary>
     public string ThumbnailsDirectory { get; }
 
-    /// <summary>Default per-user location: <c>%LOCALAPPDATA%\FrameForge</c>.</summary>
+    /// <summary>
+    /// Development and testing only: when set, the app keeps its database, logs and thumbnail cache in this folder
+    /// instead of the user's, so test runs never touch a real library. Not used in normal operation.
+    /// </summary>
+    public const string DataDirectoryOverrideVariable = "FRAMEFORGE_DATA_DIR";
+
+    /// <summary>
+    /// Per-user location <c>%LOCALAPPDATA%\FrameForge</c>, or the <see cref="DataDirectoryOverrideVariable"/> folder if set.
+    /// </summary>
     public static AppDataPaths ForCurrentUser() =>
-        new(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FrameForge"));
+        Environment.GetEnvironmentVariable(DataDirectoryOverrideVariable) is { Length: > 0 } overridden
+            ? new AppDataPaths(overridden)
+            : new AppDataPaths(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FrameForge"));
+
+    /// <summary>True when <see cref="DataDirectoryOverrideVariable"/> is in effect.</summary>
+    public static bool IsOverridden => Environment.GetEnvironmentVariable(DataDirectoryOverrideVariable) is { Length: > 0 };
 
     public void EnsureDirectoriesExist()
     {

@@ -252,9 +252,27 @@ decided, or deleted automatically.
   and modified time. `AnalysisCache.IsValid` requires all four to match.
 
 ### Benchmark (development machine, 20 logical cores, 4 workers)
-- 2,003 synthetic 2400×1600 JPEGs (500 four-frame bursts + 3 byte copies), analysed at 1,024 px:
-  **23.5 s, 11.7 ms per photo**, about 450 MB working set; 499 similar groups found (500 expected; not yet investigated).
+Synthetic burst set: 500 scenes × 4 frames 1 s apart (the 4th softened), plus 3 byte copies and 2 corrupt files.
+
+| Run | Photos | Time | Per photo |
+|---|---|---|---|
+| 2400×1600 JPEGs, analysed at 1,024 px | 2,003 | 23.5 s | 11.7 ms |
+| 1200×800 JPEGs, analysed at 1,024 px | 2,003 | 16.9 s | 8.4 ms |
+| Same set, second run (all cached) | 2,003 | 0.1 s | — |
+| Same set, re-analysed at 512 px | 2,003 | 6.0 s | 3.0 ms |
+
+- **UI responsiveness:** the window's message loop answered `WM_NULL` in about 1 ms when idle and 0.6 ms on average
+  (1.1 ms max) during analysis. An earlier figure of about 400 ms came from a test helper that searched the whole UI
+  Automation tree for an element name that no longer exists; it measured the tree walk, not the app.
+- **Grouping accuracy:** at 1200×800, every burst formed a group (500 groups) and no bursts were wrongly merged. In 3
+  bursts one frame exceeded the 10-bit default (12–20 bits; mostly the softened frame) and was left out of its group.
+  The earlier 2400×1600 run's 499 groups was the same tolerance limit, not a defect.
 - Synthetic fixtures only. Real photos may differ in speed and in how well the default thresholds fit.
+
+### Testing against an isolated data folder
+Set `FRAMEFORGE_DATA_DIR` to a folder before starting the app (development/testing only) to keep its database, logs
+and thumbnail cache there instead of `%LOCALAPPDATA%\FrameForge`. The app logs a warning when the override is
+active. Use this for any test run, so a real library is never touched.
 
 ### Settings vs thresholds
 - **Computation** (`AnalysisSettings`: resolution, grid) is in the settings hash. Changing the resolution makes
@@ -270,7 +288,9 @@ decided, or deleted automatically.
 - Within each group the sharpest photo is marked "sharpest in group", as a **suggestion** only.
 - UI: tile badges (glyph + word), an ANALYSIS filter row (Blurry?, Clipping, Similar groups, which shows groups
   together, and Duplicates), **G** selects the focused photo's group (then **C** to compare it), and **I** opens the
-  details panel for the current photo (grid, viewer or compare).
+  details panel for the current photo (grid, viewer or compare). **G** changes the selection but deliberately leaves
+  keyboard focus on the photo you were on (moving focus during the key press would make the list collapse the
+  selection, and selection and focus are meant to be separate).
 
 ## Dependency direction
 

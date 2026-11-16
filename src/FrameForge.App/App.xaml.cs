@@ -33,6 +33,11 @@ public partial class App : System.Windows.Application
         RegisterGlobalExceptionHandlers();
         Log.Information("FrameForge {Version} starting on {OS} (.NET {Runtime})",
             AppInfo.CurrentVersion, Environment.OSVersion.VersionString, Environment.Version);
+        if (AppDataPaths.IsOverridden)
+        {
+            Log.Warning("Using data folder override {Variable}={DataDirectory} (development/testing)",
+                AppDataPaths.DataDirectoryOverrideVariable, paths.RootDirectory);
+        }
 
         try
         {
