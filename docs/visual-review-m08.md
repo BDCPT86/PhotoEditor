@@ -22,8 +22,9 @@ These are observations on a handful of photos, not a measured evaluation.
 | Result text | It said the skipped photos were "listed below", but the list is above it. | Now "listed above". |
 
 ## Not yet reviewed
-- Auto light across a wide range of photos (night, indoor, backlit). No blind A/B has been done yet.
-- Auto crop agreement with the user's own crops on a labelled sample.
+- Auto light across a wide range of photos (night, indoor, backlit): the blind A/B so far used daytime sports photos only.
+- The retuned Auto light and Auto crop in the app. Round 1 of judging and the retune are in
+  [evaluation-m08.md](evaluation-m08.md), along with round 2 on fresh photos.
 
 ## Polish pass (after the batch check)
 | Finding | Change made |
@@ -32,3 +33,34 @@ These are observations on a handful of photos, not a measured evaluation.
 | With the grid narrowed, the toolbar clipped: **Compare (C)** disappeared and "Presets…" was cut. | New `SplitToolbarPanel`: one row when it fits, otherwise the action buttons drop to a second, right-aligned row. |
 | The ANALYSIS chips were wider than the narrowed grid and clipped. | Each filter group's chips wrap, aligned under the first chip rather than under the label. |
 | A run where some photos had a step skipped showed as a red warning. | Skipped steps are information, not failures: the result is a normal ✓ ("2 had a step skipped"), and only a cancel is a warning. |
+
+## Filter bar cleanup (user feedback: "very messy")
+Four ragged rows of separately boxed chips, with all-caps labels at different widths, made the top of the library
+noisy.
+- **Segmented controls:** each group (Show, Rating, Label, Sort by, Analysis) is now one sunken track of borderless
+  options. The chosen option is a raised pill with semibold text, so its state doesn't depend on colour.
+- **Captions:** a small sentence-case caption sits above each group instead of an all-caps label beside it, so the
+  groups line up.
+- **Shorter content:**
+  - Rating reads Any / 1+ … 5 (the full wording is in tooltips and accessible names).
+  - Label uses colour swatches, each with a tooltip and an accessible name.
+  - The glyphs are gone from the filter words.
+- **Order and wrapping:** groups wrap as whole units. Sort comes before Analysis, which gives two rows on a wide
+  window and three with a side panel open.
+- **Toolbar:** "Shortcuts (F1)" is now a compact **?** button, with a tooltip and an accessible name.
+- **Consistency:** the same segmented style replaces the chips in the Presets panel's Auto options and Develop's
+  aspect ratios. The old `Chip` and `Text.ChipGroupLabel` styles were removed.
+- **Empty filter result:** the message now points to **Clear filters**, because "Choose All" was wrong when a label or
+  analysis filter was the cause.
+
+### Follow-up tweaks (user choice: more compact, show active filters)
+- **More compact:** smaller segment padding (8×2), a tighter gap under the captions, and less space between groups and
+  rows.
+- **Active filters:** a group that narrows the view gets an accent caption and an accent outline on its track. Sort
+  never does, because it hides nothing.
+- **Clear filters:** a button at the end of the bar appears only while something is filtered. It resets Show, Rating,
+  Label and Analysis in one step (one grid rebuild, tested) and keeps the sort.
+- **Checked:**
+  - through UI Automation: Keep + Clipping gave "1 of 1,010 shown", Clear filters restored all 1,010, and the button
+    hid again
+  - **not checked by eye**: the screen locked during the check, so the screenshots only captured the lock screen

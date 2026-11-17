@@ -7,11 +7,12 @@ namespace FrameForge.Application.Editing.Auto;
 
 /// <summary>
 /// Auto crop: frames the photo's main faces at a chosen aspect ratio. Explainable rules, no model beyond the stored
-/// face boxes. Options: Tight (head and shoulders), Medium (upper body), Wide (whole figure).
+/// face boxes. Options: Tight (upper body), Medium (whole figure), Wide (figure in its setting).
 /// Rules:
 /// <list type="bullet">
 /// <item>Only main faces count (large enough to judge, at least half the largest), so spectators are ignored.</item>
-/// <item>Faces are never cut; the face line sits on the upper third.</item>
+/// <item>Faces are never cut; the face line sits a little above the upper third.</item>
+/// <item>A crop that would keep nearly the whole frame is not offered: the photo is already framed loosely.</item>
 /// <item>A single subject goes on the nearer vertical third; a group is centred.</item>
 /// <item>No crop falls below <see cref="DefaultMinLongSide"/> pixels on its long side, so distant players do not end up soft.</item>
 /// </list>
@@ -21,13 +22,25 @@ public static class AutoCrop
     public const string Title = "Auto crop";
     public const int DefaultMinLongSide = 2000;
 
-    /// <summary>Crop height in face heights (added to the faces' own extent) for Tight, Medium and Wide.</summary>
+    /// <summary>Shown when every option would keep nearly the whole frame.</summary>
+    public const string AlreadyFramed = "The photo is already framed loosely around the subject, so no crop is suggested.";
+
+    /// <summary>
+    /// Crop height in face heights (added to the faces' own extent) for Tight, Medium and Wide. Tuned on the user's own
+    /// crops (docs/evaluation-m08.md): their crops were a median of about 21 face heights tall, so Medium matches that.
+    /// </summary>
     private static readonly (string Name, double FaceHeights, string Framing)[] Variants =
     [
-        ("Tight", 3.5, "head and shoulders"),
-        ("Medium", 7, "upper body"),
-        ("Wide", 12, "whole figure"),
+        ("Tight", 12, "upper body"),
+        ("Medium", 20, "whole figure"),
+        ("Wide", 30, "figure in its setting"),
     ];
+
+    /// <summary>Where the faces' eye line sits, as a share of the crop height from the top (the user's crops: 0.28).</summary>
+    private const double EyeLine = 0.28;
+
+    /// <summary>A crop covering at least this share of the frame in both directions is not worth offering.</summary>
+    private const double NearlyFull = 0.95;
 
     /// <param name="sourceWidth">Full-resolution width of the upright photo.</param>
     /// <param name="sourceHeight">Full-resolution height of the upright photo.</param>
@@ -65,10 +78,17 @@ public static class AutoCrop
         var group = boxes.Count > 1;
 
         var options = new List<AutoSuggestion>();
+        var nearlyFull = false;
         foreach (var (name, faceHeights, framing) in Variants)
         {
             if (Frame(union, faceHeight, faceHeights, normalisedRatio, group, fw, fh, minLongSide) is not { } crop)
             {
+                continue;
+            }
+
+            if (crop.Width >= NearlyFull && crop.Height >= NearlyFull)
+            {
+                nearlyFull = true;
                 continue;
             }
 
@@ -81,13 +101,15 @@ public static class AutoCrop
             var pixels = (W: crop.Width * fw, H: crop.Height * fh);
             var reason = string.Create(culture,
                 $"{Capitalise(framing)} around {(group ? $"{boxes.Count} main faces" : "the main face")}, ")
-                + (group ? "centred" : "on a third") + " with the faces on the upper third"
+                + (group ? "centred" : "on a third") + " with the faces high in the frame"
                 + string.Create(culture, $"; {pixels.W:N0} × {pixels.H:N0} px.");
             options.Add(new AutoSuggestion(name, (current with { Crop = crop }).EnsureValid(), reason));
         }
 
         return options.Count == 0
-            ? AutoSuggestions.None(Title, "The faces cannot be framed at this aspect ratio without cutting one off. Try another ratio.")
+            ? AutoSuggestions.None(Title, nearlyFull
+                ? AlreadyFramed
+                : "The faces cannot be framed at this aspect ratio without cutting one off. Try another ratio.")
             : new AutoSuggestions(Title, options);
     }
 
@@ -142,11 +164,11 @@ public static class AutoCrop
             return null;
         }
 
-        // Faces' centre line on the upper third; single subject on the nearer third, group centred.
+        // Faces' eye line a little above the upper third; single subject on the nearer third, group centred.
         var centreX = (faces.Left + faces.Right) / 2;
         var eyeLine = faces.Top + (facesHeight * 0.45);
         var x = group ? centreX - (width / 2) : centreX < 0.5 ? centreX - (width / 3) : centreX - (2 * width / 3);
-        var y = eyeLine - (height / 3);
+        var y = eyeLine - (height * EyeLine);
 
         // Keep inside the frame, then make sure no face is cut (shift towards it if needed).
         x = Math.Clamp(x, 0, 1 - width);

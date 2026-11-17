@@ -93,7 +93,7 @@ public static class AutoBatch
                 }
                 else
                 {
-                    notes.Add("not cropped (no main face)");
+                    notes.Add(crop.Unavailable == AutoCrop.AlreadyFramed ? "not cropped (already framed loosely)" : "not cropped (no main face)");
                 }
             }
         }

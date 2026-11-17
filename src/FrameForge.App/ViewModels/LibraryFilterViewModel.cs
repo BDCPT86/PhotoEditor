@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using FrameForge.Core.Decisions;
 using FrameForge.Core.Library;
 
@@ -86,7 +87,38 @@ public sealed partial class LibraryFilterViewModel : ObservableObject
 
     public event EventHandler? Changed;
 
-    public bool IsFiltering => State != StateFilterChoice.All || MinRating != RatingFilterChoice.Any || Label != LabelFilterChoice.Any || Analysis != AnalysisFilterChoice.Any;
+    public bool IsFiltering => IsStateActive || IsRatingActive || IsLabelActive || IsAnalysisActive;
+
+    /// <summary>Per-group "narrowing the view" flags, so the UI can mark which groups are active.</summary>
+    public bool IsStateActive => State != StateFilterChoice.All;
+
+    public bool IsRatingActive => MinRating != RatingFilterChoice.Any;
+
+    public bool IsLabelActive => Label != LabelFilterChoice.Any;
+
+    public bool IsAnalysisActive => Analysis != AnalysisFilterChoice.Any;
+
+    private bool _suspendChanged;
+
+    /// <summary>Resets every filter to All/Any in one step (one rebuild). Sorting is kept: it hides nothing.</summary>
+    [RelayCommand(CanExecute = nameof(IsFiltering))]
+    private void ClearFilters()
+    {
+        _suspendChanged = true;
+        try
+        {
+            State = StateFilterChoice.All;
+            MinRating = RatingFilterChoice.Any;
+            Label = LabelFilterChoice.Any;
+            Analysis = AnalysisFilterChoice.Any;
+        }
+        finally
+        {
+            _suspendChanged = false;
+        }
+
+        RaiseChanged();
+    }
 
     public LibraryFilter ToFilter() => new()
     {
@@ -120,7 +152,17 @@ public sealed partial class LibraryFilterViewModel : ObservableObject
 
     private void RaiseChanged()
     {
+        if (_suspendChanged)
+        {
+            return;
+        }
+
         OnPropertyChanged(nameof(IsFiltering));
+        OnPropertyChanged(nameof(IsStateActive));
+        OnPropertyChanged(nameof(IsRatingActive));
+        OnPropertyChanged(nameof(IsLabelActive));
+        OnPropertyChanged(nameof(IsAnalysisActive));
+        ClearFiltersCommand.NotifyCanExecuteChanged();
         Changed?.Invoke(this, EventArgs.Empty);
     }
 }

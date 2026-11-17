@@ -23,13 +23,16 @@ Develop shows the options in a tray below the photo:
 ### Auto light (`AutoTone`)
 Measures the photo at preview size: median linear luminance, the 99th percentile of the brightest channel, the share
 of clipped pixels, the dark share, and the colour of near-neutral pixels.
-- **Natural:** exposure aims the mid-tones at a fixed target. A photo is darkened only when more than 1 % is clipped,
-  and then by at most 0.3 EV. A bright scene that isn't clipped is left as shot. Brightening is held back to keep
-  highlight headroom.
-- **Highlights and shadows:** highlights are pulled down in proportion to the clipped share, and shadows lifted in
-  proportion to the dark share.
-- **Temperature:** moved toward neutral using the neutral pixels (at least 2 % of the photo must be neutral), limited
-  to ±30.
+- **Natural:** exposure aims the mid-tones at a fixed target, but **only ever brightens**. A bright scene is left as
+  shot. Brightening is held back to keep highlight headroom.
+- **Highlights and shadows:** highlights are pulled down only when at least 0.5 % is clipped (in proportion, at most
+  −40). Shadows are lifted in proportion to the dark share.
+- **Temperature:** moved toward neutral using the neutral pixels (at least 2 % of the photo must be neutral), only
+  when the correction would be at least ±25, and limited to ±30. Milder casts are left as shot.
+- **Retune (2026-11-17):** the first version also darkened by up to 0.3 EV when more than 1 % was clipped, and applied
+  any temperature and highlight change. In the blind A/B ([evaluation-m08.md](../evaluation-m08.md)) the user chose the
+  original in 14 of 16 decided pairs. Every darkened photo lost, mild warming never won, and only the shadow lift was
+  ever preferred. Natural now leaves most photos unchanged.
 - **Brighter** (+0.4 EV) and **Punchy** (contrast and vibrance) are variations on Natural.
 - Only the light and colour fields change; crop, straighten and saturation are kept.
 
@@ -44,12 +47,20 @@ of clipped pixels, the dark share, and the colour of near-neutral pixels.
 ### Auto crop (`AutoCrop`)
 Uses the stored M05 face boxes through `IFaceLookup`, and only the main faces (the M05 rule), so spectators are
 ignored.
-- **Options:** Tight, Medium and Wide, at the ratio chosen under Crop, or the photo's own ratio.
-- **Framing:** a single subject's eyes go on the upper third, on the nearer side; a group is centred.
+- **Options:** Tight, Medium and Wide, at the ratio chosen under Crop, or the photo's own ratio. They are 12, 20 and
+  30 face heights tall (upper body, whole figure, figure in its setting).
+- **Framing:** the eye line sits at 28 % of the crop height from the top (a little above the upper third). A single
+  subject goes on the nearer vertical third; a group is centred.
 - **Limits:**
   - a crop never cuts a face
   - a crop never goes below a 2,000 px long side (or the photo's own size, if smaller)
   - options that come out the same are dropped
+  - an option covering at least 95 % of the frame both ways isn't offered; if none is left, Auto says the photo is
+    already framed loosely, and batch Auto lists it as "not cropped (already framed loosely)"
+- **Retune (2026-11-17):** the first version used 3.5, 7 and 12 face heights with the eyes on the upper third. The
+  user's own crops ([evaluation-m08.md](../evaluation-m08.md)) were all looser than even Auto's closest option (median
+  2.7× the area), about 21 face heights tall with the eyes at 28 %, and kept the whole frame on 13 of 30 photos. The
+  numbers above come from those crops.
 - Crops are computed through `EditGeometry`, including its new inverse `ToOutput`, so they respect quarter turns and
   straighten.
 

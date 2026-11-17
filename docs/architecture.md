@@ -51,10 +51,10 @@ tests/
                                     keyboard map, viewer, thumbnail loader, LRU cache, zoom math, AI badges/filters
   FrameForge.AI.Tests/              YuNet decoding/NMS on synthetic tensors, preprocessing, runtime failure handling;
                                     real-model tests run only when FRAMEFORGE_TEST_MODELS points at the model files
-  FrameForge.Evaluation.Tests/      Evaluation metric maths and labels parsing
+  FrameForge.Evaluation.Tests/      Evaluation metric maths, labels parsing, judging-sheet scoring
   FrameForge.Rendering.Tests/       Every adjustment's maths, geometry, recipe validation, preview≈export, golden pixels
 tools/
-  FrameForge.Evaluation/            Developer tool: model benchmark and labelled-set evaluation (not shipped)
+  FrameForge.Evaluation/            Developer tool: model benchmark, labelled-set evaluation, Auto judging sheets (not shipped)
 ```
 
 ### Planned additions (introduce with their milestone)
@@ -446,6 +446,10 @@ See [ADR 0007](decisions/0007-auto-editing-tools.md) and [visual-review-m08.md](
 - **Viewer:** `ZoomPanImage.FocusRequest` zooms to 100 % centred on an area. `ViewerViewModel.StepFace` feeds it.
   `ViewerView` routes the tray's keys, the hold-to-compare key, and gives focus back to the photo when Develop or the
   tray closes.
+- **Evaluation:** `tools/FrameForge.Evaluation` builds judging sheets: `light-sheet` (blind A/B), `crop-sheet` (your
+  own crops) and `score-sheet`. Each sheet is a static HTML page plus downscaled copies. The answer key stays in
+  `sheet.json`, outside the page. Scoring is pure (`SheetScoring`) and reuses `AutoCrop`. See
+  [evaluation-m08.md](evaluation-m08.md).
 
 ## Dependency direction
 

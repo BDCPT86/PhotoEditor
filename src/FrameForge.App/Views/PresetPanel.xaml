@@ -67,39 +67,45 @@
                                Text="Runs on every selected photo, in this order. Choose the option now; review the results afterwards with the Auto-applied filter." />
 
                     <CheckBox Content="Light" IsChecked="{Binding AutoLight}" Margin="0,0,0,4" />
-                    <WrapPanel Margin="22,0,0,10" IsEnabled="{Binding AutoLight}" AutomationProperties.Name="Auto light option">
-                        <RadioButton Style="{StaticResource Chip}" GroupName="LightVariant" Content="Natural" Margin="0,0,4,4"
-                                     IsChecked="{Binding LightVariant, Converter={StaticResource EnumEquals}, ConverterParameter=Natural}" />
-                        <RadioButton Style="{StaticResource Chip}" GroupName="LightVariant" Content="Brighter" Margin="0,0,4,4"
-                                     IsChecked="{Binding LightVariant, Converter={StaticResource EnumEquals}, ConverterParameter=Brighter}" />
-                        <RadioButton Style="{StaticResource Chip}" GroupName="LightVariant" Content="Punchy" Margin="0,0,4,4"
-                                     IsChecked="{Binding LightVariant, Converter={StaticResource EnumEquals}, ConverterParameter=Punchy}" />
-                    </WrapPanel>
+                    <Border Style="{StaticResource SegmentGroup}" Margin="22,0,0,10" IsEnabled="{Binding AutoLight}" AutomationProperties.Name="Auto light option">
+                        <StackPanel Orientation="Horizontal">
+                            <RadioButton Style="{StaticResource Segment}" GroupName="LightVariant" Content="Natural"
+                                         IsChecked="{Binding LightVariant, Converter={StaticResource EnumEquals}, ConverterParameter=Natural}" />
+                            <RadioButton Style="{StaticResource Segment}" GroupName="LightVariant" Content="Brighter"
+                                         IsChecked="{Binding LightVariant, Converter={StaticResource EnumEquals}, ConverterParameter=Brighter}" />
+                            <RadioButton Style="{StaticResource Segment}" GroupName="LightVariant" Content="Punchy"
+                                         IsChecked="{Binding LightVariant, Converter={StaticResource EnumEquals}, ConverterParameter=Punchy}" />
+                        </StackPanel>
+                    </Border>
 
                     <CheckBox Content="Level (to the main line, when one is found)" IsChecked="{Binding AutoLevel}" Margin="0,0,0,10" />
 
                     <CheckBox Content="Crop around the main faces" IsChecked="{Binding AutoCrop}" Margin="0,0,0,4" />
                     <StackPanel Margin="22,0,0,10" IsEnabled="{Binding AutoCrop}">
-                        <WrapPanel AutomationProperties.Name="Auto crop framing">
-                            <RadioButton Style="{StaticResource Chip}" GroupName="CropVariant" Content="Tight" Margin="0,0,4,4"
-                                         IsChecked="{Binding CropVariant, Converter={StaticResource EnumEquals}, ConverterParameter=Tight}" />
-                            <RadioButton Style="{StaticResource Chip}" GroupName="CropVariant" Content="Medium" Margin="0,0,4,4"
-                                         IsChecked="{Binding CropVariant, Converter={StaticResource EnumEquals}, ConverterParameter=Medium}" />
-                            <RadioButton Style="{StaticResource Chip}" GroupName="CropVariant" Content="Wide" Margin="0,0,4,4"
-                                         IsChecked="{Binding CropVariant, Converter={StaticResource EnumEquals}, ConverterParameter=Wide}" />
-                        </WrapPanel>
-                        <WrapPanel AutomationProperties.Name="Auto crop ratio">
-                            <RadioButton Style="{StaticResource Chip}" GroupName="CropRatio" Content="Original" Margin="0,0,4,4"
-                                         IsChecked="{Binding CropAspect, Converter={StaticResource EnumEquals}, ConverterParameter=Original}" />
-                            <RadioButton Style="{StaticResource Chip}" GroupName="CropRatio" Content="1:1" Margin="0,0,4,4"
-                                         IsChecked="{Binding CropAspect, Converter={StaticResource EnumEquals}, ConverterParameter=1:1}" />
-                            <RadioButton Style="{StaticResource Chip}" GroupName="CropRatio" Content="4:5" Margin="0,0,4,4"
-                                         IsChecked="{Binding CropAspect, Converter={StaticResource EnumEquals}, ConverterParameter=4:5}" />
-                            <RadioButton Style="{StaticResource Chip}" GroupName="CropRatio" Content="3:2" Margin="0,0,4,4"
-                                         IsChecked="{Binding CropAspect, Converter={StaticResource EnumEquals}, ConverterParameter=3:2}" />
-                            <RadioButton Style="{StaticResource Chip}" GroupName="CropRatio" Content="16:9" Margin="0,0,4,4"
-                                         IsChecked="{Binding CropAspect, Converter={StaticResource EnumEquals}, ConverterParameter=16:9}" />
-                        </WrapPanel>
+                        <Border Style="{StaticResource SegmentGroup}" AutomationProperties.Name="Auto crop framing" Margin="0,0,0,4">
+                            <StackPanel Orientation="Horizontal">
+                                <RadioButton Style="{StaticResource Segment}" GroupName="CropVariant" Content="Tight"
+                                             IsChecked="{Binding CropVariant, Converter={StaticResource EnumEquals}, ConverterParameter=Tight}" />
+                                <RadioButton Style="{StaticResource Segment}" GroupName="CropVariant" Content="Medium"
+                                             IsChecked="{Binding CropVariant, Converter={StaticResource EnumEquals}, ConverterParameter=Medium}" />
+                                <RadioButton Style="{StaticResource Segment}" GroupName="CropVariant" Content="Wide"
+                                             IsChecked="{Binding CropVariant, Converter={StaticResource EnumEquals}, ConverterParameter=Wide}" />
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource SegmentGroup}" AutomationProperties.Name="Auto crop ratio" Margin="0,0,0,4">
+                            <StackPanel Orientation="Horizontal">
+                                <RadioButton Style="{StaticResource Segment}" GroupName="CropRatio" Content="Original"
+                                             IsChecked="{Binding CropAspect, Converter={StaticResource EnumEquals}, ConverterParameter=Original}" />
+                                <RadioButton Style="{StaticResource Segment}" GroupName="CropRatio" Content="1:1"
+                                             IsChecked="{Binding CropAspect, Converter={StaticResource EnumEquals}, ConverterParameter=1:1}" />
+                                <RadioButton Style="{StaticResource Segment}" GroupName="CropRatio" Content="4:5"
+                                             IsChecked="{Binding CropAspect, Converter={StaticResource EnumEquals}, ConverterParameter=4:5}" />
+                                <RadioButton Style="{StaticResource Segment}" GroupName="CropRatio" Content="3:2"
+                                             IsChecked="{Binding CropAspect, Converter={StaticResource EnumEquals}, ConverterParameter=3:2}" />
+                                <RadioButton Style="{StaticResource Segment}" GroupName="CropRatio" Content="16:9"
+                                             IsChecked="{Binding CropAspect, Converter={StaticResource EnumEquals}, ConverterParameter=16:9}" />
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
 
                     <Button Content="Apply Auto to selected" HorizontalAlignment="Left" Command="{Binding ApplyAutoCommand}"

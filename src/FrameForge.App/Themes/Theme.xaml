@@ -420,29 +420,40 @@
         </Setter>
     </Style>
 
-    <!-- Chip: a RadioButton rendered as a compact toggle. Checked = raised surface + accent underline + bold. -->
-    <Style x:Key="Chip" TargetType="RadioButton">
+
+    <!--
+        Segmented control for the library filters: one sunken track per group (SegmentGroup) holding borderless
+        options (Segment). The chosen option is a raised pill with primary, semibold text, so the state reads without
+        colour. Far fewer boxes than a row of Chips.
+    -->
+    <Style x:Key="SegmentGroup" TargetType="Border">
+        <Setter Property="Background" Value="{StaticResource Brush.Surface.Sunken}" />
+        <Setter Property="BorderBrush" Value="{StaticResource Brush.Border}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="5" />
+        <Setter Property="Padding" Value="2" />
+        <Setter Property="HorizontalAlignment" Value="Left" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+    </Style>
+    <Style x:Key="Segment" TargetType="RadioButton">
         <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}" />
         <Setter Property="Foreground" Value="{StaticResource Brush.Text.Secondary}" />
-        <Setter Property="Margin" Value="0,0,4,0" />
-        <Setter Property="Padding" Value="10,4" />
+        <Setter Property="Padding" Value="8,2" />
+        <Setter Property="MinWidth" Value="30" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="RadioButton">
-                    <Border x:Name="Root" Background="Transparent" BorderBrush="{StaticResource Brush.Border}" BorderThickness="1" CornerRadius="3" SnapsToDevicePixels="True">
-                        <Grid>
-                            <ContentPresenter Margin="{TemplateBinding Padding}" HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="True" />
-                            <Rectangle x:Name="Underline" Height="2" VerticalAlignment="Bottom" Fill="{StaticResource Brush.Accent}" Visibility="Hidden" />
-                        </Grid>
+                    <Border x:Name="Root" Background="Transparent" CornerRadius="3" SnapsToDevicePixels="True">
+                        <ContentPresenter Margin="{TemplateBinding Padding}" HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="True" />
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Root" Property="Background" Value="{StaticResource Brush.Surface.Hover}" />
+                            <Setter TargetName="Root" Property="Background" Value="{StaticResource Brush.Surface.Raised}" />
+                            <Setter Property="Foreground" Value="{StaticResource Brush.Text.Primary}" />
                         </Trigger>
                         <Trigger Property="IsChecked" Value="True">
-                            <Setter TargetName="Root" Property="Background" Value="{StaticResource Brush.Surface.Raised}" />
-                            <Setter TargetName="Underline" Property="Visibility" Value="Visible" />
+                            <Setter TargetName="Root" Property="Background" Value="{StaticResource Brush.Surface.Hover}" />
                             <Setter Property="Foreground" Value="{StaticResource Brush.Text.Primary}" />
                             <Setter Property="FontWeight" Value="SemiBold" />
                         </Trigger>
@@ -450,6 +461,18 @@
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+    </Style>
+    <!-- Caption above a filter group: small, sentence case, secondary text (readable, not an all-caps eyebrow). -->
+    <Style x:Key="Text.FilterCaption" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{StaticResource Brush.Text.Secondary}" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="Margin" Value="2,0,0,2" />
+    </Style>
+    <!-- Label colour swatch inside a Segment. -->
+    <Style x:Key="LabelSwatch" TargetType="Ellipse">
+        <Setter Property="Width" Value="11" />
+        <Setter Property="Height" Value="11" />
+        <Setter Property="Margin" Value="0,2" />
     </Style>
 
     <!-- Small analysis badge over a thumbnail: glyph + word, dark backing for legibility on any photo. -->
@@ -464,12 +487,6 @@
         <Setter Property="Foreground" Value="{StaticResource Brush.Text.Primary}" />
     </Style>
 
-    <Style x:Key="Text.ChipGroupLabel" TargetType="TextBlock">
-        <Setter Property="Foreground" Value="{StaticResource Brush.Text.Disabled}" />
-        <Setter Property="FontSize" Value="11" />
-        <Setter Property="VerticalAlignment" Value="Center" />
-        <Setter Property="Margin" Value="0,0,8,0" />
-    </Style>
 
     <!-- Side panel surface (export, shortcut help) -->
     <Style x:Key="SidePanel" TargetType="Border">

@@ -3,8 +3,10 @@
 > **Status (2026-11-17):** Phase A (the parts with no new model) is implemented: Auto light, Auto level, Auto crop to
 > faces, batch Auto in the Presets panel with an Auto-applied filter, and zoom to faces. See
 > [ADR 0007](../decisions/0007-auto-editing-tools.md). Phase B (recipe v2, masks, model choices) is still a draft and
-> needs approval. Not yet done from the phase A list: comparing Auto crop with the user's own crops on a labelled
-> sample, and a blind A/B of Auto light.
+> needs approval. Round 1 of the two human evaluations (a blind A/B of Auto light, and Auto crop compared with the
+> user's own crops) is done: the user preferred the original over Auto light and cropped much looser than Auto, so both
+> were retuned. In round 2, on fresh photos, the crop size matched, and Auto light no longer lost clearly (5 to 11,
+> p = 0.21). See [evaluation-m08.md](../evaluation-m08.md).
 
 > Draft brief. Its number follows M07 (RAW and professional workflow), but it depends only on M05 (model handling) and
 > M06 (the edit recipe and renderer), so it can be scheduled before M07 if preferred.

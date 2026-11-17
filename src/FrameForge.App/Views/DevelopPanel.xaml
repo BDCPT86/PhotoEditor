@@ -176,20 +176,22 @@
                                 <Button Content="Reset crop" Command="{Binding ResetCropCommand}" Margin="0,0,6,6" MinWidth="0" Padding="12,6" />
                             </WrapPanel>
                             <TextBlock Text="Aspect ratio" Style="{StaticResource SliderLabel}" Margin="0,0,0,4" />
-                            <WrapPanel Margin="0,0,0,8" AutomationProperties.Name="Crop aspect ratio">
-                                <RadioButton Style="{StaticResource Chip}" GroupName="CropAspect" Content="Free" Margin="0,0,4,4"
-                                             IsChecked="{Binding CropAspect, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:CropAspect.Free}}" />
-                                <RadioButton Style="{StaticResource Chip}" GroupName="CropAspect" Content="Original" Margin="0,0,4,4"
-                                             IsChecked="{Binding CropAspect, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:CropAspect.Original}}" />
-                                <RadioButton Style="{StaticResource Chip}" GroupName="CropAspect" Content="1:1" Margin="0,0,4,4" AutomationProperties.Name="Square"
-                                             IsChecked="{Binding CropAspect, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:CropAspect.Square}}" />
-                                <RadioButton Style="{StaticResource Chip}" GroupName="CropAspect" Content="4:5" Margin="0,0,4,4" AutomationProperties.Name="4 by 5 portrait"
-                                             IsChecked="{Binding CropAspect, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:CropAspect.Portrait4x5}}" />
-                                <RadioButton Style="{StaticResource Chip}" GroupName="CropAspect" Content="3:2" Margin="0,0,4,4" AutomationProperties.Name="3 by 2"
-                                             IsChecked="{Binding CropAspect, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:CropAspect.Classic3x2}}" />
-                                <RadioButton Style="{StaticResource Chip}" GroupName="CropAspect" Content="16:9" Margin="0,0,4,4" AutomationProperties.Name="16 by 9"
-                                             IsChecked="{Binding CropAspect, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:CropAspect.Wide16x9}}" />
-                            </WrapPanel>
+                            <Border Style="{StaticResource SegmentGroup}" Margin="0,0,0,8" AutomationProperties.Name="Crop aspect ratio">
+                                <StackPanel Orientation="Horizontal">
+                                    <RadioButton Style="{StaticResource Segment}" Padding="7,2" GroupName="CropAspect" Content="Free"
+                                                 IsChecked="{Binding CropAspect, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:CropAspect.Free}}" />
+                                    <RadioButton Style="{StaticResource Segment}" Padding="7,2" GroupName="CropAspect" Content="Original"
+                                                 IsChecked="{Binding CropAspect, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:CropAspect.Original}}" />
+                                    <RadioButton Style="{StaticResource Segment}" Padding="7,2" GroupName="CropAspect" Content="1:1" AutomationProperties.Name="Square"
+                                                 IsChecked="{Binding CropAspect, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:CropAspect.Square}}" />
+                                    <RadioButton Style="{StaticResource Segment}" Padding="7,2" GroupName="CropAspect" Content="4:5" AutomationProperties.Name="4 by 5 portrait"
+                                                 IsChecked="{Binding CropAspect, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:CropAspect.Portrait4x5}}" />
+                                    <RadioButton Style="{StaticResource Segment}" Padding="7,2" GroupName="CropAspect" Content="3:2" AutomationProperties.Name="3 by 2"
+                                                 IsChecked="{Binding CropAspect, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:CropAspect.Classic3x2}}" />
+                                    <RadioButton Style="{StaticResource Segment}" Padding="7,2" GroupName="CropAspect" Content="16:9" AutomationProperties.Name="16 by 9"
+                                                 IsChecked="{Binding CropAspect, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:CropAspect.Wide16x9}}" />
+                                </StackPanel>
+                            </Border>
                             <TextBlock Text="{Binding CropText}" Foreground="{StaticResource Brush.Text.Secondary}" FontSize="12" Margin="0,0,0,8" />
                             <DockPanel>
                                 <TextBlock Style="{StaticResource SliderValue}" Text="{Binding Straighten, StringFormat={}{0:+0.0;-0.0;0.0}°}" />

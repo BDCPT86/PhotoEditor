@@ -70,6 +70,18 @@ public sealed class AutoBatchTests
     }
 
     [Fact]
+    public async Task LooselyFramedPhoto_IsNotCropped_AndSaysWhy()
+    {
+        var photo = Photo();
+        var faces = new Faces(new() { [photo.Id] = [new FaceFinding(0.45f, 0.2f, 0.08f, 0.12f, 0.9f, 150)] });
+
+        var (after, note) = await AutoBatch.ApplyAsync(photo, EditRecipe.Neutral, new AutoBatchOptions { Crop = "Medium" }, new Renderer(Dim), faces, Ct);
+
+        Assert.Null(after);
+        Assert.Equal("not cropped (already framed loosely)", note);
+    }
+
+    [Fact]
     public async Task NothingToChange_ReturnsNull()
     {
         var level = AnalysisImage.Create(300, 200, (_, y) => y < 100 ? ((byte)200, (byte)200, (byte)200) : ((byte)60, (byte)60, (byte)60));

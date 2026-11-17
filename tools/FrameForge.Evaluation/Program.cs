@@ -18,16 +18,19 @@ using Microsoft.Extensions.Logging.Abstractions;
 //   evaluate  --models <dir> --photos <dir> --labels <labels.csv> [--out report.md]
 //   annotate  --models <dir> --photos <dir> --annotations <dir>   (faces.csv + marked-up copies for visual checks)
 //   review    --photos <dir> --sheets <dir> [--count 6]           (edit contact sheets + render timings; no models needed)
+//   light-sheet --photos <dir> --sheet <new dir> [--count 30] [--seed 1]                 (blind A/B page: Auto light vs as shot)
+//   crop-sheet  --models <dir> --photos <dir> --sheet <new dir> [--count 30] [--seed 1]  (page where you crop photos with faces)
+//   score-sheet --sheet <dir> --answers <saved csv> [--out report.md]                  (compares your answers with Auto)
 // <dir> holds the catalogued model files (verified by SHA-256 before use). Photos are opened read-only.
 var culture = CultureInfo.InvariantCulture;
-if (args.Length == 0 || args[0] is not ("benchmark" or "evaluate" or "annotate" or "review"))
+if (args.Length == 0 || args[0] is not ("benchmark" or "evaluate" or "annotate" or "review" or "light-sheet" or "crop-sheet" or "score-sheet"))
 {
-    Console.Error.WriteLine("Usage:\n  benchmark --models <dir> [--count 100] [--out report.md]\n  evaluate --models <dir> --photos <dir> --labels <labels.csv> [--out report.md]\n  annotate --models <dir> --photos <dir> --annotations <dir>\n  review --photos <dir> --sheets <dir> [--count 6]");
+    Console.Error.WriteLine("Usage:\n  benchmark --models <dir> [--count 100] [--out report.md]\n  evaluate --models <dir> --photos <dir> --labels <labels.csv> [--out report.md]\n  annotate --models <dir> --photos <dir> --annotations <dir>\n  review --photos <dir> --sheets <dir> [--count 6]\n  light-sheet --photos <dir> --sheet <new dir> [--count 30] [--seed 1]\n  crop-sheet --models <dir> --photos <dir> --sheet <new dir> [--count 30] [--seed 1]\n  score-sheet --sheet <dir> --answers <saved csv> [--out report.md]");
     return 2;
 }
 
 var options = ParseOptions(args.Skip(1).ToArray());
-var needsModels = args[0] != "review";
+var needsModels = args[0] is not ("review" or "light-sheet" or "score-sheet");
 if (!options.TryGetValue("models", out var modelsDir) && needsModels)
 {
     Console.Error.WriteLine("--models <dir> is required.");
@@ -58,12 +61,14 @@ var exit = args[0] switch
     "benchmark" => Benchmark(int.Parse(options.GetValueOrDefault("count", "100"), culture)),
     "annotate" => Annotate(options),
     "review" => Review(options),
+    "light-sheet" or "crop-sheet" => BuildSheet(args[0], options),
+    "score-sheet" => ScoreSheet(options),
     _ => Evaluate(options),
 };
 
 var text = report.ToString();
 Console.WriteLine(text);
-if (options.TryGetValue("out", out var outPath))
+if (exit == 0 && options.TryGetValue("out", out var outPath))
 {
     File.WriteAllText(outPath, text);
     Console.WriteLine("Report written to " + outPath);
@@ -369,6 +374,68 @@ int Annotate(Dictionary<string, string> opts)
     report.AppendLine("Green boxes = counted faces; amber = detections between 0.50 and the threshold; red dots = landmarks.");
     report.AppendLine("This is a visual check, not a measured recall: inspect the annotated copies.");
     return 0;
+}
+
+int BuildSheet(string kind, Dictionary<string, string> opts)
+{
+    if (!opts.TryGetValue("photos", out var photosDir) || !opts.TryGetValue("sheet", out var sheetDir))
+    {
+        Console.Error.WriteLine(kind + " needs --photos <dir> and --sheet <new dir>.");
+        return 2;
+    }
+
+    if (FrameForge.Evaluation.Sheets.JudgingSheets.CheckFolders(photosDir, sheetDir) is { } problem)
+    {
+        Console.Error.WriteLine(problem);
+        return 2;
+    }
+
+    if (kind == "crop-sheet" && detector is null)
+    {
+        Console.Error.WriteLine("crop-sheet needs the face model in --models.");
+        return 2;
+    }
+
+    var count = int.Parse(opts.GetValueOrDefault("count", "30"), culture);
+    var seed = int.Parse(opts.GetValueOrDefault("seed", "1"), culture);
+    Directory.CreateDirectory(sheetDir);
+    if (kind == "light-sheet")
+    {
+        FrameForge.Evaluation.Sheets.JudgingSheets.BuildLight(photosDir, sheetDir, count, seed, report);
+    }
+    else
+    {
+        FrameForge.Evaluation.Sheets.JudgingSheets.BuildCrop(photosDir, sheetDir, count, seed, detector!, report);
+    }
+
+    report.AppendLine();
+    report.AppendLine(culture, $"Open {Path.GetFullPath(Path.Combine(sheetDir, "index.html"))} in a browser, answer every item, press Save answers, then run score-sheet with the saved CSV.");
+    return 0;
+}
+
+int ScoreSheet(Dictionary<string, string> opts)
+{
+    if (!opts.TryGetValue("sheet", out var sheetDir) || !opts.TryGetValue("answers", out var answersPath))
+    {
+        Console.Error.WriteLine("score-sheet needs --sheet <dir> and --answers <saved csv>.");
+        return 2;
+    }
+
+    if (!File.Exists(answersPath))
+    {
+        Console.Error.WriteLine("No answers file at " + answersPath + ". Open the sheet's index.html, judge every item, press Save answers, then score the file it saves (usually in Downloads).");
+        return 2;
+    }
+
+    try
+    {
+        return FrameForge.Evaluation.Sheets.JudgingSheets.Score(sheetDir, answersPath, report);
+    }
+    catch (Exception ex) when (ex is FormatException or InvalidDataException or IOException or System.Text.Json.JsonException)
+    {
+        Console.Error.WriteLine("Could not score: " + ex.Message);
+        return 1;
+    }
 }
 
 static Dictionary<string, string> ParseOptions(string[] args)

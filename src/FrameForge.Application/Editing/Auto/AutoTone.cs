@@ -19,6 +19,10 @@ public static class AutoTone
     private const double BrighterStep = 0.4;
     private const double MaxExposureStep = 1.5;
     private const int MaxSamples = 250_000;
+    /// <summary>Smallest temperature correction worth suggesting; weaker casts are left as shot.</summary>
+    private const double MinTemperature = 25;
+    /// <summary>Clipped share below which highlights are left alone.</summary>
+    private const double MinClippedShare = 0.005;
 
     internal sealed record Stats(double MedianLinear, double P99Linear, double ClippedShare, double DarkShare, double? NeutralBlueRedLog2, double NeutralShare);
 
@@ -29,10 +33,8 @@ public static class AutoTone
         var s = Measure(photo);
         var culture = CultureInfo.CurrentCulture;
 
-        var temperature = s.NeutralBlueRedLog2 is { } log
-            ? Math.Clamp(Math.Round(100 * log * 0.6), -30, 30) // 60 % strength: grey-world on a few neutral pixels is a hint, not truth
-            : 0;
-        var highlights = -Math.Round(Math.Min(60, s.ClippedShare * 100 * 12));
+        var temperature = Temperature(s.NeutralBlueRedLog2);
+        var highlights = Highlights(s.ClippedShare);
         var shadows = s.DarkShare > 0.1 ? Math.Round(Math.Min(50, s.DarkShare * 150)) : 0;
 
         AutoSuggestion Make(string name, double extraEv, double contrast, double vibrance, double extraHighlights, double extraShadows)
@@ -56,7 +58,7 @@ public static class AutoTone
                     : string.Create(culture, $"mid-tones at {Perceptual(s.MedianLinear):P0} → {ev:+0.00;-0.00;0.00} EV")
                         + (limited ? " (held back to protect highlights)" : string.Empty),
             };
-            if (s.ClippedShare > 0.002)
+            if (highlights < 0)
             {
                 parts.Add(string.Create(culture, $"{s.ClippedShare:P1} already clipped, highlights {recipe.Highlights:+0;-0;0}"));
             }
@@ -67,7 +69,7 @@ public static class AutoTone
             }
 
             parts.Add(temperature == 0
-                ? (s.NeutralBlueRedLog2 is null ? "too few neutral areas to judge white balance" : "white balance looks neutral")
+                ? (s.NeutralBlueRedLog2 is null ? "too few neutral areas to judge white balance" : "white balance left as shot (no strong cast)")
                 : string.Create(culture, $"neutral areas lean {(temperature < 0 ? "warm" : "cool")}, temperature {temperature:+0;-0}"));
             if (contrast != 0 || vibrance != 0)
             {
@@ -86,18 +88,36 @@ public static class AutoTone
     }
 
     /// <summary>
+    /// White balance only for a strong cast. In the blind A/B (docs/evaluation-m08.md) the user never preferred the
+    /// mild warming grey-world suggested (+2 to +24), so anything below <see cref="MinTemperature"/> is left as shot.
+    /// </summary>
+    internal static double Temperature(double? neutralBlueRedLog2)
+    {
+        if (neutralBlueRedLog2 is not { } log)
+        {
+            return 0;
+        }
+
+        var estimate = 100 * log * 0.6; // 60 % strength: grey-world on a few neutral pixels is a hint, not truth
+        return Math.Abs(estimate) < MinTemperature ? 0 : Math.Clamp(Math.Round(estimate), -30, 30);
+    }
+
+    /// <summary>
+    /// Highlights only when a real share of the photo is clipped. In the blind A/B small pull-downs on barely clipped
+    /// photos made them look duller and lost, so below <see cref="MinClippedShare"/> nothing changes.
+    /// </summary>
+    internal static double Highlights(double clippedShare) =>
+        clippedShare < MinClippedShare ? 0 : -Math.Round(Math.Min(40, clippedShare * 100 * 8));
+
+    /// <summary>
     /// Exposure that brings the median towards the target. Brightening is held back so unclipped highlights stay
-    /// below white. Darkening is rare on purpose: a bright scene (sun, white kit) is usually exposed correctly, and
-    /// darkening already-clipped whites only turns them grey. So a bright scene is left alone, and when highlights
-    /// really are clipped the pull-down is small; the Highlights slider does the rest.
+    /// below white. Auto never darkens: a bright scene (sun, white kit) is usually exposed correctly, darkening
+    /// already-clipped whites only turns them grey, and in the blind A/B every darkened photo lost to the original.
+    /// Clipped highlights are left to the Highlights slider.
     /// </summary>
     internal static (double Ev, bool Limited) Exposure(Stats s, double target, double extra = 0)
     {
-        var ev = Math.Log2(target / Math.Max(s.MedianLinear, 1e-4));
-        if (ev < 0)
-        {
-            ev = s.ClippedShare > 0.01 ? Math.Max(ev, -0.3) : 0;
-        }
+        var ev = Math.Max(0, Math.Log2(target / Math.Max(s.MedianLinear, 1e-4)));
 
         ev += extra;
         var limited = false;

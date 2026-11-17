@@ -174,7 +174,7 @@ tests/
   FrameForge.Evaluation.Tests/
   FrameForge.Rendering.Tests/  (adjustment maths, geometry, golden pixels)
 tools/
-  FrameForge.Evaluation/      Model benchmark, labelled-set evaluation, face annotation, edit review sheets (developer tool)
+  FrameForge.Evaluation/      Model benchmark, labelled-set evaluation, face annotation, edit review sheets, Auto judging sheets (developer tool)
 docs/                         Architecture, roadmap, milestones, design system, decisions
 ```
 
@@ -192,4 +192,5 @@ See [docs/architecture.md](docs/architecture.md) for boundaries and [docs/roadma
 - `docs/ai-models.md` — AI model strategy, selected models, how to run an evaluation
 - `docs/visual-review-m06.md` — how edits were checked by eye, and how to repeat it
 - `docs/visual-review-m08.md` — what was checked by eye for the Auto tools, and what wasn't
+- `docs/evaluation-m08.md` — how to judge Auto light (blind A/B) and Auto crop (your own crops) and score the results
 - `THIRD-PARTY-NOTICES.md` — licences and attributions (also shown on the About page)

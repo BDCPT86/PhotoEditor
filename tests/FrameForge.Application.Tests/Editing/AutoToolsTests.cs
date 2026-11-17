@@ -53,6 +53,30 @@ public sealed class AutoToolsTests
     }
 
     [Fact]
+    public void AutoTone_NeverDarkens_EvenWhenClipped()
+    {
+        // A bright scene with 20 % blown white: the old rule pulled exposure down 0.3 EV, which always lost in the A/B.
+        var photo = AnalysisImage.Create(100, 100, (x, y) => y < 20 ? ((byte)255, (byte)255, (byte)255) : ((byte)200, (byte)200, (byte)195));
+
+        var result = AutoTone.Suggest(photo, EditRecipe.Neutral);
+
+        Assert.All(result.Options, o => Assert.True(o.Recipe.Exposure >= 0, $"{o.Name}: {o.Recipe.Exposure}"));
+        Assert.True(result.Named("Natural")!.Recipe.Highlights < 0, "clipping is still handled by Highlights");
+    }
+
+    [Fact]
+    public void AutoTone_BarelyClipped_LeavesHighlightsAlone()
+    {
+        // 0.3 % clipped (a few specular glints): too little to be worth dulling the rest of the highlights.
+        var photo = AnalysisImage.Create(1000, 100, (x, y) => x < 3 ? ((byte)255, (byte)255, (byte)255) : ((byte)120, (byte)120, (byte)120));
+
+        var natural = AutoTone.Suggest(photo, EditRecipe.Neutral).Named("Natural")!;
+
+        Assert.Equal(0, natural.Recipe.Highlights);
+        Assert.DoesNotContain("clipped", natural.Reason, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void AutoTone_HoldsBackExposure_ToProtectUnclippedHighlights()
     {
         // Dark mid-tones with a bright (not clipped) sky: brightening fully would blow the sky.
@@ -67,7 +91,7 @@ public sealed class AutoToolsTests
     [Fact]
     public void AutoTone_BlueCastNeutrals_AreWarmed_AndKeepsNonToneSettings()
     {
-        var bluish = AnalysisImage.Create(100, 100, (_, _) => (150, 155, 170));
+        var bluish = AnalysisImage.Create(100, 100, (_, _) => (145, 155, 176)); // a strong cast, at the edge of "neutral"
         var current = EditRecipe.Neutral with { Saturation = 30, Straighten = 2, Crop = new CropRect(0, 0, 0.5, 0.5) };
 
         var natural = AutoTone.Suggest(bluish, current).Named("Natural")!;
@@ -76,6 +100,18 @@ public sealed class AutoToolsTests
         Assert.Equal(30, natural.Recipe.Saturation);
         Assert.Equal(2, natural.Recipe.Straighten);
         Assert.Equal(current.Crop, natural.Recipe.Crop);
+    }
+
+    [Fact]
+    public void AutoTone_MildCast_IsLeftAsShot()
+    {
+        // Grey-world would suggest about +24 here; in the A/B mild warming like this never won.
+        var slightlyCool = AnalysisImage.Create(100, 100, (_, _) => (150, 155, 170));
+
+        var natural = AutoTone.Suggest(slightlyCool, EditRecipe.Neutral).Named("Natural")!;
+
+        Assert.Equal(0, natural.Recipe.Temperature);
+        Assert.Contains("white balance left as shot", natural.Reason, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -146,9 +182,9 @@ public sealed class AutoToolsTests
     }
 
     [Fact]
-    public void AutoCrop_SingleFace_ExactRatio_FaceInside_OnUpperThird_MinSize()
+    public void AutoCrop_SingleFace_ExactRatio_FaceInside_HighInFrame_MinSize()
     {
-        var face = Face(0.62, 0.25, 0.08, 0.12); // a 480 px face: close enough that Tight stays above the minimum size
+        var face = Face(0.62, 0.30, 0.027, 0.04); // a 160 px face: a typical player, so all three options differ
         var result = AutoCrop.Suggest(6000, 4000, [face], EditRecipe.Neutral, 4.0 / 5, 0.6);
 
         Assert.Equal(["Tight", "Medium", "Wide"], result.Options.Select(o => o.Name));
@@ -160,10 +196,15 @@ public sealed class AutoToolsTests
             AssertContains(c, face, 6000, 4000, option.Recipe);
         }
 
-        // Tight: the face's eye line is on (or near) the upper third.
+        // Tight: the face's eye line sits a little above the upper third (0.28 of the crop height, from the user's crops).
         var tight = result.Named("Tight")!.Recipe.Crop;
-        var eye = 0.25 + (0.12 * 0.45);
-        Assert.Equal(1.0 / 3, (eye - tight.Y) / tight.Height, 1);
+        var eye = 0.30 + (0.04 * 0.45);
+        Assert.Equal(0.28, (eye - tight.Y) / tight.Height, 2);
+
+        // Looser options are bigger: Medium is about 20 face heights tall.
+        var medium = result.Named("Medium")!.Recipe.Crop;
+        Assert.True(medium.Height > tight.Height && result.Named("Wide")!.Recipe.Crop.Height > medium.Height);
+        Assert.Equal(0.04 * 21, medium.Height, 2);
     }
 
     [Fact]
@@ -195,11 +236,12 @@ public sealed class AutoToolsTests
     [Fact]
     public void AutoCrop_RespectsStraightenAndQuarterTurns()
     {
-        var face = Face(0.5, 0.3, 0.05, 0.07);
+        var face = Face(0.5, 0.3, 0.02, 0.03);
         var current = EditRecipe.Neutral with { QuarterTurns = 1, Straighten = 4 };
 
         var result = AutoCrop.Suggest(6000, 4000, [face], current, null, 0.6);
 
+        Assert.True(result.HasOptions);
         Assert.All(result.Options, o =>
         {
             Assert.Equal(1, o.Recipe.QuarterTurns);
@@ -217,11 +259,21 @@ public sealed class AutoToolsTests
     }
 
     [Fact]
-    public void AutoCrop_SmallPhoto_NeverCropsBelowItsOwnSize()
+    public void AutoCrop_SmallPhoto_NeverCropsBelowItsOwnSize_SoOffersNothing()
     {
+        // Every option grows to the whole frame, which is no crop at all.
         var result = AutoCrop.Suggest(1600, 1200, [Face(0.4, 0.3, 0.05, 0.07)], EditRecipe.Neutral, 4.0 / 3, 0.6);
-        var only = Assert.Single(result.Options); // every variant grows to the whole frame, so duplicates collapse
-        Assert.True(only.Recipe.Crop.IsFull || (only.Recipe.Crop.Width > 0.99 && only.Recipe.Crop.Height > 0.99));
+        Assert.False(result.HasOptions);
+        Assert.Equal(AutoCrop.AlreadyFramed, result.Unavailable);
+    }
+
+    [Fact]
+    public void AutoCrop_LooselyFramedPhoto_AtItsOwnRatio_OffersOnlyRealCrops()
+    {
+        // A close player (480 px face): every option at the frame's own ratio would keep nearly the whole frame.
+        var result = AutoCrop.Suggest(6000, 4000, [Face(0.45, 0.2, 0.08, 0.12)], EditRecipe.Neutral, null, 0.6);
+        Assert.False(result.HasOptions);
+        Assert.Equal(AutoCrop.AlreadyFramed, result.Unavailable);
     }
 
 }
