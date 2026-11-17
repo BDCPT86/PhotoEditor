@@ -11,6 +11,7 @@
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
         <conv:InverseBooleanConverter x:Key="InverseBool" />
+        <conv:EnumEqualsConverter x:Key="EnumEquals" />
     </UserControl.Resources>
 
     <UserControl.InputBindings>
@@ -18,12 +19,16 @@
     </UserControl.InputBindings>
 
     <Border Style="{StaticResource SidePanel}">
-        <StackPanel>
-            <DockPanel Margin="0,0,0,16">
+        <DockPanel>
+            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,16">
                 <Button DockPanel.Dock="Right" Content="Close" MinWidth="0" Command="{Binding CloseCommand}"
                         IsEnabled="{Binding IsApplying, Converter={StaticResource InverseBool}}" />
                 <TextBlock Text="Presets" Style="{StaticResource Text.SectionLabel}" FontSize="16" VerticalAlignment="Center" />
             </DockPanel>
+
+            <!-- Scrolls on short windows, so the Auto controls, progress and results stay reachable -->
+            <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
+            <StackPanel>
 
             <TextBlock Style="{StaticResource Text.Secondary}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,12"
                        Text="A preset changes only the settings it was saved with. Create presets in Develop (open a photo, press D). Originals are never changed." />
@@ -53,10 +58,75 @@
                         Visibility="{Binding Edits.CanUndoBatch, Converter={StaticResource BoolToVisibility}}" />
             </StackPanel>
 
+            <!-- Auto on the selection: options chosen in advance, reviewed afterwards with the Auto-applied filter -->
+            <Border BorderBrush="{StaticResource Brush.Border}" BorderThickness="0,1,0,0" Margin="0,20,0,0" Padding="0,14,0,0"
+                    IsEnabled="{Binding IsApplying, Converter={StaticResource InverseBool}}">
+                <StackPanel>
+                    <TextBlock Text="Auto" Style="{StaticResource Text.SectionLabel}" />
+                    <TextBlock Style="{StaticResource Text.Secondary}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,10"
+                               Text="Runs on every selected photo, in this order. Choose the option now; review the results afterwards with the Auto-applied filter." />
+
+                    <CheckBox Content="Light" IsChecked="{Binding AutoLight}" Margin="0,0,0,4" />
+                    <WrapPanel Margin="22,0,0,10" IsEnabled="{Binding AutoLight}" AutomationProperties.Name="Auto light option">
+                        <RadioButton Style="{StaticResource Chip}" GroupName="LightVariant" Content="Natural" Margin="0,0,4,4"
+                                     IsChecked="{Binding LightVariant, Converter={StaticResource EnumEquals}, ConverterParameter=Natural}" />
+                        <RadioButton Style="{StaticResource Chip}" GroupName="LightVariant" Content="Brighter" Margin="0,0,4,4"
+                                     IsChecked="{Binding LightVariant, Converter={StaticResource EnumEquals}, ConverterParameter=Brighter}" />
+                        <RadioButton Style="{StaticResource Chip}" GroupName="LightVariant" Content="Punchy" Margin="0,0,4,4"
+                                     IsChecked="{Binding LightVariant, Converter={StaticResource EnumEquals}, ConverterParameter=Punchy}" />
+                    </WrapPanel>
+
+                    <CheckBox Content="Level (to the main line, when one is found)" IsChecked="{Binding AutoLevel}" Margin="0,0,0,10" />
+
+                    <CheckBox Content="Crop around the main faces" IsChecked="{Binding AutoCrop}" Margin="0,0,0,4" />
+                    <StackPanel Margin="22,0,0,10" IsEnabled="{Binding AutoCrop}">
+                        <WrapPanel AutomationProperties.Name="Auto crop framing">
+                            <RadioButton Style="{StaticResource Chip}" GroupName="CropVariant" Content="Tight" Margin="0,0,4,4"
+                                         IsChecked="{Binding CropVariant, Converter={StaticResource EnumEquals}, ConverterParameter=Tight}" />
+                            <RadioButton Style="{StaticResource Chip}" GroupName="CropVariant" Content="Medium" Margin="0,0,4,4"
+                                         IsChecked="{Binding CropVariant, Converter={StaticResource EnumEquals}, ConverterParameter=Medium}" />
+                            <RadioButton Style="{StaticResource Chip}" GroupName="CropVariant" Content="Wide" Margin="0,0,4,4"
+                                         IsChecked="{Binding CropVariant, Converter={StaticResource EnumEquals}, ConverterParameter=Wide}" />
+                        </WrapPanel>
+                        <WrapPanel AutomationProperties.Name="Auto crop ratio">
+                            <RadioButton Style="{StaticResource Chip}" GroupName="CropRatio" Content="Original" Margin="0,0,4,4"
+                                         IsChecked="{Binding CropAspect, Converter={StaticResource EnumEquals}, ConverterParameter=Original}" />
+                            <RadioButton Style="{StaticResource Chip}" GroupName="CropRatio" Content="1:1" Margin="0,0,4,4"
+                                         IsChecked="{Binding CropAspect, Converter={StaticResource EnumEquals}, ConverterParameter=1:1}" />
+                            <RadioButton Style="{StaticResource Chip}" GroupName="CropRatio" Content="4:5" Margin="0,0,4,4"
+                                         IsChecked="{Binding CropAspect, Converter={StaticResource EnumEquals}, ConverterParameter=4:5}" />
+                            <RadioButton Style="{StaticResource Chip}" GroupName="CropRatio" Content="3:2" Margin="0,0,4,4"
+                                         IsChecked="{Binding CropAspect, Converter={StaticResource EnumEquals}, ConverterParameter=3:2}" />
+                            <RadioButton Style="{StaticResource Chip}" GroupName="CropRatio" Content="16:9" Margin="0,0,4,4"
+                                         IsChecked="{Binding CropAspect, Converter={StaticResource EnumEquals}, ConverterParameter=16:9}" />
+                        </WrapPanel>
+                    </StackPanel>
+
+                    <Button Content="Apply Auto to selected" HorizontalAlignment="Left" Command="{Binding ApplyAutoCommand}"
+                            ToolTip="One undo step for the whole run (Undo last apply)" />
+                </StackPanel>
+            </Border>
+
             <StackPanel Margin="0,16,0,0" Visibility="{Binding IsApplying, Converter={StaticResource BoolToVisibility}}">
                 <ProgressBar Minimum="0" Maximum="1" Value="{Binding ProgressValue, Mode=OneWay}" AutomationProperties.Name="Preset progress" />
                 <Button Content="Cancel" HorizontalAlignment="Right" Margin="0,8,0,0" Command="{Binding CancelCommand}" />
             </StackPanel>
+
+            <ItemsControl ItemsSource="{Binding AutoNotes}" Margin="0,10,0,0" MaxHeight="160" Focusable="False"
+                          AutomationProperties.Name="Photos Auto could not fully handle">
+                <ItemsControl.Template>
+                    <ControlTemplate TargetType="ItemsControl">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
+                            <ItemsPresenter />
+                        </ScrollViewer>
+                    </ControlTemplate>
+                </ItemsControl.Template>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding}" FontSize="12" TextTrimming="CharacterEllipsis" Foreground="{StaticResource Brush.Text.Secondary}" />
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
 
             <TextBlock Margin="0,16,0,0" TextWrapping="Wrap" AutomationProperties.AutomationId="PresetResult">
                 <TextBlock.Style>
@@ -75,6 +145,8 @@
                     </Style>
                 </TextBlock.Style>
             </TextBlock>
-        </StackPanel>
+            </StackPanel>
+            </ScrollViewer>
+        </DockPanel>
     </Border>
 </UserControl>

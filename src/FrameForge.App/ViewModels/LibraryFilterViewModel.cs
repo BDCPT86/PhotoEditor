@@ -42,6 +42,7 @@ public enum AnalysisFilterChoice
     ExactDuplicate,
     AiPick,
     AiFacesSoft,
+    AutoApplied,
 }
 
 /// <summary>Filter and sort choices for the grid. Raises <see cref="Changed"/> when any choice changes.</summary>
@@ -64,6 +65,7 @@ public sealed partial class LibraryFilterViewModel : ObservableObject
             AnalysisFilterChoice.ExactDuplicate => insight.ExactDuplicateCount > 0,
             AnalysisFilterChoice.AiPick => tile.Ai.IsSuggestedPick,
             AnalysisFilterChoice.AiFacesSoft => tile.Ai.FacesSoft,
+            AnalysisFilterChoice.AutoApplied => tile.AutoApplied,
             _ => true,
         };
     }

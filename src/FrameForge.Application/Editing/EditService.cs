@@ -10,7 +10,11 @@ namespace FrameForge.Application.Editing;
 public sealed record BatchProgress(int Total, int Completed);
 
 /// <summary>What a batch changed, so it can be undone exactly.</summary>
-public sealed record BatchEditResult(IReadOnlyList<(Guid PhotoId, EditRecipe Before, EditRecipe After)> Changes, bool WasCancelled);
+public sealed record BatchEditResult(IReadOnlyList<(Guid PhotoId, EditRecipe Before, EditRecipe After)> Changes, bool WasCancelled)
+{
+    /// <summary>Per-photo notes, e.g. a step that could not be applied (Auto crop with no faces).</summary>
+    public IReadOnlyList<(Guid PhotoId, string Note)> Notes { get; init; } = [];
+}
 
 public interface IEditService
 {
@@ -26,6 +30,16 @@ public interface IEditService
     Task<BatchEditResult> ApplyPresetAsync(
         IReadOnlyList<(Guid PhotoId, EditRecipe Current)> targets,
         EditPreset preset,
+        IProgress<BatchProgress>? progress,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Runs <paramref name="transform"/> on each photo (one at a time) and saves changed recipes in small batches.
+    /// Photos it leaves unchanged are not saved. Cancellation keeps what was saved and reports it, so it can be undone.
+    /// </summary>
+    Task<BatchEditResult> ApplyAsync(
+        IReadOnlyList<(Guid PhotoId, EditRecipe Current)> targets,
+        Func<Guid, EditRecipe, CancellationToken, Task<(EditRecipe? After, string? Note)>> transform,
         IProgress<BatchProgress>? progress,
         CancellationToken cancellationToken);
 }
@@ -86,6 +100,73 @@ public sealed partial class EditService(IEditRepository repository, ILogger<Edit
         return new BatchEditResult(changes, WasCancelled: false);
     }
 
+    public async Task<BatchEditResult> ApplyAsync(
+        IReadOnlyList<(Guid PhotoId, EditRecipe Current)> targets,
+        Func<Guid, EditRecipe, CancellationToken, Task<(EditRecipe? After, string? Note)>> transform,
+        IProgress<BatchProgress>? progress,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(targets);
+        ArgumentNullException.ThrowIfNull(transform);
+        const int saveEvery = 25;
+        var changes = new List<(Guid, EditRecipe, EditRecipe)>();
+        var notes = new List<(Guid, string)>();
+        var pending = new List<(Guid PhotoId, EditRecipe Before, EditRecipe After)>();
+        var done = 0;
+        var cancelled = false;
+
+        async Task SaveAsync()
+        {
+            if (pending.Count > 0)
+            {
+                await repository.SaveAsync(pending.Select(p => (p.PhotoId, p.After)).ToList(), CancellationToken.None).ConfigureAwait(false);
+                changes.AddRange(pending);
+                pending.Clear();
+            }
+        }
+
+        progress?.Report(new BatchProgress(targets.Count, 0));
+        try
+        {
+            foreach (var (id, current) in targets)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var (after, note) = await transform(id, current, cancellationToken).ConfigureAwait(false);
+                if (after is not null && after != current)
+                {
+                    pending.Add((id, current, after.EnsureValid()));
+                }
+
+                if (note is not null)
+                {
+                    notes.Add((id, note));
+                }
+
+                done++;
+                if (pending.Count >= saveEvery)
+                {
+                    await SaveAsync().ConfigureAwait(false);
+                }
+
+                progress?.Report(new BatchProgress(targets.Count, done));
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            cancelled = true;
+        }
+        finally
+        {
+            await SaveAsync().ConfigureAwait(false);
+        }
+
+        LogBatchRun(done, targets.Count, changes.Count, notes.Count, cancelled);
+        return new BatchEditResult(changes, cancelled) { Notes = notes };
+    }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Batch edit: {Done} of {Total} photo(s) processed, {Changed} changed, {Notes} with notes, cancelled={Cancelled}")]
+    private partial void LogBatchRun(int done, int total, int changed, int notes, bool cancelled);
+
     [LoggerMessage(Level = LogLevel.Warning, Message = "Stored edit for photo {PhotoId} was ignored: {Reason}")]
     private partial void LogRejected(Guid photoId, string reason);
 
@@ -132,7 +213,7 @@ public sealed class EditRenderService(IAnalysisImageLoader loader) : IEditRender
     }
 
     /// <summary>Stored size as displayed (EXIF orientations 5–8 swap width and height), or null if unknown.</summary>
-    internal static (int Width, int Height)? OrientedSize(Photo photo) =>
+    public static (int Width, int Height)? OrientedSize(Photo photo) =>
         photo.Width is { } w && photo.Height is { } h
             ? photo.Orientation is >= 5 and <= 8 ? (h, w) : (w, h)
             : null;

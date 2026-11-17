@@ -28,7 +28,7 @@ internal sealed class CullingFixture : IDisposable
 
         DecisionService = new DecisionService(Decisions);
         Controller = new DecisionController(DecisionService, NullLogger<DecisionController>.Instance);
-        Viewer = new ViewerViewModel(Loader, Edit.Renderer, Edit.Develop, NullLogger<ViewerViewModel>.Instance);
+        Viewer = new ViewerViewModel(Loader, Edit.Renderer, Edit.Develop, Edit.Faces, NullLogger<ViewerViewModel>.Instance);
         Compare = new CompareViewModel(Loader, NullLogger<CompareViewModel>.Instance);
         Export = new ExportViewModel(Exporter, EditedExporter, FolderPicker, new NullSavePicker(), NullLogger<ExportViewModel>.Instance);
         PresetPanel = new PresetPanelViewModel(Edit.Controller, NullLogger<PresetPanelViewModel>.Instance);

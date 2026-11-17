@@ -7,6 +7,18 @@ using System.Windows.Media.Imaging;
 
 namespace FrameForge.App.Controls;
 
+/// <summary>An area to zoom to, normalised to the image (0–1). A new instance re-triggers even for the same area.</summary>
+public sealed class ZoomFocus(double x, double y, double width, double height)
+{
+    public double X { get; } = x;
+
+    public double Y { get; } = y;
+
+    public double Width { get; } = width;
+
+    public double Height { get; } = height;
+}
+
 /// <summary>
 /// Displays a bitmap with fit / 100% / free zoom and drag-to-pan.
 /// Mouse: wheel zooms around the cursor, drag pans, double-click toggles fit ↔ 100% at the cursor.
@@ -18,6 +30,11 @@ public sealed class ZoomPanImage : Border
     public static readonly DependencyProperty SourceProperty = DependencyProperty.Register(
         nameof(Source), typeof(BitmapSource), typeof(ZoomPanImage),
         new FrameworkPropertyMetadata(null, (d, _) => ((ZoomPanImage)d).OnSourceChanged()));
+
+    /// <summary>Set to a new <see cref="ZoomFocus"/> to show that area of the image at 100 %, centred.</summary>
+    public static readonly DependencyProperty FocusRequestProperty = DependencyProperty.Register(
+        nameof(FocusRequest), typeof(ZoomFocus), typeof(ZoomPanImage),
+        new FrameworkPropertyMetadata(null, (d, e) => ((ZoomPanImage)d).OnFocusRequested(e.NewValue as ZoomFocus)));
 
     private static readonly DependencyPropertyKey ZoomTextPropertyKey = DependencyProperty.RegisterReadOnly(
         nameof(ZoomText), typeof(string), typeof(ZoomPanImage), new PropertyMetadata(string.Empty));
@@ -63,6 +80,12 @@ public sealed class ZoomPanImage : Border
     {
         get => (BitmapSource?)GetValue(SourceProperty);
         set => SetValue(SourceProperty, value);
+    }
+
+    public ZoomFocus? FocusRequest
+    {
+        get => (ZoomFocus?)GetValue(FocusRequestProperty);
+        set => SetValue(FocusRequestProperty, value);
     }
 
     /// <summary>"Fit" or a percentage such as "100%".</summary>
@@ -167,6 +190,20 @@ public sealed class ZoomPanImage : Border
 
         _image.Source = Source;
         Fit();
+    }
+
+    private void OnFocusRequested(ZoomFocus? focus)
+    {
+        if (focus is null || Source is not { } source || ActualWidth <= 0)
+        {
+            return;
+        }
+
+        // 100 % (never below fit), centred on the requested area.
+        _zoom = Math.Max(1.0, CurrentFitZoom());
+        _isFit = Math.Abs(_zoom - CurrentFitZoom()) < 1e-6;
+        var point = new Point((focus.X + (focus.Width / 2)) * source.PixelWidth * Scale, (focus.Y + (focus.Height / 2)) * source.PixelHeight * Scale);
+        SetOffset(new Point((ActualWidth / 2) - point.X, (ActualHeight / 2) - point.Y));
     }
 
     private void UpdateLayoutForCurrentMode()

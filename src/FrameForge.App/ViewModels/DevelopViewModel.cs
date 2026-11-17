@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.Input;
 using FrameForge.Analysis;
 using FrameForge.App.Services;
 using FrameForge.Application.Editing;
+using FrameForge.Application.Editing.Auto;
 using FrameForge.Application.Photos;
 using FrameForge.Core.Editing;
 using FrameForge.Imaging;
@@ -20,7 +21,7 @@ namespace FrameForge.App.ViewModels;
 /// the latest render is shown; older ones are skipped). Changes are saved when the sliders rest for a moment, and
 /// each resting point is one undo step, so dragging a slider is one step, not hundreds. The original is never written.
 /// </summary>
-public sealed partial class DevelopViewModel(IEditRenderService renderer, EditController edits, ILogger<DevelopViewModel> logger) : ObservableObject
+public sealed partial class DevelopViewModel(IEditRenderService renderer, EditController edits, IFaceLookup faces, ILogger<DevelopViewModel> logger) : ObservableObject
 {
     /// <summary>Longest side of the preview copy. Large enough for a full-screen view, small enough to render live.</summary>
     public const int PreviewLongSide = 2048;
@@ -68,7 +69,8 @@ public sealed partial class DevelopViewModel(IEditRenderService renderer, EditCo
     [NotifyPropertyChangedFor(nameof(DisplayImage))]
     private BitmapSource? _rendered;
 
-    public BitmapSource? DisplayImage => ShowOriginal ? _originalBitmap : Rendered;
+    /// <summary>What the photo area shows: the original (Before), the focused Auto option, or the live render.</summary>
+    public BitmapSource? DisplayImage => ShowOriginal ? _originalBitmap : FocusedSuggestion?.Preview ?? Rendered;
 
     // Sliders (bound two-way). Ranges match EditRecipe; values are clamped when the recipe is built.
     [ObservableProperty] private double _exposure;
@@ -144,6 +146,7 @@ public sealed partial class DevelopViewModel(IEditRenderService renderer, EditCo
             return;
         }
 
+        CloseSuggestions();
         Tile = tile;
         _history.Clear();
         _committed = tile.Recipe;
@@ -156,6 +159,7 @@ public sealed partial class DevelopViewModel(IEditRenderService renderer, EditCo
     /// <summary>Saves any pending change and closes the panel.</summary>
     public async Task CloseAsync()
     {
+        CloseSuggestions();
         await FlushAsync().ConfigureAwait(true);
         _loadCts?.Cancel();
         IsOpen = false;
@@ -366,6 +370,12 @@ public sealed partial class DevelopViewModel(IEditRenderService renderer, EditCo
         if (_suppress)
         {
             return;
+        }
+
+        // A manual change makes open Auto options stale (they were computed from the previous settings).
+        if (IsSuggesting)
+        {
+            CloseSuggestions();
         }
 
         ScheduleRender();

@@ -97,6 +97,18 @@ internal sealed class FakeEditRenderService : IEditRenderService
     }
 }
 
+/// <summary>Face boxes per photo; photos absent from <see cref="Analysed"/> have no face data.</summary>
+internal sealed class FakeFaceLookup : FrameForge.Application.Editing.Auto.IFaceLookup
+{
+    public Dictionary<Guid, List<FrameForge.Application.Ai.FaceFinding>> Analysed { get; } = [];
+
+    public double FaceMinScore => 0.6;
+
+    public bool HasFaceData(Guid photoId) => Analysed.ContainsKey(photoId);
+
+    public IReadOnlyList<FrameForge.Application.Ai.FaceFinding> FacesOf(Guid photoId) => Analysed.GetValueOrDefault(photoId) ?? [];
+}
+
 internal sealed class RecordingEditedExporter : IEditedExportService
 {
     public List<(IReadOnlyList<EditedExportItem> Items, EditedExportOptions Options)> Calls { get; } = [];
@@ -113,8 +125,8 @@ internal sealed class EditStack
 {
     public EditStack()
     {
-        Controller = new EditController(new EditService(Edits, NullLogger<EditService>.Instance), Presets, NullLogger<EditController>.Instance);
-        Develop = new DevelopViewModel(Renderer, Controller, NullLogger<DevelopViewModel>.Instance) { CommitDelay = TimeSpan.Zero };
+        Controller = new EditController(new EditService(Edits, NullLogger<EditService>.Instance), Presets, Renderer, Faces, NullLogger<EditController>.Instance);
+        Develop = new DevelopViewModel(Renderer, Controller, Faces, NullLogger<DevelopViewModel>.Instance) { CommitDelay = TimeSpan.Zero };
     }
 
     public MemoryEditRepository Edits { get; } = new();
@@ -122,6 +134,8 @@ internal sealed class EditStack
     public MemoryPresetRepository Presets { get; } = new();
 
     public FakeEditRenderService Renderer { get; } = new();
+
+    public FakeFaceLookup Faces { get; } = new();
 
     public EditController Controller { get; }
 

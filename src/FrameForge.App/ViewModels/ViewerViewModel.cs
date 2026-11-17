@@ -5,6 +5,7 @@ using System.Windows.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FrameForge.Application.Editing;
+using FrameForge.Application.Editing.Auto;
 using FrameForge.Application.Photos;
 using FrameForge.Imaging;
 using Microsoft.Extensions.Logging;
@@ -26,10 +27,14 @@ public sealed partial class ViewerViewModel : ObservableObject, IDisposable
     private IReadOnlyList<PhotoTileViewModel> _items = [];
     private CancellationTokenSource? _loadCts;
 
-    public ViewerViewModel(IPhotoBitmapLoader loader, IEditRenderService renderer, DevelopViewModel develop, ILogger<ViewerViewModel> logger)
+    private readonly IFaceLookup _faces;
+    private int _faceIndex = -1;
+
+    public ViewerViewModel(IPhotoBitmapLoader loader, IEditRenderService renderer, DevelopViewModel develop, IFaceLookup faces, ILogger<ViewerViewModel> logger)
     {
         _loader = loader;
         _renderer = renderer;
+        _faces = faces;
         _logger = logger;
         Develop = develop;
         Develop.PropertyChanged += OnDevelopChanged;
@@ -54,6 +59,73 @@ public sealed partial class ViewerViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private string? _errorMessage;
+
+    /// <summary>The face the 100 % view should centre on (zoom to faces), or null.</summary>
+    [ObservableProperty]
+    private Controls.ZoomFocus? _faceFocus;
+
+    /// <summary>"Face 2 of 4", or why there are no faces to step through; null when not in use.</summary>
+    [ObservableProperty]
+    private string? _faceStatus;
+
+    /// <summary>
+    /// Steps the 100 % view to the next (+1) or previous (−1) face, left to right, using the stored face boxes mapped
+    /// through the photo's edit. Not while developing (the preview is not full size).
+    /// </summary>
+    public void StepFace(int direction)
+    {
+        if (Current is not { } tile || Develop.IsOpen)
+        {
+            return;
+        }
+
+        if (!_faces.HasFaceData(tile.Id))
+        {
+            FaceStatus = "No face data: turn on faces (Settings → AI models) and run Analyze";
+            return;
+        }
+
+        var targets = FaceTargets(tile);
+        if (targets.Count == 0)
+        {
+            FaceStatus = "No faces in this photo";
+            return;
+        }
+
+        _faceIndex = (((_faceIndex + direction) % targets.Count) + targets.Count) % targets.Count;
+        var (x, y, w, h) = targets[_faceIndex];
+        FaceFocus = new Controls.ZoomFocus(x, y, w, h);
+        FaceStatus = string.Create(CultureInfo.CurrentCulture, $"Face {_faceIndex + 1} of {targets.Count}");
+    }
+
+    /// <summary>Counted faces, left to right, as normalised rectangles of the displayed (edited) photo.</summary>
+    internal List<(double X, double Y, double W, double H)> FaceTargets(PhotoTileViewModel tile)
+    {
+        var minScore = _faces.FaceMinScore;
+        var recipe = tile.Recipe;
+        var (sw, sh) = EditRenderService.OrientedSize(tile.Photo) ?? (1000, 1000);
+        var geometry = recipe.HasGeometry ? new Rendering.EditGeometry(sw, sh, recipe) : null;
+        var result = new List<(double, double, double, double)>();
+        foreach (var f in _faces.FacesOf(tile.Id).Where(f => f.Score >= minScore))
+        {
+            if (geometry is null)
+            {
+                result.Add((f.X, f.Y, f.Width, f.Height));
+                continue;
+            }
+
+            var (u1, v1) = geometry.ToOutput(f.X * sw, f.Y * sh);
+            var (u2, v2) = geometry.ToOutput((f.X + f.Width) * sw, (f.Y + f.Height) * sh);
+            double l = Math.Min(u1, u2), t = Math.Min(v1, v2), r = Math.Max(u1, u2), b = Math.Max(v1, v2);
+            var (cx, cy) = ((l + r) / 2, (t + b) / 2);
+            if (cx is >= 0 and <= 1 && cy is >= 0 and <= 1)
+            {
+                result.Add((l, t, r - l, b - t)); // cropped-away faces are skipped
+            }
+        }
+
+        return result.OrderBy(r => r.Item1).ToList();
+    }
 
     /// <summary>What the image area shows: the Develop preview while developing, otherwise the full-size photo.</summary>
     public BitmapSource? DisplayImage => Develop.IsOpen ? Develop.DisplayImage : Image;
@@ -157,6 +229,9 @@ public sealed partial class ViewerViewModel : ObservableObject, IDisposable
 
         CurrentIndex = index;
         Current = _items[index];
+        _faceIndex = -1;
+        FaceFocus = null;
+        FaceStatus = null;
         CurrentLoad = LoadCurrentAsync(Current);
         if (Develop.IsOpen)
         {

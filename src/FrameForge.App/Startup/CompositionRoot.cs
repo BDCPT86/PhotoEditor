@@ -46,6 +46,7 @@ internal static class CompositionRoot
         builder.Services.AddSingleton<IThumbnailSource>(sp => sp.GetRequiredService<ThumbnailLoader>());
         builder.Services.AddSingleton<DecisionController>();
         builder.Services.AddSingleton<AnalysisController>();
+        builder.Services.AddSingleton<FrameForge.Application.Editing.Auto.IFaceLookup>(sp => sp.GetRequiredService<AnalysisController>());
         builder.Services.AddSingleton<EditController>();
 
         // View models and shell

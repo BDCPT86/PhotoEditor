@@ -3,6 +3,7 @@ using FrameForge.Analysis;
 using FrameForge.App.ViewModels;
 using FrameForge.Application.Ai;
 using FrameForge.Application.Analysis;
+using FrameForge.Application.Editing.Auto;
 using FrameForge.Application.Settings;
 using FrameForge.Core.Settings;
 
@@ -19,8 +20,15 @@ public sealed partial class AnalysisController(
     IPhotoAnalysisService service,
     IAiAnalysisService aiService,
     IAiRuntime aiRuntime,
-    ISettingsService settings) : ObservableObject
+    ISettingsService settings) : ObservableObject, IFaceLookup
 {
+    public double FaceMinScore => AiThresholds.FaceMinScore;
+
+    public bool HasFaceData(Guid photoId) => _ai.TryGetValue(photoId, out var a) && a.Faces is not null;
+
+    public IReadOnlyList<FaceFinding> FacesOf(Guid photoId) =>
+        _ai.TryGetValue(photoId, out var a) && a.Faces is { } faces ? faces.Faces : [];
+
     private IReadOnlyList<PhotoTileViewModel> _tiles = [];
     private IReadOnlyDictionary<Guid, PhotoAnalysis> _analyses = new Dictionary<Guid, PhotoAnalysis>();
     private IReadOnlyDictionary<Guid, AiPhotoAnalysis> _ai = new Dictionary<Guid, AiPhotoAnalysis>();

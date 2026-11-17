@@ -2,14 +2,14 @@
 
 A Windows-first, local-first photography application focused on photo culling and, later, editing.
 
-**Status:** Milestone 06 (Non-destructive editing). Import folders of JPEGs, cull them with the keyboard
+**Status:** Milestone 08 phase A (Auto editing tools), on top of Milestone 06 (non-destructive editing). Import folders of JPEGs, cull them with the keyboard
 (keep/reject/review, ratings, colour labels), filter and sort, compare photos side by side, and export the selection.
 **Analyze** measures sharpness and exposure and finds exact and near-duplicates. These are explainable heuristics,
 not AI. Optional local AI models (face detection and scene similarity, off by default, installed only with your consent)
 add advisory badges and a suggested pick per group. They never change your decisions.
 **Develop** edits exposure, white balance, contrast, highlights/shadows, saturation and vibrance, plus crop and
 straighten, without ever changing the original file. Presets apply a look to many photos at once, and **Export** can
-save edited JPEGs.
+save edited JPEGs. **Auto** suggests a few options for light, levelling and cropping to faces; you pick one, or none.
 
 ## Using it
 
@@ -41,11 +41,17 @@ save edited JPEGs.
    hint.
 9. **Edit (Develop):** open a photo (Enter) and press **D**, or press **D** in the grid.
    - Move the sliders; the preview updates as you drag. Double-click a slider to reset it.
-   - **Ctrl+Z / Ctrl+Y** undo and redo edits, **\\** shows the original, and **Reset all** goes back to it.
+   - **Ctrl+Z / Ctrl+Y** undo and redo edits, hold **\\** to see the original, and **Reset all** goes back to it.
+   - **Auto:** **Light**, **Level** and **Crop** each show up to three options below the photo, with a reason.
+     ←/→ or 1–3 preview one on the photo, **Enter** applies it (one undo step), and **Esc** dismisses. Level draws the
+     line it found; Crop frames the main faces at the ratio chosen under Crop, and needs face data from Analyze.
    - **R** opens crop: drag the frame or its corners, pick an aspect ratio, and use **Straighten** and ⟲ ⟳ to rotate.
    - Edits save automatically. Edited photos show **✎** in the grid, and their thumbnails show the edit.
    - **Presets:** in Develop, name the current settings and tick which groups to include. In the grid, **Presets…**
-     applies one to the selected photos (with cancel and **Undo last apply**).
+     applies one to the selected photos (with cancel and **Undo last apply**). Its **Auto** section runs Light, Level
+     and/or Crop over the selection, lists photos it couldn't help, and the **Auto-applied** chip shows what it changed.
+   - **Zoom to faces:** in the viewer, **F** / **Shift+F** step the 100% view through the detected faces (needs face
+     data from Analyze).
    - **Export… → Edited JPEGs** saves new JPEGs with the edits, at a quality and size you choose, keeping the camera
      metadata.
 
@@ -112,7 +118,9 @@ Press **F1** (or **?**) on the Library page for the same list in the app.
 | Library | I | Show or hide analysis details |
 | Library / viewer | D | Open or close Develop (edit) |
 | Develop | R | Crop and straighten |
-| Develop | \ | Before / after |
+| Develop | Hold \ | Show the original |
+| Develop (Auto options) | ← / → or 1–3, Enter, Esc | Preview an option, apply it, dismiss |
+| Viewer | F / Shift+F | Zoom to the next / previous face |
 | Develop | Ctrl+Z / Ctrl+Y | Undo / redo an edit |
 | Library | F5 | Re-apply filter and sort |
 | Library | Ctrl+I | Import folder |
@@ -183,4 +191,5 @@ See [docs/architecture.md](docs/architecture.md) for boundaries and [docs/roadma
 - `docs/ui-design-system.md` — UX principles and visual direction
 - `docs/ai-models.md` — AI model strategy, selected models, how to run an evaluation
 - `docs/visual-review-m06.md` — how edits were checked by eye, and how to repeat it
+- `docs/visual-review-m08.md` — what was checked by eye for the Auto tools, and what wasn't
 - `THIRD-PARTY-NOTICES.md` — licences and attributions (also shown on the About page)

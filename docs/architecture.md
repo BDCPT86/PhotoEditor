@@ -429,6 +429,24 @@ in [visual-review-m06.md](visual-review-m06.md).
 - **Thumbnails:** the thumbnail cache entry records the recipe it was rendered for. A stale one stays visible while
   the new one renders.
 
+## Implementation notes (Milestone 08 phase A: Auto tools, no new model)
+See [ADR 0007](decisions/0007-auto-editing-tools.md) and [visual-review-m08.md](visual-review-m08.md).
+- **Application/Editing/Auto:** `AutoTone`, `AutoStraighten`, `AutoCrop` and `AutoBatch` are pure and
+  deterministic. They take pixels or face boxes and the current recipe, and return `AutoSuggestions` (named options,
+  each with a recipe and a reason). They never save anything.
+- **`IFaceLookup`:** a small port, implemented by `AnalysisController`, that gives Auto crop and zoom to faces the
+  stored M05 face boxes and the face-score threshold.
+- **`EditGeometry.ToOutput`:** the inverse of `ToSource`. It maps a source point to normalised output coordinates,
+  and is used to place crops, guides and face targets after rotation and straighten.
+- **Develop:** `DevelopViewModel.Auto.cs` (a partial) owns the suggestions tray. Previews for all options render in
+  parallel, the focused option shows on the main photo, and accepting goes through the normal commit chain, so it is
+  one undo step. The tray closes on photo change, on close, and when any slider moves.
+- **Batch:** `EditController.ApplyAutoAsync` calls `EditService.ApplyAsync` with a per-photo function, so batch Auto
+  shares the preset batch rules (progress, cancel, saves every 25, undo).
+- **Viewer:** `ZoomPanImage.FocusRequest` zooms to 100 % centred on an area. `ViewerViewModel.StepFace` feeds it.
+  `ViewerView` routes the tray's keys, the hold-to-compare key, and gives focus back to the photo when Develop or the
+  tray closes.
+
 ## Dependency direction
 
 - `Core`: depends on no application/UI/infrastructure projects.
@@ -483,7 +501,7 @@ Do not add all interfaces in Phase 1 without a real use. Introduce them with the
 
 ## Architecture decision records
 Existing: 0001 foundation stack · 0002 imaging and thumbnails · 0003 culling and export · 0004 deterministic
-analysis · 0005 local AI models · 0006 non-destructive editing.
+analysis · 0005 local AI models · 0006 non-destructive editing · 0007 Auto editing tools.
 
 Record major decisions in `docs/decisions/` using:
 - Context

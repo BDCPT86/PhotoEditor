@@ -90,6 +90,34 @@ public sealed class EditGeometry
     }
 
     /// <summary>
+    /// The inverse of <see cref="ToSource"/>: where a source position (continuous pixel coordinates) appears in the
+    /// output, as normalised (u, v). Values outside 0–1 mean the point is cropped away. Used to place face boxes on an
+    /// edited photo.
+    /// </summary>
+    public (double U, double V) ToOutput(double sourceX, double sourceY)
+    {
+        // Apply the clockwise quarter turns (the inverse of ToSource's last step).
+        var (x1, y1) = _quarterTurns switch
+        {
+            1 => (_sourceHeight - sourceY, sourceX),
+            2 => (_sourceWidth - sourceX, _sourceHeight - sourceY),
+            3 => (sourceY, _sourceWidth - sourceX),
+            _ => (sourceX, sourceY),
+        };
+
+        // Rotate clockwise by the straighten angle about the frame centre.
+        var x = x1 - (_frameWidth / 2);
+        var y = y1 - (_frameHeight / 2);
+        var dx = (x * _cos) - (y * _sin);
+        var dy = (x * _sin) + (y * _cos);
+
+        // Into the inscribed rectangle, then the crop.
+        var fu = (dx / (_innerScale * _frameWidth)) + 0.5;
+        var fv = (dy / (_innerScale * _frameHeight)) + 0.5;
+        return ((fu - _crop.X) / _crop.Width, (fv - _crop.Y) / _crop.Height);
+    }
+
+    /// <summary>
     /// Longest side to decode the original at so that rendering to <paramref name="maxOutputLongSide"/> needs no
     /// further downscaling (decoders downscale with better filtering than bilinear sampling). Null = full size.
     /// </summary>

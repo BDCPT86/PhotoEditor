@@ -1,4 +1,10 @@
-# Milestone 08 — AI-Assisted Editing (draft, not approved)
+# Milestone 08 — AI-Assisted Editing
+
+> **Status (2026-11-17):** Phase A (the parts with no new model) is implemented: Auto light, Auto level, Auto crop to
+> faces, batch Auto in the Presets panel with an Auto-applied filter, and zoom to faces. See
+> [ADR 0007](../decisions/0007-auto-editing-tools.md). Phase B (recipe v2, masks, model choices) is still a draft and
+> needs approval. Not yet done from the phase A list: comparing Auto crop with the user's own crops on a labelled
+> sample, and a blind A/B of Auto light.
 
 > Draft brief. Its number follows M07 (RAW and professional workflow), but it depends only on M05 (model handling) and
 > M06 (the edit recipe and renderer), so it can be scheduled before M07 if preferred.

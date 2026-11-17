@@ -191,6 +191,10 @@ public sealed partial class PhotoTileViewModel : ObservableObject, IThumbnailReq
 
     public bool IsEdited => !Recipe.IsNeutral;
 
+    /// <summary>Changed by the last Auto batch (for the review filter). Not stored: cleared on restart, undo or the next batch.</summary>
+    [ObservableProperty]
+    private bool _autoApplied;
+
     public BitmapSource? Thumbnail
     {
         get

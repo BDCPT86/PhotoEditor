@@ -3,6 +3,7 @@ using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using FrameForge.App.ViewModels;
 using FrameForge.Application.Editing;
+using FrameForge.Application.Editing.Auto;
 using FrameForge.Core.Editing;
 using Microsoft.Extensions.Logging;
 
@@ -13,7 +14,12 @@ namespace FrameForge.App.Services;
 /// UI thread only; storage runs on the thread pool. A failed save reverts the tile so the screen never shows an edit
 /// that was not stored.
 /// </summary>
-public sealed partial class EditController(IEditService edits, IPresetRepository presets, ILogger<EditController> logger) : ObservableObject
+public sealed partial class EditController(
+    IEditService edits,
+    IPresetRepository presets,
+    IEditRenderService renderer,
+    IFaceLookup faces,
+    ILogger<EditController> logger) : ObservableObject
 {
     private BatchEditResult? _lastBatch;
     private Dictionary<Guid, PhotoTileViewModel> _tiles = [];
@@ -75,6 +81,44 @@ public sealed partial class EditController(IEditService edits, IPresetRepository
         return result;
     }
 
+    /// <summary>
+    /// Runs the chosen Auto steps on each target and saves the changes as one undoable batch. Photos it changed are
+    /// marked <see cref="PhotoTileViewModel.AutoApplied"/> (for the review filter) until the next Auto batch or undo.
+    /// </summary>
+    public async Task<BatchEditResult> ApplyAutoAsync(IReadOnlyList<PhotoTileViewModel> targets, AutoBatchOptions options, IProgress<BatchProgress>? progress, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(targets);
+        ArgumentNullException.ThrowIfNull(options);
+        var photos = targets.ToDictionary(t => t.Id, t => t.Photo);
+        var result = await edits.ApplyAsync(
+            targets.Select(t => (t.Id, t.Recipe)).ToList(),
+            (id, current, ct) => AutoBatch.ApplyAsync(photos[id], current, options, renderer, faces, ct),
+            progress,
+            cancellationToken).ConfigureAwait(true);
+
+        foreach (var tile in _tiles.Values)
+        {
+            tile.AutoApplied = false;
+        }
+
+        foreach (var (id, _, after) in result.Changes)
+        {
+            if (_tiles.TryGetValue(id, out var tile))
+            {
+                tile.Recipe = after;
+                tile.AutoApplied = true;
+            }
+        }
+
+        _lastBatch = result.Changes.Count > 0 ? result : null;
+        CanUndoBatch = _lastBatch is not null;
+        AutoMarksChanged?.Invoke(this, EventArgs.Empty);
+        return result;
+    }
+
+    /// <summary>Raised after an Auto batch or an undo changes which tiles are marked Auto-applied.</summary>
+    public event EventHandler? AutoMarksChanged;
+
     /// <summary>Restores every recipe the last batch changed. Returns the number restored.</summary>
     public async Task<int> UndoLastBatchAsync()
     {
@@ -89,11 +133,13 @@ public sealed partial class EditController(IEditService edits, IPresetRepository
             if (_tiles.TryGetValue(id, out var tile))
             {
                 tile.Recipe = before;
+                tile.AutoApplied = false;
             }
         }
 
         _lastBatch = null;
         CanUndoBatch = false;
+        AutoMarksChanged?.Invoke(this, EventArgs.Empty);
         return batch.Changes.Count;
     }
 

@@ -13,7 +13,7 @@ public sealed class ViewerViewModelTests : IDisposable
 
     public ViewerViewModelTests()
     {
-        _viewer = new ViewerViewModel(_loader, _edit.Renderer, _edit.Develop, NullLogger<ViewerViewModel>.Instance);
+        _viewer = new ViewerViewModel(_loader, _edit.Renderer, _edit.Develop, _edit.Faces, NullLogger<ViewerViewModel>.Instance);
         _tiles = Enumerable.Range(1, 4)
             .Select(i => new PhotoTileViewModel(TestPhotos.Create($"IMG_{i}.jpg"), _thumbnails))
             .ToList();

@@ -30,6 +30,8 @@ public enum CullingAction
     ToggleDevelop,
     ToggleCrop,
     BeforeAfter,
+    NextFace,
+    PreviousFace,
 }
 
 public sealed record ShortcutHelpItem(string Keys, string Description);
@@ -65,6 +67,7 @@ public static class CullingShortcuts
             {
                 Key.D0 or Key.NumPad0 => CullingAction.ClearLabel,
                 Key.OemQuestion => CullingAction.ToggleHelp, // "?" on US-style layouts
+                Key.F => CullingAction.PreviousFace,
                 _ => null,
             };
         }
@@ -94,6 +97,7 @@ public static class CullingShortcuts
             Key.G => CullingAction.SelectGroup,
             Key.I => CullingAction.ToggleDetails,
             Key.D => CullingAction.ToggleDevelop,
+            Key.F => CullingAction.NextFace,
             Key.R => CullingAction.ToggleCrop,
             Key.OemBackslash or Key.Oem5 => CullingAction.BeforeAfter,
             Key.F5 => CullingAction.Refresh,
@@ -160,7 +164,8 @@ public static class CullingShortcuts
         [
             new("D", "Open or close Develop for the current photo (grid: opens the viewer)"),
             new("R", "Crop and straighten (in Develop)"),
-            new("\\", "Before / after (in Develop)"),
+            new("\\", "Hold to see the original (in Develop)"),
+            new("Auto: Light, Level, Crop", "In Develop: shows options on the photo; ← → or 1–3 preview, Enter applies, Esc dismisses"),
             new("Ctrl+Z / Ctrl+Y", "Undo / redo edits while Develop is open"),
             new("Double-click a slider", "Reset that setting"),
         ]),
@@ -169,6 +174,7 @@ public static class CullingShortcuts
             new("Z / double-click", "Fit ↔ 100%"),
             new("+ / −, mouse wheel", "Zoom"),
             new("Drag", "Pan"),
+            new("F / Shift+F", "Zoom to the next / previous face (needs face analysis)"),
         ]),
         new("Help",
         [

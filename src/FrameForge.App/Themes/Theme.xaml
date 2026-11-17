@@ -151,6 +151,69 @@
         </Setter>
     </Style>
 
+    <!-- Collapsible panel sections (Develop): a full-width header row with a chevron; content below. -->
+    <Style x:Key="PanelSection" TargetType="Expander">
+        <Setter Property="Foreground" Value="{StaticResource Brush.Text.Primary}" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Margin" Value="0,0,0,2" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Expander">
+                    <DockPanel>
+                        <ToggleButton DockPanel.Dock="Top" IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                      FocusVisualStyle="{StaticResource FocusVisual}" Cursor="Hand"
+                                      AutomationProperties.Name="{Binding Header, RelativeSource={RelativeSource TemplatedParent}}">
+                            <ToggleButton.Template>
+                                <ControlTemplate TargetType="ToggleButton">
+                                    <Border x:Name="Row" Background="Transparent" Padding="0,10,0,8" BorderBrush="{StaticResource Brush.Border}" BorderThickness="0,1,0,0">
+                                        <DockPanel>
+                                            <TextBlock x:Name="Chevron" DockPanel.Dock="Left" Width="16" Text="▸" FontSize="11"
+                                                       VerticalAlignment="Center" Foreground="{StaticResource Brush.Text.Secondary}" />
+                                            <ContentPresenter VerticalAlignment="Center" />
+                                        </DockPanel>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsChecked" Value="True">
+                                            <Setter TargetName="Chevron" Property="Text" Value="▾" />
+                                        </Trigger>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="Chevron" Property="Foreground" Value="{StaticResource Brush.Text.Primary}" />
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </ToggleButton.Template>
+                            <TextBlock Text="{Binding Header, RelativeSource={RelativeSource AncestorType=Expander}}"
+                                       FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource Brush.Text.Primary}" />
+                        </ToggleButton>
+                        <ContentPresenter x:Name="Body" Margin="16,2,0,12" Visibility="Collapsed" />
+                    </DockPanel>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsExpanded" Value="True">
+                            <Setter TargetName="Body" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Compact icon buttons (Develop toolbar): same vocabulary as Button, square, tooltip names the action. -->
+    <Style x:Key="IconButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+        <Setter Property="MinWidth" Value="0" />
+        <Setter Property="Width" Value="36" />
+        <Setter Property="Height" Value="32" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="FontSize" Value="15" />
+    </Style>
+    <Style x:Key="IconToggle" TargetType="ToggleButton" BasedOn="{StaticResource {x:Type ToggleButton}}">
+        <Setter Property="MinWidth" Value="0" />
+        <Setter Property="Width" Value="36" />
+        <Setter Property="Height" Value="32" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="FontSize" Value="15" />
+    </Style>
+
     <!-- Plain lists (preset lists): dark surface; the grid uses its own control. -->
     <Style TargetType="ListBox">
         <Setter Property="Background" Value="{StaticResource Brush.Surface.Base}" />

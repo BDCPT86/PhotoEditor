@@ -67,7 +67,7 @@ Each phase must build, test, and be documented before the next phase starts.
 - Installer, crash reporting opt-in, performance profiling
 - Commercial licensing and model licence review
 
-## Phase 8 — AI-assisted editing (draft brief: `docs/milestones/milestone-08-ai-editing.md`)
+## Phase 8 — AI-assisted editing (`docs/milestones/milestone-08-ai-editing.md`; phase A done, phase B draft)
 - Deterministic Auto settings first; a model only if it measurably does better
 - Subject, sky and background masks for local adjustments (recipe schema v2)
 - Auto-straighten, auto-crop to subject (rule of thirds, chosen aspect ratio), batch reframe, zoom to faces

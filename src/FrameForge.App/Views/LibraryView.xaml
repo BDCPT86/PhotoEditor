@@ -111,6 +111,7 @@
                     <RadioButton Style="{StaticResource Chip}" GroupName="Analysis" Content="= Duplicates" AutomationProperties.Name="Exact duplicates" IsChecked="{Binding Analysis, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:AnalysisFilterChoice.ExactDuplicate}}" />
                     <RadioButton Style="{StaticResource Chip}" GroupName="Analysis" Content="AI pick" AutomationProperties.Name="AI suggested picks" ToolTip="AI suggestions are advisory and not yet evaluated" IsChecked="{Binding Analysis, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:AnalysisFilterChoice.AiPick}}" />
                     <RadioButton Style="{StaticResource Chip}" GroupName="Analysis" Content="AI faces soft" AutomationProperties.Name="AI faces soft" ToolTip="AI suggestions are advisory and not yet evaluated" IsChecked="{Binding Analysis, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:AnalysisFilterChoice.AiFacesSoft}}" />
+                    <RadioButton Style="{StaticResource Chip}" GroupName="Analysis" Content="Auto-applied" AutomationProperties.Name="Changed by the last Auto run" ToolTip="Photos the last Auto run changed (cleared on restart)" IsChecked="{Binding Analysis, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:AnalysisFilterChoice.AutoApplied}}" />
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                     <TextBlock Text="SORT" Style="{StaticResource Text.ChipGroupLabel}" />

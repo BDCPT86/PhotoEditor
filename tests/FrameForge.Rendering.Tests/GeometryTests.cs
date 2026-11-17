@@ -92,6 +92,23 @@ public sealed class GeometryTests
         Assert.True(x < 150, $"top-centre comes from x={x:0.0}");
     }
 
+    [Theory]
+    [InlineData(0, 0)]
+    [InlineData(1, 7.5)]
+    [InlineData(2, -12)]
+    [InlineData(3, 30)]
+    public void ToOutput_InvertsToSource(int turns, double straighten)
+    {
+        var geometry = new EditGeometry(300, 200, EditRecipe.Neutral with { QuarterTurns = turns, Straighten = straighten, Crop = new CropRect(0.1, 0.2, 0.6, 0.5) });
+        foreach (var (u, v) in new[] { (0.0, 0.0), (0.3, 0.7), (1.0, 1.0), (0.5, 0.5) })
+        {
+            var (x, y) = geometry.ToSource(u, v);
+            var (u2, v2) = geometry.ToOutput(x, y);
+            Assert.Equal(u, u2, 9);
+            Assert.Equal(v, v2, 9);
+        }
+    }
+
     [Fact]
     public void OutputSize_LimitsLongSide_NeverUpscales()
     {

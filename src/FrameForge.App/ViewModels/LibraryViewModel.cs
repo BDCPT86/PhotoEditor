@@ -79,6 +79,13 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
 
         Analysis.RunFinished += (_, result) => SetStatus(result.Message, result.IsWarning);
         Analysis.Controller.InsightsChanged += (_, _) => OnInsightsChanged();
+        Edits.AutoMarksChanged += (_, _) =>
+        {
+            if (Filter.Analysis == AnalysisFilterChoice.AutoApplied && !IsViewerOpen && !IsCompareOpen)
+            {
+                RebuildView();
+            }
+        };
         Viewer.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(ViewerViewModel.Current))
@@ -299,6 +306,11 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
                 Viewer.Develop.ToggleBeforeAfterCommand.Execute(null);
                 return true;
             case CullingAction.ToggleCrop or CullingAction.BeforeAfter:
+                return false;
+            case CullingAction.NextFace or CullingAction.PreviousFace when IsViewerOpen && !Viewer.Develop.IsOpen:
+                Viewer.StepFace(action == CullingAction.NextFace ? 1 : -1);
+                return true;
+            case CullingAction.NextFace or CullingAction.PreviousFace:
                 return false;
             case CullingAction.Compare:
                 OpenCompare();
