@@ -7,7 +7,8 @@ namespace FrameForge.Application.Editing.Auto;
 
 /// <summary>
 /// Auto crop: frames the photo's main faces at a chosen aspect ratio. Explainable rules, no model beyond the stored
-/// face boxes. Options: Tight (upper body), Medium (whole figure), Wide (figure in its setting).
+/// face boxes. Options: Tight (whole figure), Medium (figure with room around it), Wide (figure in its setting).
+/// A standing body is about 7–8 face heights, so even Tight (12) usually shows the whole figure.
 /// Rules:
 /// <list type="bullet">
 /// <item>Only main faces count (large enough to judge, at least half the largest), so spectators are ignored.</item>
@@ -23,7 +24,7 @@ public static class AutoCrop
     public const int DefaultMinLongSide = 2000;
 
     /// <summary>Shown when every option would keep nearly the whole frame.</summary>
-    public const string AlreadyFramed = "The photo is already framed loosely around the subject, so no crop is suggested.";
+    public const string AlreadyFramed = "The uncropped photo is already framed loosely around the subject, so no crop is suggested.";
 
     /// <summary>
     /// Crop height in face heights (added to the faces' own extent) for Tight, Medium and Wide. Tuned on the user's own
@@ -31,8 +32,8 @@ public static class AutoCrop
     /// </summary>
     private static readonly (string Name, double FaceHeights, string Framing)[] Variants =
     [
-        ("Tight", 12, "upper body"),
-        ("Medium", 20, "whole figure"),
+        ("Tight", 12, "whole figure"),
+        ("Medium", 20, "figure with room around it"),
         ("Wide", 30, "figure in its setting"),
     ];
 

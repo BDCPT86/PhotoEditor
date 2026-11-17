@@ -64,3 +64,16 @@ noisy.
   - through UI Automation: Keep + Clipping gave "1 of 1,010 shown", Clear filters restored all 1,010, and the button
     hid again
   - **not checked by eye**: the screen locked during the check, so the screenshots only captured the lock screen
+
+## App check after the retune (2026-11-17)
+Isolated test data, the same 1,010 photos.
+
+| Checked | Observation | Change made |
+|---|---|---|
+| Filter bar, by eye | Five groups on two rows with aligned captions; the chosen option is clearly raised. Keep + Clipping gave blue captions and outlines, **Clear filters** appeared, and the count read "1 of 1,010 shown". With the Presets panel open the groups wrap to three rows and the toolbar to two. | None. |
+| Auto light (IMG_0604, bright, 0.7 % clipped) | Natural: exposure left as shot, highlights −5, "white balance left as shot (no strong cast)". | None. |
+| Auto light, Brighter | On the same bright photo Brighter still adds +0.40 EV, because the highlight headroom check only runs below 0.5 % clipped. | Not changed (the user chose to leave Auto light as it is); noted. |
+| Auto crop, labels | At 4:5 on a distant player, "Tight" was labelled "upper body" but showed the whole figure. At 12 face heights tall with the eyes at 28 %, a 7–8 face-height body fits. | Labels are now Tight = whole figure, Medium = figure with room around it, Wide = figure in its setting. |
+| Auto crop, already framed | On IMG_0604 (close player, already cropped tight by an earlier test) the tray said the photo was "already framed loosely", which contradicted the tight crop on screen. | The message now says "The uncropped photo is already framed loosely…". |
+| Auto crop, own ratio | A distant player at 3:2 got one gentle option (Tight, 3,839 × 2,559 px); Medium and Wide would have kept nearly the whole frame and were dropped. | None. |
+| Batch Auto, crop only (Medium, original ratio, 10 photos) | "Auto changed 9 of 10"; IMG_0604 listed as "not cropped (already framed loosely)". The thumbnails showed gentle trims. **Undo last apply** restored all 9. | None. |

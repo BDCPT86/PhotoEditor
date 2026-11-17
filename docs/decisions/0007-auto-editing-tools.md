@@ -48,7 +48,8 @@ of clipped pixels, the dark share, and the colour of near-neutral pixels.
 Uses the stored M05 face boxes through `IFaceLookup`, and only the main faces (the M05 rule), so spectators are
 ignored.
 - **Options:** Tight, Medium and Wide, at the ratio chosen under Crop, or the photo's own ratio. They are 12, 20 and
-  30 face heights tall (upper body, whole figure, figure in its setting).
+  30 face heights tall (whole figure, figure with room around it, figure in its setting). A standing body is about
+  7–8 face heights, so even Tight usually shows the whole figure.
 - **Framing:** the eye line sits at 28 % of the crop height from the top (a little above the upper third). A single
   subject goes on the nearer vertical third; a group is centred.
 - **Limits:**
