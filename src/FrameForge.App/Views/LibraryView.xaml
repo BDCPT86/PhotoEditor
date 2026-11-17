@@ -23,7 +23,13 @@
         <KeyBinding Modifiers="Control" Key="I" Command="{Binding ImportCommand}" />
     </UserControl.InputBindings>
 
+    <!-- Side panels sit in their own column, so they push the grid and viewer aside instead of covering filters. -->
     <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+
         <!-- ============================== Grid mode ============================== -->
         <Grid x:Name="GridMode">
             <Grid.RowDefinitions>
@@ -33,93 +39,107 @@
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <!-- Toolbar -->
-            <DockPanel Grid.Row="0" Margin="0,0,0,10" LastChildFill="False">
-                <Button DockPanel.Dock="Left" Content="_Import folder…" Command="{Binding ImportCommand}"
-                        ToolTip="Import a folder of JPEG photos (Ctrl+I)" />
-                <CheckBox DockPanel.Dock="Left" Margin="16,0,0,0" Content="Include _subfolders"
-                          IsChecked="{Binding IncludeSubfolders}" IsEnabled="{Binding IsImporting, Converter={StaticResource InverseBool}}" />
+            <!-- Toolbar: import/analyse on the left, actions on the right; the actions drop to a second row instead of clipping -->
+            <controls:SplitToolbarPanel Grid.Row="0" Margin="0,0,0,10">
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="_Import folder…" Command="{Binding ImportCommand}"
+                            ToolTip="Import a folder of JPEG photos (Ctrl+I)" />
+                    <CheckBox Margin="16,0,0,0" Content="Include _subfolders"
+                              IsChecked="{Binding IncludeSubfolders}" IsEnabled="{Binding IsImporting, Converter={StaticResource InverseBool}}" />
 
-                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Margin="24,0,0,0"
-                            Visibility="{Binding IsImporting, Converter={StaticResource BoolToVisibility}}">
-                    <ProgressBar Width="180" VerticalAlignment="Center" Minimum="0" Maximum="1"
-                                 Value="{Binding ImportProgressValue, Mode=OneWay}"
-                                 IsIndeterminate="{Binding IsImportProgressIndeterminate}"
-                                 AutomationProperties.Name="Import progress" />
-                    <TextBlock Margin="12,0" VerticalAlignment="Center" Text="{Binding ImportProgressText}"
-                               Foreground="{StaticResource Brush.Text.Secondary}"
-                               AutomationProperties.AutomationId="ImportStatus" />
-                    <Button Content="Cancel" Command="{Binding ImportCancelCommand}" ToolTip="Stop the import; photos read so far are kept" />
+                    <StackPanel Orientation="Horizontal" Margin="24,0,0,0"
+                                Visibility="{Binding IsImporting, Converter={StaticResource BoolToVisibility}}">
+                        <ProgressBar Width="180" VerticalAlignment="Center" Minimum="0" Maximum="1"
+                                     Value="{Binding ImportProgressValue, Mode=OneWay}"
+                                     IsIndeterminate="{Binding IsImportProgressIndeterminate}"
+                                     AutomationProperties.Name="Import progress" />
+                        <TextBlock Margin="12,0" VerticalAlignment="Center" Text="{Binding ImportProgressText}"
+                                   Foreground="{StaticResource Brush.Text.Secondary}"
+                                   AutomationProperties.AutomationId="ImportStatus" />
+                        <Button Content="Cancel" Command="{Binding ImportCancelCommand}" ToolTip="Stop the import; photos read so far are kept" />
+                    </StackPanel>
+
+                    <Button Margin="16,0,0,0" Content="_Analyze" Command="{Binding Analysis.AnalyzeCommand}"
+                            ToolTip="Measure sharpness and exposure, and find duplicates (heuristics, not AI). Already-analysed photos are skipped." />
+                    <StackPanel Orientation="Horizontal" Margin="12,0,0,0" DataContext="{Binding Analysis}"
+                                Visibility="{Binding IsAnalyzing, Converter={StaticResource BoolToVisibility}}">
+                        <ProgressBar Width="140" VerticalAlignment="Center" Minimum="0" Maximum="1"
+                                     Value="{Binding ProgressValue, Mode=OneWay}" AutomationProperties.Name="Analysis progress" />
+                        <TextBlock Margin="12,0" VerticalAlignment="Center" Text="{Binding ProgressText}"
+                                   Foreground="{StaticResource Brush.Text.Secondary}" AutomationProperties.AutomationId="AnalysisStatus" />
+                        <Button Content="Cancel" Command="{Binding AnalyzeCancelCommand}" ToolTip="Stop; results so far are kept" />
+                    </StackPanel>
+
                 </StackPanel>
-
-                <Button DockPanel.Dock="Left" Margin="16,0,0,0" Content="_Analyze" Command="{Binding Analysis.AnalyzeCommand}"
-                        ToolTip="Measure sharpness and exposure, and find duplicates (heuristics, not AI). Already-analysed photos are skipped." />
-                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Margin="12,0,0,0" DataContext="{Binding Analysis}"
-                            Visibility="{Binding IsAnalyzing, Converter={StaticResource BoolToVisibility}}">
-                    <ProgressBar Width="140" VerticalAlignment="Center" Minimum="0" Maximum="1"
-                                 Value="{Binding ProgressValue, Mode=OneWay}" AutomationProperties.Name="Analysis progress" />
-                    <TextBlock Margin="12,0" VerticalAlignment="Center" Text="{Binding ProgressText}"
-                               Foreground="{StaticResource Brush.Text.Secondary}" AutomationProperties.AutomationId="AnalysisStatus" />
-                    <Button Content="Cancel" Command="{Binding AnalyzeCancelCommand}" ToolTip="Stop; results so far are kept" />
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="_Compare (C)" Command="{Binding OpenCompareCommand}"
+                            ToolTip="Compare 2–4 selected photos side by side" />
+                    <Button Content="_Presets…" Margin="8,0,0,0" Command="{Binding OpenPresetsCommand}"
+                            ToolTip="Apply a saved edit preset to the selected photos" />
+                    <Button Content="_Export…" Margin="8,0,0,0" Command="{Binding OpenExportCommand}"
+                            ToolTip="Copy kept photos, export edited JPEGs, or save a selection manifest" />
+                    <Button Content="Shortcuts (F1)" Margin="8,0,0,0"
+                            Command="{Binding RunShortcutCommand}" CommandParameter="{x:Static shortcuts:CullingAction.ToggleHelp}"
+                            ToolTip="Show keyboard shortcuts" />
                 </StackPanel>
-
-                <Button DockPanel.Dock="Right" Content="Shortcuts (F1)" Margin="8,0,0,0"
-                        Command="{Binding RunShortcutCommand}" CommandParameter="{x:Static shortcuts:CullingAction.ToggleHelp}"
-                        ToolTip="Show keyboard shortcuts" />
-                <Button DockPanel.Dock="Right" Content="_Export…" Margin="8,0,0,0" Command="{Binding OpenExportCommand}"
-                        ToolTip="Copy kept photos, export edited JPEGs, or save a selection manifest" />
-                <Button DockPanel.Dock="Right" Content="_Presets…" Margin="8,0,0,0" Command="{Binding OpenPresetsCommand}"
-                        ToolTip="Apply a saved edit preset to the selected photos" />
-                <Button DockPanel.Dock="Right" Content="_Compare (C)" Margin="8,0,0,0" Command="{Binding OpenCompareCommand}"
-                        ToolTip="Compare 2–4 selected photos side by side" />
-            </DockPanel>
+            </controls:SplitToolbarPanel>
 
             <!-- Filter and sort -->
             <WrapPanel Grid.Row="1" Margin="0,0,0,10" DataContext="{Binding Filter}" AutomationProperties.Name="Filter and sort">
-                <StackPanel Orientation="Horizontal" Margin="0,0,20,4">
-                    <TextBlock Text="SHOW" Style="{StaticResource Text.ChipGroupLabel}" />
-                    <RadioButton Style="{StaticResource Chip}" GroupName="State" Content="All" IsChecked="{Binding State, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:StateFilterChoice.All}}" />
-                    <RadioButton Style="{StaticResource Chip}" GroupName="State" Content="Unset" IsChecked="{Binding State, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:StateFilterChoice.Unset}}" />
-                    <RadioButton Style="{StaticResource Chip}" GroupName="State" Content="✓ Keep" AutomationProperties.Name="Keep" IsChecked="{Binding State, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:StateFilterChoice.Keep}}" />
-                    <RadioButton Style="{StaticResource Chip}" GroupName="State" Content="? Review" AutomationProperties.Name="Review" IsChecked="{Binding State, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:StateFilterChoice.Review}}" />
-                    <RadioButton Style="{StaticResource Chip}" GroupName="State" Content="✕ Reject" AutomationProperties.Name="Reject" IsChecked="{Binding State, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:StateFilterChoice.Reject}}" />
-                    <RadioButton Style="{StaticResource Chip}" GroupName="State" Content="⚠ Problems" AutomationProperties.Name="Problems" IsChecked="{Binding State, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:StateFilterChoice.Problems}}" />
-                </StackPanel>
-                <StackPanel Orientation="Horizontal" Margin="0,0,20,4">
-                    <TextBlock Text="RATING" Style="{StaticResource Text.ChipGroupLabel}" />
-                    <RadioButton Style="{StaticResource Chip}" GroupName="Rating" Content="Any" IsChecked="{Binding MinRating, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:RatingFilterChoice.Any}}" />
-                    <RadioButton Style="{StaticResource Chip}" GroupName="Rating" Content="★+" AutomationProperties.Name="1 star or more" IsChecked="{Binding MinRating, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:RatingFilterChoice.One}}" />
-                    <RadioButton Style="{StaticResource Chip}" GroupName="Rating" Content="★★+" AutomationProperties.Name="2 stars or more" IsChecked="{Binding MinRating, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:RatingFilterChoice.Two}}" />
-                    <RadioButton Style="{StaticResource Chip}" GroupName="Rating" Content="★★★+" AutomationProperties.Name="3 stars or more" IsChecked="{Binding MinRating, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:RatingFilterChoice.Three}}" />
-                    <RadioButton Style="{StaticResource Chip}" GroupName="Rating" Content="★★★★+" AutomationProperties.Name="4 stars or more" IsChecked="{Binding MinRating, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:RatingFilterChoice.Four}}" />
-                    <RadioButton Style="{StaticResource Chip}" GroupName="Rating" Content="★★★★★" AutomationProperties.Name="5 stars" IsChecked="{Binding MinRating, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:RatingFilterChoice.Five}}" />
-                </StackPanel>
-                <StackPanel Orientation="Horizontal" Margin="0,0,20,4">
-                    <TextBlock Text="LABEL" Style="{StaticResource Text.ChipGroupLabel}" />
-                    <RadioButton Style="{StaticResource Chip}" GroupName="Label" Content="Any" IsChecked="{Binding Label, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:LabelFilterChoice.Any}}" />
-                    <RadioButton Style="{StaticResource Chip}" GroupName="Label" Content="Red" IsChecked="{Binding Label, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:LabelFilterChoice.Red}}" />
-                    <RadioButton Style="{StaticResource Chip}" GroupName="Label" Content="Yellow" IsChecked="{Binding Label, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:LabelFilterChoice.Yellow}}" />
-                    <RadioButton Style="{StaticResource Chip}" GroupName="Label" Content="Green" IsChecked="{Binding Label, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:LabelFilterChoice.Green}}" />
-                    <RadioButton Style="{StaticResource Chip}" GroupName="Label" Content="Blue" IsChecked="{Binding Label, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:LabelFilterChoice.Blue}}" />
-                </StackPanel>
-                <StackPanel Orientation="Horizontal" Margin="0,0,20,4" ToolTip="Heuristic measurements, not AI. Run Analyze first.">
-                    <TextBlock Text="ANALYSIS" Style="{StaticResource Text.ChipGroupLabel}" />
-                    <RadioButton Style="{StaticResource Chip}" GroupName="Analysis" Content="Any" AutomationProperties.Name="Any analysis" IsChecked="{Binding Analysis, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:AnalysisFilterChoice.Any}}" />
-                    <RadioButton Style="{StaticResource Chip}" GroupName="Analysis" Content="≈ Blurry?" AutomationProperties.Name="Likely blurry" IsChecked="{Binding Analysis, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:AnalysisFilterChoice.LikelyBlurry}}" />
-                    <RadioButton Style="{StaticResource Chip}" GroupName="Analysis" Content="◐ Clipping" AutomationProperties.Name="Clipping" IsChecked="{Binding Analysis, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:AnalysisFilterChoice.Clipping}}" />
-                    <RadioButton Style="{StaticResource Chip}" GroupName="Analysis" Content="▣ Similar groups" AutomationProperties.Name="Similar groups" IsChecked="{Binding Analysis, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:AnalysisFilterChoice.InGroup}}" />
-                    <RadioButton Style="{StaticResource Chip}" GroupName="Analysis" Content="= Duplicates" AutomationProperties.Name="Exact duplicates" IsChecked="{Binding Analysis, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:AnalysisFilterChoice.ExactDuplicate}}" />
-                    <RadioButton Style="{StaticResource Chip}" GroupName="Analysis" Content="AI pick" AutomationProperties.Name="AI suggested picks" ToolTip="AI suggestions are advisory and not yet evaluated" IsChecked="{Binding Analysis, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:AnalysisFilterChoice.AiPick}}" />
-                    <RadioButton Style="{StaticResource Chip}" GroupName="Analysis" Content="AI faces soft" AutomationProperties.Name="AI faces soft" ToolTip="AI suggestions are advisory and not yet evaluated" IsChecked="{Binding Analysis, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:AnalysisFilterChoice.AiFacesSoft}}" />
-                    <RadioButton Style="{StaticResource Chip}" GroupName="Analysis" Content="Auto-applied" AutomationProperties.Name="Changed by the last Auto run" ToolTip="Photos the last Auto run changed (cleared on restart)" IsChecked="{Binding Analysis, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:AnalysisFilterChoice.AutoApplied}}" />
-                </StackPanel>
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                    <TextBlock Text="SORT" Style="{StaticResource Text.ChipGroupLabel}" />
-                    <RadioButton Style="{StaticResource Chip}" GroupName="Sort" Content="Folder" IsChecked="{Binding Sort, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static library:LibrarySort.FolderAndName}}" />
-                    <RadioButton Style="{StaticResource Chip}" GroupName="Sort" Content="Captured" IsChecked="{Binding Sort, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static library:LibrarySort.CaptureTime}}" />
-                    <RadioButton Style="{StaticResource Chip}" GroupName="Sort" Content="Name" IsChecked="{Binding Sort, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static library:LibrarySort.FileName}}" />
-                    <RadioButton Style="{StaticResource Chip}" GroupName="Sort" Content="Rating" IsChecked="{Binding Sort, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static library:LibrarySort.Rating}}" />
-                </StackPanel>
+                <DockPanel Margin="0,0,20,0">
+                    <TextBlock Text="SHOW" Style="{StaticResource Text.ChipGroupLabel}" VerticalAlignment="Top" Margin="0,8,8,0" />
+                    <WrapPanel>
+                        <RadioButton Style="{StaticResource Chip}" Margin="0,0,4,4" GroupName="State" Content="All" IsChecked="{Binding State, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:StateFilterChoice.All}}" />
+                        <RadioButton Style="{StaticResource Chip}" Margin="0,0,4,4" GroupName="State" Content="Unset" IsChecked="{Binding State, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:StateFilterChoice.Unset}}" />
+                        <RadioButton Style="{StaticResource Chip}" Margin="0,0,4,4" GroupName="State" Content="✓ Keep" AutomationProperties.Name="Keep" IsChecked="{Binding State, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:StateFilterChoice.Keep}}" />
+                        <RadioButton Style="{StaticResource Chip}" Margin="0,0,4,4" GroupName="State" Content="? Review" AutomationProperties.Name="Review" IsChecked="{Binding State, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:StateFilterChoice.Review}}" />
+                        <RadioButton Style="{StaticResource Chip}" Margin="0,0,4,4" GroupName="State" Content="✕ Reject" AutomationProperties.Name="Reject" IsChecked="{Binding State, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:StateFilterChoice.Reject}}" />
+                        <RadioButton Style="{StaticResource Chip}" Margin="0,0,4,4" GroupName="State" Content="⚠ Problems" AutomationProperties.Name="Problems" IsChecked="{Binding State, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:StateFilterChoice.Problems}}" />
+                    </WrapPanel>
+                </DockPanel>
+                <DockPanel Margin="0,0,20,0">
+                    <TextBlock Text="RATING" Style="{StaticResource Text.ChipGroupLabel}" VerticalAlignment="Top" Margin="0,8,8,0" />
+                    <WrapPanel>
+                        <RadioButton Style="{StaticResource Chip}" Margin="0,0,4,4" GroupName="Rating" Content="Any" IsChecked="{Binding MinRating, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:RatingFilterChoice.Any}}" />
+                        <RadioButton Style="{StaticResource Chip}" Margin="0,0,4,4" GroupName="Rating" Content="★+" AutomationProperties.Name="1 star or more" IsChecked="{Binding MinRating, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:RatingFilterChoice.One}}" />
+                        <RadioButton Style="{StaticResource Chip}" Margin="0,0,4,4" GroupName="Rating" Content="★★+" AutomationProperties.Name="2 stars or more" IsChecked="{Binding MinRating, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:RatingFilterChoice.Two}}" />
+                        <RadioButton Style="{StaticResource Chip}" Margin="0,0,4,4" GroupName="Rating" Content="★★★+" AutomationProperties.Name="3 stars or more" IsChecked="{Binding MinRating, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:RatingFilterChoice.Three}}" />
+                        <RadioButton Style="{StaticResource Chip}" Margin="0,0,4,4" GroupName="Rating" Content="★★★★+" AutomationProperties.Name="4 stars or more" IsChecked="{Binding MinRating, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:RatingFilterChoice.Four}}" />
+                        <RadioButton Style="{StaticResource Chip}" Margin="0,0,4,4" GroupName="Rating" Content="★★★★★" AutomationProperties.Name="5 stars" IsChecked="{Binding MinRating, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:RatingFilterChoice.Five}}" />
+                    </WrapPanel>
+                </DockPanel>
+                <DockPanel Margin="0,0,20,0">
+                    <TextBlock Text="LABEL" Style="{StaticResource Text.ChipGroupLabel}" VerticalAlignment="Top" Margin="0,8,8,0" />
+                    <WrapPanel>
+                        <RadioButton Style="{StaticResource Chip}" Margin="0,0,4,4" GroupName="Label" Content="Any" IsChecked="{Binding Label, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:LabelFilterChoice.Any}}" />
+                        <RadioButton Style="{StaticResource Chip}" Margin="0,0,4,4" GroupName="Label" Content="Red" IsChecked="{Binding Label, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:LabelFilterChoice.Red}}" />
+                        <RadioButton Style="{StaticResource Chip}" Margin="0,0,4,4" GroupName="Label" Content="Yellow" IsChecked="{Binding Label, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:LabelFilterChoice.Yellow}}" />
+                        <RadioButton Style="{StaticResource Chip}" Margin="0,0,4,4" GroupName="Label" Content="Green" IsChecked="{Binding Label, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:LabelFilterChoice.Green}}" />
+                        <RadioButton Style="{StaticResource Chip}" Margin="0,0,4,4" GroupName="Label" Content="Blue" IsChecked="{Binding Label, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:LabelFilterChoice.Blue}}" />
+                    </WrapPanel>
+                </DockPanel>
+                <DockPanel Margin="0,0,20,0" ToolTip="Heuristic measurements, not AI. Run Analyze first.">
+                    <TextBlock Text="ANALYSIS" Style="{StaticResource Text.ChipGroupLabel}" VerticalAlignment="Top" Margin="0,8,8,0" />
+                    <WrapPanel>
+                        <RadioButton Style="{StaticResource Chip}" Margin="0,0,4,4" GroupName="Analysis" Content="Any" AutomationProperties.Name="Any analysis" IsChecked="{Binding Analysis, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:AnalysisFilterChoice.Any}}" />
+                        <RadioButton Style="{StaticResource Chip}" Margin="0,0,4,4" GroupName="Analysis" Content="≈ Blurry?" AutomationProperties.Name="Likely blurry" IsChecked="{Binding Analysis, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:AnalysisFilterChoice.LikelyBlurry}}" />
+                        <RadioButton Style="{StaticResource Chip}" Margin="0,0,4,4" GroupName="Analysis" Content="◐ Clipping" AutomationProperties.Name="Clipping" IsChecked="{Binding Analysis, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:AnalysisFilterChoice.Clipping}}" />
+                        <RadioButton Style="{StaticResource Chip}" Margin="0,0,4,4" GroupName="Analysis" Content="▣ Similar groups" AutomationProperties.Name="Similar groups" IsChecked="{Binding Analysis, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:AnalysisFilterChoice.InGroup}}" />
+                        <RadioButton Style="{StaticResource Chip}" Margin="0,0,4,4" GroupName="Analysis" Content="= Duplicates" AutomationProperties.Name="Exact duplicates" IsChecked="{Binding Analysis, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:AnalysisFilterChoice.ExactDuplicate}}" />
+                        <RadioButton Style="{StaticResource Chip}" Margin="0,0,4,4" GroupName="Analysis" Content="AI pick" AutomationProperties.Name="AI suggested picks" ToolTip="AI suggestions are advisory and not yet evaluated" IsChecked="{Binding Analysis, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:AnalysisFilterChoice.AiPick}}" />
+                        <RadioButton Style="{StaticResource Chip}" Margin="0,0,4,4" GroupName="Analysis" Content="AI faces soft" AutomationProperties.Name="AI faces soft" ToolTip="AI suggestions are advisory and not yet evaluated" IsChecked="{Binding Analysis, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:AnalysisFilterChoice.AiFacesSoft}}" />
+                        <RadioButton Style="{StaticResource Chip}" Margin="0,0,4,4" GroupName="Analysis" Content="Auto-applied" AutomationProperties.Name="Changed by the last Auto run" ToolTip="Photos the last Auto run changed (cleared on restart)" IsChecked="{Binding Analysis, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:AnalysisFilterChoice.AutoApplied}}" />
+                    </WrapPanel>
+                </DockPanel>
+                <DockPanel>
+                    <TextBlock Text="SORT" Style="{StaticResource Text.ChipGroupLabel}" VerticalAlignment="Top" Margin="0,8,8,0" />
+                    <WrapPanel>
+                        <RadioButton Style="{StaticResource Chip}" Margin="0,0,4,4" GroupName="Sort" Content="Folder" IsChecked="{Binding Sort, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static library:LibrarySort.FolderAndName}}" />
+                        <RadioButton Style="{StaticResource Chip}" Margin="0,0,4,4" GroupName="Sort" Content="Captured" IsChecked="{Binding Sort, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static library:LibrarySort.CaptureTime}}" />
+                        <RadioButton Style="{StaticResource Chip}" Margin="0,0,4,4" GroupName="Sort" Content="Name" IsChecked="{Binding Sort, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static library:LibrarySort.FileName}}" />
+                        <RadioButton Style="{StaticResource Chip}" Margin="0,0,4,4" GroupName="Sort" Content="Rating" IsChecked="{Binding Sort, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static library:LibrarySort.Rating}}" />
+                    </WrapPanel>
+                </DockPanel>
             </WrapPanel>
 
             <!-- Count (right) and status: glyph + text, so warnings are not conveyed by colour alone. -->
@@ -289,13 +309,13 @@
         </Grid>
 
         <!-- ============================== Side panels (non-modal) -->
-        <views:ExportPanel DataContext="{Binding Export}" HorizontalAlignment="Right"
+        <views:ExportPanel Grid.Column="1" Margin="12,0,0,0" DataContext="{Binding Export}" HorizontalAlignment="Right"
                            Visibility="{Binding IsOpen, Converter={StaticResource BoolToVisibility}}" />
-        <views:PresetPanel DataContext="{Binding Presets}" HorizontalAlignment="Right"
+        <views:PresetPanel Grid.Column="1" Margin="12,0,0,0" DataContext="{Binding Presets}" HorizontalAlignment="Right"
                            Visibility="{Binding IsOpen, Converter={StaticResource BoolToVisibility}}" />
 
         <!-- Analysis details: the numbers, thresholds and method behind every badge. -->
-        <Border Style="{StaticResource SidePanel}" DataContext="{Binding Analysis}"
+        <Border Grid.Column="1" Margin="12,0,0,0" Style="{StaticResource SidePanel}" DataContext="{Binding Analysis}"
                 Visibility="{Binding IsDetailsOpen, Converter={StaticResource BoolToVisibility}}">
             <DockPanel>
                 <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
@@ -335,7 +355,7 @@
             </DockPanel>
         </Border>
 
-        <Border Style="{StaticResource SidePanel}" AutomationProperties.Name="Keyboard shortcuts"
+        <Border Grid.Column="1" Margin="12,0,0,0" Style="{StaticResource SidePanel}" AutomationProperties.Name="Keyboard shortcuts"
                 Visibility="{Binding IsHelpOpen, Converter={StaticResource BoolToVisibility}}">
             <DockPanel>
                 <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">

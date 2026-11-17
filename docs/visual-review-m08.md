@@ -24,5 +24,11 @@ These are observations on a handful of photos, not a measured evaluation.
 ## Not yet reviewed
 - Auto light across a wide range of photos (night, indoor, backlit). No blind A/B has been done yet.
 - Auto crop agreement with the user's own crops on a labelled sample.
-- While the Presets panel is open it covers the right end of the filter rows, including the Auto-applied chip, so you
-  close the panel to review. A partly handled run is shown in the warning colour, even though most photos succeeded.
+
+## Polish pass (after the batch check)
+| Finding | Change made |
+|---|---|
+| Side panels (Presets, Export, analysis details, shortcuts) covered the right end of the filter rows, including the Auto-applied chip, and in the viewer they covered the photo. | The panels now sit in their own column, so the grid or viewer narrows beside them. Checked by eye in the grid; the viewer uses the same layout but hasn't been checked. |
+| With the grid narrowed, the toolbar clipped: **Compare (C)** disappeared and "Presets…" was cut. | New `SplitToolbarPanel`: one row when it fits, otherwise the action buttons drop to a second, right-aligned row. |
+| The ANALYSIS chips were wider than the narrowed grid and clipped. | Each filter group's chips wrap, aligned under the first chip rather than under the label. |
+| A run where some photos had a step skipped showed as a red warning. | Skipped steps are information, not failures: the result is a normal ✓ ("2 had a step skipped"), and only a cancel is a warning. |

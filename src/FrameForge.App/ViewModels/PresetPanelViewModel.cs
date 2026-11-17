@@ -182,9 +182,10 @@ public sealed partial class PresetPanelViewModel(EditController edits, ILogger<P
             var head = result.WasCancelled
                 ? string.Create(culture, $"Cancelled after changing {result.Changes.Count:N0} photo(s); Undo restores them.")
                 : string.Create(culture, $"Auto changed {result.Changes.Count:N0} of {targets.Count:N0} photo(s).");
+            // A skipped step (no faces, no straight line) is information, not a failure: only a cancel is a warning.
             var tail = result.Notes.Count == 0 ? string.Empty
-                : string.Create(culture, $" {result.Notes.Count:N0} could not be fully handled (listed above).");
-            SetResult(head + tail + " Use the “Auto-applied” filter to review them.", warning: result.WasCancelled || result.Notes.Count > 0);
+                : string.Create(culture, $" {result.Notes.Count:N0} had a step skipped (listed above).");
+            SetResult(head + tail + " Use the “Auto-applied” filter to review them.", warning: result.WasCancelled);
         }
         catch (Exception ex) when (ex is IOException or System.Data.Common.DbException or InvalidOperationException or ArgumentException or Application.Photos.PhotoReadException)
         {
