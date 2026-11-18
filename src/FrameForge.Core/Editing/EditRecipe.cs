@@ -23,15 +23,29 @@ public sealed record CropRect(double X, double Y, double Width, double Height)
 /// </summary>
 public sealed record EditRecipe
 {
-    /// <summary>Bump when the meaning of a stored field changes; older recipes are migrated on load.</summary>
-    public const int CurrentSchemaVersion = 1;
+    /// <summary>
+    /// Bump when the meaning of a stored field changes; older recipes are migrated on load.
+    /// <list type="bullet">
+    /// <item>1: global light, colour, crop and straighten (Milestone 06).</item>
+    /// <item>2: adds <see cref="LocalAdjustments"/> (Milestone 08). A recipe without them is still stored as version 1,
+    /// in exactly the version 1 form, so it stays readable by earlier versions of the app.</item>
+    /// </list>
+    /// </summary>
+    public const int CurrentSchemaVersion = 2;
 
     public const double MaxExposure = 5;
     public const double MaxSlider = 100;
     public const double MaxStraighten = 45;
 
+    /// <summary>Most local adjustments one photo can have; each needs a mask computed, so keep it small.</summary>
+    public const int MaxLocalAdjustments = 8;
+
     public static EditRecipe Neutral { get; } = new();
 
+    /// <summary>
+    /// The version the recipe was written as. In memory it is always <see cref="CurrentSchemaVersion"/> (recipes are
+    /// upgraded when read); storage writes <see cref="RequiredSchemaVersion"/>.
+    /// </summary>
     public int SchemaVersion { get; init; } = CurrentSchemaVersion;
 
     /// <summary>Stops (EV), −5 to +5. +1 doubles the light.</summary>
@@ -64,13 +78,23 @@ public sealed record EditRecipe
 
     public CropRect Crop { get; init; } = CropRect.Full;
 
+    /// <summary>Settings applied inside masks (subject, sky, background), in order; empty for most photos.</summary>
+    public ValueList<LocalAdjustment> LocalAdjustments { get; init; } = ValueList.Empty<LocalAdjustment>();
+
     public bool HasGeometry => QuarterTurns != 0 || Straighten != 0 || !Crop.IsFull;
 
     public bool HasTone => Exposure != 0 || Temperature != 0 || Tint != 0 || Contrast != 0 || Highlights != 0 || Shadows != 0;
 
     public bool HasColour => Saturation != 0 || Vibrance != 0;
 
-    public bool IsNeutral => !HasGeometry && !HasTone && !HasColour;
+    /// <summary>True when the recipe has masks, even ones whose sliders are still at 0 (they are kept, ready to adjust).</summary>
+    public bool HasLocalAdjustments => LocalAdjustments is { Count: > 0 };
+
+    /// <summary>A neutral recipe renders the photo unchanged and is not stored.</summary>
+    public bool IsNeutral => !HasGeometry && !HasTone && !HasColour && !HasLocalAdjustments;
+
+    /// <summary>The oldest version that can hold this recipe: 1 unless it has local adjustments.</summary>
+    public int RequiredSchemaVersion => HasLocalAdjustments ? 2 : 1;
 
     /// <summary>All problems with this recipe; empty when it is valid.</summary>
     public IReadOnlyList<string> Validate()
@@ -79,6 +103,38 @@ public sealed record EditRecipe
         if (SchemaVersion < 1 || SchemaVersion > CurrentSchemaVersion)
         {
             errors.Add(Invariant($"Unsupported recipe version {SchemaVersion} (this app reads up to {CurrentSchemaVersion})."));
+        }
+        else if (SchemaVersion < RequiredSchemaVersion)
+        {
+            errors.Add(Invariant($"Local adjustments need recipe version {RequiredSchemaVersion}, but the recipe says version {SchemaVersion}."));
+        }
+
+        if (LocalAdjustments is null)
+        {
+            errors.Add("Local adjustments are missing.");
+        }
+        else
+        {
+            if (LocalAdjustments.Count > MaxLocalAdjustments)
+            {
+                errors.Add(Invariant($"At most {MaxLocalAdjustments} local adjustments, got {LocalAdjustments.Count}."));
+            }
+
+            for (var i = 0; i < LocalAdjustments.Count; i++)
+            {
+                if (LocalAdjustments[i] is not { } adjustment)
+                {
+                    errors.Add(Invariant($"Local adjustment {i + 1} is missing."));
+                    continue;
+                }
+
+                adjustment.Validate(errors, i);
+            }
+
+            if (LocalAdjustments.Where(a => a is not null).GroupBy(a => a.Id).Any(g => g.Count() > 1))
+            {
+                errors.Add("Local adjustment ids must be unique.");
+            }
         }
 
         Range(errors, nameof(Exposure), Exposure, -MaxExposure, MaxExposure);
@@ -122,7 +178,7 @@ public sealed record EditRecipe
         return errors.Count == 0 ? this : throw new ArgumentException("Invalid edit recipe: " + string.Join(" ", errors));
     }
 
-    private static void Range(List<string> errors, string name, double value, double min, double max)
+    internal static void Range(List<string> errors, string name, double value, double min, double max)
     {
         if (!double.IsFinite(value) || value < min || value > max)
         {

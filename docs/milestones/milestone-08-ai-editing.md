@@ -14,8 +14,10 @@
 > revisions, and in the blind grading neither model was good enough (good or usable: MobileSAM 37 %, MODNet 47 %),
 > mostly because faces do not say who the subject is. MODNet is rejected. In round 2, YOLOX-s finds the people
 > and MobileSAM masks them: 27 of 30 masks were usable (90 %), none good, usually because bats, hands or feet were
-> cut off. This combination is accepted (B1 done), with box padding and click-to-select to fix missing parts. Next: B2,
-> recipe v2. See [ADR 0008](../decisions/0008-subject-mask-model.md).
+> cut off. This combination is accepted (B1 done), with box padding and click-to-select to fix missing parts. See
+> [ADR 0008](../decisions/0008-subject-mask-model.md). B2 is done: recipe schema v2 adds local adjustments (mask
+> references plus settings), still writes version 1 when there are none, and presets get a Masks group; see
+> [ADR 0009](../decisions/0009-recipe-schema-v2.md). Next: B3, the mask pipeline.
 
 > Draft brief. Its number follows M07 (RAW and professional workflow), but it depends only on M05 (model handling) and
 > M06 (the edit recipe and renderer), so it can be scheduled before M07 if preferred.

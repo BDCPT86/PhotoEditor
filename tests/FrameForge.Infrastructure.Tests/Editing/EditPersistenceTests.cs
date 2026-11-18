@@ -144,6 +144,57 @@ public sealed class EditPersistenceTests : IDisposable
         Assert.Empty((await presets.GetAllAsync(Ct)).Presets);
     }
 
+    private static readonly EditRecipe WithMask = Sample with
+    {
+        LocalAdjustments = new(
+        [
+            new LocalAdjustment
+            {
+                Id = Guid.NewGuid(),
+                Mask = new MaskReference { Kind = MaskKind.Subject, Source = "test-mask@1", Points = new([new MaskPoint(0.4, 0.6, true)]) },
+                Exposure = 0.4,
+                Highlights = -15,
+            },
+            new LocalAdjustment { Id = Guid.NewGuid(), Mask = new MaskReference { Kind = MaskKind.Sky, Source = "sky@1" }, Temperature = -10 },
+        ]),
+    };
+
+    [Fact]
+    public async Task RecipeWithMasks_RoundTripsExactly_AcrossRestart_AsVersion2()
+    {
+        Guid withMasks, without;
+        await using (var first = await TestServices.BuildMigratedAsync(_paths, Ct))
+        {
+            withMasks = (await AddPhotoAsync(first, "a.jpg")).Id;
+            without = (await AddPhotoAsync(first, "b.jpg")).Id;
+            await first.GetRequiredService<IEditService>().SaveAsync([(withMasks, WithMask), (without, Sample)], Ct);
+        }
+
+        await using var second = await TestServices.BuildMigratedAsync(_paths, Ct);
+        var loaded = await second.GetRequiredService<IEditService>().LoadAsync(Ct);
+        Assert.Equal(WithMask, loaded[withMasks]);
+        Assert.Equal(Sample, loaded[without]);
+
+        // The version column records the stored form: 2 only where masks need it.
+        await using var db = await second.GetRequiredService<IDbContextFactory<FrameForgeDbContext>>().CreateDbContextAsync(Ct);
+        Assert.Equal(2, (await db.PhotoEdits.SingleAsync(e => e.PhotoId == withMasks, Ct)).SchemaVersion);
+        Assert.Equal(1, (await db.PhotoEdits.SingleAsync(e => e.PhotoId == without, Ct)).SchemaVersion);
+    }
+
+    [Fact]
+    public async Task PresetWithMasks_RoundTrips()
+    {
+        var preset = new EditPreset(Guid.NewGuid(), "Lift subject", WithMask, PresetGroups.Exposure | PresetGroups.Masks);
+        await using (var first = await TestServices.BuildMigratedAsync(_paths, Ct))
+        {
+            await first.GetRequiredService<IPresetRepository>().SaveAsync(preset, Ct);
+        }
+
+        await using var second = await TestServices.BuildMigratedAsync(_paths, Ct);
+
+        Assert.Equal(preset, Assert.Single((await second.GetRequiredService<IPresetRepository>().GetAllAsync(Ct)).Presets));
+    }
+
     [Fact]
     public async Task PresetNames_AreUnique_IgnoringCase()
     {

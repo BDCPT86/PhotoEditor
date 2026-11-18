@@ -80,7 +80,7 @@ public sealed class SqliteEditRepository(IDbContextFactory<FrameForgeDbContext> 
                             context.PhotoEdits.Add(row);
                         }
 
-                        row.SchemaVersion = recipe.SchemaVersion;
+                        row.SchemaVersion = recipe.RequiredSchemaVersion;
                         row.RecipeJson = RecipeJson.Serialize(recipe);
                         row.UpdatedUtc = now;
                     }
@@ -159,7 +159,7 @@ public sealed class SqlitePresetRepository(IDbContextFactory<FrameForgeDbContext
 
                     row.Name = name;
                     row.Groups = preset.Groups.ToString();
-                    row.SchemaVersion = preset.Recipe.SchemaVersion;
+                    row.SchemaVersion = preset.Recipe.RequiredSchemaVersion;
                     row.RecipeJson = RecipeJson.Serialize(preset.Recipe);
                     row.UpdatedUtc = now;
                     try

@@ -10,7 +10,15 @@ public enum PresetGroups
     Tone = 4,          // contrast, highlights, shadows
     Colour = 8,        // saturation, vibrance
     Geometry = 16,     // quarter turns, straighten, crop
+
+    /// <summary>
+    /// The Milestone 06 groups. Presets are stored by group name, so this keeps its meaning: an "All" preset saved
+    /// before masks existed must not start replacing a photo's masks.
+    /// </summary>
     All = Exposure | WhiteBalance | Tone | Colour | Geometry,
+
+    /// <summary>Local adjustments (Milestone 08): the preset's masks and their settings replace the photo's.</summary>
+    Masks = 32,
 }
 
 /// <summary>A named set of settings that can be applied to many photos.</summary>
@@ -48,8 +56,21 @@ public sealed record EditPreset(Guid Id, string Name, EditRecipe Recipe, PresetG
             r = r with { QuarterTurns = Recipe.QuarterTurns, Straighten = Recipe.Straighten, Crop = Recipe.Crop };
         }
 
+        if (Groups.HasFlag(PresetGroups.Masks))
+        {
+            // Clicks belong to the photo they were made on, so they are not carried over: each photo's masks are
+            // found automatically and can then be refined there.
+            r = r with
+            {
+                LocalAdjustments = new(Recipe.LocalAdjustments.Select(a => a with { Mask = a.Mask with { Points = ValueList.Empty<MaskPoint>() } })),
+            };
+        }
+
         return r;
     }
+
+    /// <summary>Every group a preset can include.</summary>
+    public const PresetGroups KnownGroups = PresetGroups.All | PresetGroups.Masks;
 
     /// <summary>All problems with this preset; empty when valid.</summary>
     public IReadOnlyList<string> Validate()
@@ -64,7 +85,7 @@ public sealed record EditPreset(Guid Id, string Name, EditRecipe Recipe, PresetG
             errors.Add($"Preset names can be at most {MaxNameLength} characters.");
         }
 
-        if (Groups == PresetGroups.None || (Groups & ~PresetGroups.All) != 0)
+        if (Groups == PresetGroups.None || (Groups & ~KnownGroups) != 0)
         {
             errors.Add("A preset must include at least one known group of settings.");
         }

@@ -93,15 +93,19 @@ _Not implemented (Milestone 04): groups are derived in memory from cached hashes
 ## PhotoEdits
 _Implemented in Milestone 06 (migration `AddPhotoEditsAndPresets`). One row per edited photo; a neutral recipe has no row._
 - `PhotoId` (Guid, primary key / foreign key to `Photos`, cascade delete)
-- `SchemaVersion` (int) — recipe format version
-- `RecipeJson` (text) — validated `EditRecipe` (exposure, white balance, tone, colour, quarter turns, straighten, crop)
+- `SchemaVersion` (int) — the stored recipe format: 1, or 2 when the recipe has local adjustments (Milestone 08)
+- `RecipeJson` (text) — validated `EditRecipe` (exposure, white balance, tone, colour, quarter turns, straighten, crop;
+  from version 2 also local adjustments, each a mask *reference* plus its settings). Masks themselves are never stored
+  here. Version 2 needed no database migration: only the JSON changed. See
+  [ADR 0009](decisions/0009-recipe-schema-v2.md).
 - `UpdatedUtc` (datetime)
 
 ## EditPresets
 _Implemented in Milestone 06._
 - `Id` (Guid, primary key)
 - `Name` (string ≤ 80, NOCASE, unique)
-- `Groups` (string) — which settings the preset applies: Exposure, WhiteBalance, Tone, Colour, Geometry
+- `Groups` (string) — which settings the preset applies: Exposure, WhiteBalance, Tone, Colour, Geometry, and from
+  Milestone 08 Masks. `All` is stored by name and keeps meaning the first five.
 - `SchemaVersion` (int), `RecipeJson` (text)
 - `CreatedUtc`, `UpdatedUtc` (datetime)
 
