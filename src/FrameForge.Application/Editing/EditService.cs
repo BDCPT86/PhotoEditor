@@ -177,17 +177,32 @@ public sealed partial class EditService(IEditRepository repository, ILogger<Edit
     private partial void LogBatchCancelled(string preset, int done, int total);
 }
 
+/// <summary>
+/// The masks a recipe's local adjustments need, by adjustment id, and the reason for each one that is unavailable
+/// (an adjustment without a mask is left out of the render).
+/// </summary>
+public sealed record LocalMasks(IReadOnlyDictionary<Guid, MaskImage> Masks, IReadOnlyList<(Guid Id, string Reason)> Unavailable)
+{
+    public static LocalMasks None { get; } = new(new Dictionary<Guid, MaskImage>(), []);
+}
+
 /// <summary>Decodes a photo at the size a render needs and renders a recipe onto it.</summary>
 public interface IEditRenderService
 {
     /// <summary>Decodes the original (read-only) at most <paramref name="maxLongSide"/> on its longest side, upright.</summary>
     Task<AnalysisImage> LoadSourceAsync(Photo photo, int? maxLongSide, CancellationToken cancellationToken);
 
-    /// <summary>Decodes at the size the output needs, then renders. Null = full resolution.</summary>
+    /// <summary>
+    /// Decodes at the size the output needs, then renders, including local adjustments whose masks can be made
+    /// (computed on demand and cached). Null = full resolution.
+    /// </summary>
     Task<AnalysisImage> RenderAsync(Photo photo, EditRecipe recipe, int? maxLongSide, CancellationToken cancellationToken);
+
+    /// <summary>Gets (or computes) the masks for a recipe's local adjustments. Never throws for model or file problems.</summary>
+    Task<LocalMasks> LoadMasksAsync(Photo photo, EditRecipe recipe, CancellationToken cancellationToken);
 }
 
-public sealed class EditRenderService(IAnalysisImageLoader loader) : IEditRenderService
+public sealed partial class EditRenderService(IAnalysisImageLoader loader, Masks.IMaskService masks, ILogger<EditRenderService> logger) : IEditRenderService
 {
     public Task<AnalysisImage> LoadSourceAsync(Photo photo, int? maxLongSide, CancellationToken cancellationToken)
     {
@@ -195,11 +210,17 @@ public sealed class EditRenderService(IAnalysisImageLoader loader) : IEditRender
         return Task.Run(() => loader.Load(photo.FilePath, maxLongSide ?? int.MaxValue), cancellationToken);
     }
 
-    public Task<AnalysisImage> RenderAsync(Photo photo, EditRecipe recipe, int? maxLongSide, CancellationToken cancellationToken)
+    public async Task<AnalysisImage> RenderAsync(Photo photo, EditRecipe recipe, int? maxLongSide, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(photo);
         ArgumentNullException.ThrowIfNull(recipe);
-        return Task.Run(
+        var local = await LoadMasksAsync(photo, recipe, cancellationToken).ConfigureAwait(false);
+        foreach (var (id, reason) in local.Unavailable)
+        {
+            LogMaskLeftOut(photo.Id, id, reason);
+        }
+
+        return await Task.Run(
             () =>
             {
                 var decodeSide = OrientedSize(photo) is { } size
@@ -207,9 +228,41 @@ public sealed class EditRenderService(IAnalysisImageLoader loader) : IEditRender
                     : maxLongSide;
                 var source = loader.Load(photo.FilePath, decodeSide ?? int.MaxValue);
                 cancellationToken.ThrowIfCancellationRequested();
-                return EditRenderer.Render(source, recipe, maxLongSide, cancellationToken);
+                return EditRenderer.Render(source, recipe, local.Masks, maxLongSide, cancellationToken);
             },
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<LocalMasks> LoadMasksAsync(Photo photo, EditRecipe recipe, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(photo);
+        ArgumentNullException.ThrowIfNull(recipe);
+        if (!recipe.HasLocalAdjustments)
+        {
+            return LocalMasks.None;
+        }
+
+        var found = new Dictionary<Guid, MaskImage>();
+        var unavailable = new List<(Guid, string)>();
+        foreach (var adjustment in recipe.LocalAdjustments)
+        {
+            if (adjustment.HasNoEffect)
+            {
+                continue; // nothing to draw, so no mask is needed
+            }
+
+            var outcome = await masks.GetAsync(photo, adjustment.Mask, cancellationToken).ConfigureAwait(false);
+            if (outcome.Mask is { } mask)
+            {
+                found[adjustment.Id] = mask;
+            }
+            else
+            {
+                unavailable.Add((adjustment.Id, outcome.Summary));
+            }
+        }
+
+        return new LocalMasks(found, unavailable);
     }
 
     /// <summary>Stored size as displayed (EXIF orientations 5–8 swap width and height), or null if unknown.</summary>
@@ -217,4 +270,7 @@ public sealed class EditRenderService(IAnalysisImageLoader loader) : IEditRender
         photo.Width is { } w && photo.Height is { } h
             ? photo.Orientation is >= 5 and <= 8 ? (h, w) : (w, h)
             : null;
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Photo {PhotoId}: local adjustment {AdjustmentId} left out of the render: {Reason}")]
+    private partial void LogMaskLeftOut(Guid photoId, Guid adjustmentId, string reason);
 }

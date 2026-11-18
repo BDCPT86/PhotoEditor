@@ -7,7 +7,7 @@ namespace FrameForge.Rendering.Tests;
 /// Visual regression guard: fixed recipes on a fixed generated image must keep producing the same pixels (±1 level,
 /// allowing for floating-point differences between CPUs). If a deliberate change to the rendering maths moves these,
 /// review real photos before and after (docs/visual-review-m06.md), bump <see cref="EditRenderer.Version"/>, and update
-/// the expected values. Values recorded with render-v1 on 2026-11-16.
+/// the expected values. Values recorded with render-v1 on 2026-11-16; render-v2 (local adjustments) leaves them unchanged.
 /// </summary>
 public sealed class GoldenTests
 {

@@ -21,7 +21,10 @@
 > people → MobileSAM, refined by clicks), a sky mask without a model, the three catalogue entries and a disk cache;
 > see [ADR 0010](../decisions/0010-mask-pipeline.md). Padding the boxes was tried and rejected: in a blind round 3,
 > unpadded masks were graded better on 14 of 30 photos and padded ones on none, with 29 of 30 unpadded masks good or
-> usable (20 good). Next: B4, the renderer.
+> usable (20 good). B4 is implemented: the renderer (`render-v2`) blends local adjustments in linear light, with masks
+> that follow the geometry and a guided-filter edge; recipes without masks render exactly as before; the viewer and
+> export use it, Develop's preview from B5. See [ADR 0011](../decisions/0011-local-adjustment-rendering.md). Next: B5,
+> Develop's Masks section.
 
 > Draft brief. Its number follows M07 (RAW and professional workflow), but it depends only on M05 (model handling) and
 > M06 (the edit recipe and renderer), so it can be scheduled before M07 if preferred.

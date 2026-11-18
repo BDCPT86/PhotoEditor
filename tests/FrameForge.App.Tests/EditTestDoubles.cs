@@ -95,6 +95,8 @@ internal sealed class FakeEditRenderService : IEditRenderService
 
         return Task.FromResult(EditRenderer.Render(Source, recipe, maxLongSide, cancellationToken));
     }
+
+    public Task<LocalMasks> LoadMasksAsync(Photo photo, EditRecipe recipe, CancellationToken cancellationToken) => Task.FromResult(LocalMasks.None);
 }
 
 /// <summary>Face boxes per photo; photos absent from <see cref="Analysed"/> have no face data.</summary>
