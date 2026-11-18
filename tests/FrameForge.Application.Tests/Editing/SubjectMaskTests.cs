@@ -184,6 +184,19 @@ public sealed class SubjectMaskTests
         Assert.Equal((Image.Width, Image.Height), (result.Mask!.Width, result.Mask.Height));
     }
 
+    [Fact]
+    public void RefiningTheSameImage_DoesNotRunTheDetectorAgain()
+    {
+        var runtime = new Runtime { People = [new DetectedPerson(Batter, 0.9f)] };
+        var generator = new SubjectMaskGenerator(runtime);
+
+        generator.Generate(Image, [], TestContext.Current.CancellationToken);
+        generator.Generate(Image, [new MaskPoint(0.45, 0.5, true)], TestContext.Current.CancellationToken);
+        generator.Generate(AnalysisImage.Create(30, 20, (_, _) => (1, 2, 3)), [], TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, runtime.Detector.Calls); // once per image, not once per click
+    }
+
     private sealed class Runtime : IAiRuntime
     {
         public bool Installed { get; init; } = true;
@@ -219,11 +232,14 @@ public sealed class SubjectMaskTests
 
         public float? LastMinScore { get; private set; }
 
+        public int Calls { get; private set; }
+
         public string VersionTag => "fake-people";
 
         public IReadOnlyList<DetectedPerson> Detect(AnalysisImage image, float minScore, CancellationToken cancellationToken)
         {
             LastMinScore = minScore;
+            Calls++;
             return People;
         }
     }

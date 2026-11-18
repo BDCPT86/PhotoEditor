@@ -57,9 +57,10 @@ The brief also asks for blending in linear light and a feathered, edge-aware mas
   - the edge behaviour above
   - preview against the downscaled export (mean difference under 1.5 levels)
   - the earlier v1 golden values, still unchanged
-- **Not wired yet:** Develop's preview and the grid's edited thumbnails do not draw local adjustments yet; Develop
-  gets masks in B5. Exports and the viewer do. Export does not yet list adjustments it left out; they are only
-  logged.
+- **Wiring (B5):** Develop's preview, the Auto option previews, the viewer and export draw local adjustments. Grid
+  thumbnails draw them from cached masks only (loading the grid never starts a model); a thumbnail rendered before its
+  mask was cached shows it once the recipe next changes. Export does not yet list adjustments it left out; they are
+  only logged (B6).
 - **No visual review yet:** the renderer has not been reviewed on the user's photos. It is done once masks can be
   added in Develop (B5) and recorded in the M08 visual review.
 - **Speed:** not measured yet. The filter's cost is fixed (about a 1024 × 683 grid per mask, however large the

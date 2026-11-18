@@ -160,6 +160,34 @@ public sealed class MaskServiceTests
         Assert.Equal(1, generator.MaxConcurrent);
     }
 
+    [Fact]
+    public async Task Clicks_ReuseTheDecodedPhoto()
+    {
+        var loader = new Loader();
+        using var service = Service(new Generator(), new Cache(), loader);
+
+        await service.GetAsync(Photo, Subject, Ct);
+        await service.GetAsync(Photo, Subject with { Points = new([new MaskPoint(0.5, 0.5, true)]) }, Ct);
+        await service.GetAsync(Make(size: 999), Subject, Ct);
+
+        Assert.Equal(2, loader.Loads); // the second request is the same photo with a click
+    }
+
+    [Fact]
+    public async Task TryGetCached_NeverComputes()
+    {
+        var generator = new Generator();
+        using var service = Service(generator, new Cache());
+
+        Assert.Null(service.TryGetCached(Photo, Subject));
+        await service.GetAsync(Photo, Subject, Ct);
+        var cached = service.TryGetCached(Photo, Subject with { Invert = true });
+
+        Assert.NotNull(cached);
+        Assert.True(cached.FromCache);
+        Assert.Equal(1, generator.Calls);
+    }
+
     private static MaskService Service(Generator generator, Cache cache, Loader? loader = null) =>
         new([generator], loader ?? new Loader(), cache, NullLogger<MaskService>.Instance);
 

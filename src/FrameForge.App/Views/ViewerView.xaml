@@ -83,7 +83,20 @@
                    Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}" />
 
             <controls:ZoomPanImage x:Name="Zoom" Source="{Binding DisplayImage}" FocusRequest="{Binding FaceFocus}" AutomationProperties.Name="Photo"
+                                   IsPointMode="{Binding Develop.Masks.IsRefining}" PointCommand="{Binding Develop.AddPointCommand}"
                                    Visibility="{Binding Develop.IsCropMode, Converter={StaticResource InverseBoolToVisibility}}" />
+
+            <!-- Refine: what a click does, said on the photo where the clicking happens -->
+            <Border HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,8,0,0" Padding="10,4" CornerRadius="3"
+                    Background="{StaticResource Brush.Surface.Raised}" BorderBrush="{StaticResource Brush.Border}" BorderThickness="1"
+                    IsHitTestVisible="False" AutomationProperties.LiveSetting="Polite"
+                    Visibility="{Binding Develop.Masks.IsRefining, Converter={StaticResource BoolToVisibility}}">
+                <TextBlock FontSize="12" Foreground="{StaticResource Brush.Text.Primary}">
+                    <Run Text="Refining" Foreground="{StaticResource Brush.Text.Secondary}" />
+                    <Run Text="{Binding Develop.Masks.Selected.Name, Mode=OneWay}" FontWeight="SemiBold" />
+                    <Run Text="  ·  click adds  ·  Alt+click or right-click removes  ·  Esc stops" Foreground="{StaticResource Brush.Text.Secondary}" />
+                </TextBlock>
+            </Border>
 
             <!-- Auto level: the line the focused option makes level -->
             <controls:GuideOverlay Guide="{Binding Develop.FocusedGuide}" Image="{Binding DisplayImage}" />

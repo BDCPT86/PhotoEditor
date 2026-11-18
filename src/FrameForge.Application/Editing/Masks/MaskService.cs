@@ -27,10 +27,28 @@ public sealed partial class MaskService(
     // Bounded concurrency: masks are heavy (seconds of CPU and about 100 MB of models), so one runs at a time.
     private readonly SemaphoreSlim _gate = new(1, 1);
 
+    // The last photo decoded for a mask, so refining it with clicks reuses the same image (and the models' work on it).
+    private (string Identity, FrameForge.Analysis.AnalysisImage Image)? _lastImage;
+
     public string? CurrentSource(MaskKind kind) => _generators.TryGetValue(kind, out var g) ? g.Source : null;
 
+    /// <remarks>May load models on first use (well under a second); call it off the UI thread.</remarks>
     public string? UnavailableReason(MaskKind kind) =>
         _generators.TryGetValue(kind, out var g) ? g.UnavailableReason : $"{kind} masks are not supported.";
+
+    public MaskOutcome? TryGetCached(Photo photo, MaskReference reference)
+    {
+        ArgumentNullException.ThrowIfNull(photo);
+        ArgumentNullException.ThrowIfNull(reference);
+        if (!_generators.TryGetValue(reference.Kind, out var generator))
+        {
+            return null;
+        }
+
+        return cache.TryGet(MaskKey.Compute(photo, generator.Source, reference.Points, AnalysisLongSide)) is { } cached
+            ? new MaskOutcome { Mask = cached.Mask, Source = generator.Source, Summary = cached.Summary, FromCache = true }
+            : null;
+    }
 
     public async Task<MaskOutcome> GetAsync(Photo photo, MaskReference reference, CancellationToken cancellationToken)
     {
@@ -42,7 +60,7 @@ public sealed partial class MaskService(
             return MaskOutcome.Unavailable(reference.Source, $"{reference.Kind} masks are not supported.");
         }
 
-        if (generator.UnavailableReason is { } notReady)
+        if (await Task.Run(() => generator.UnavailableReason, cancellationToken).ConfigureAwait(false) is { } notReady)
         {
             return MaskOutcome.Unavailable(generator.Source, notReady);
         }
@@ -67,9 +85,18 @@ public sealed partial class MaskService(
     private MaskOutcome Compute(Photo photo, MaskReference reference, IMaskGenerator generator, string key, CancellationToken cancellationToken)
     {
         FrameForge.Analysis.AnalysisImage image;
+        var identity = MaskKey.Compute(photo, "image", [], AnalysisLongSide);
         try
         {
-            image = loader.Load(photo.FilePath, AnalysisLongSide);
+            if (_lastImage is { } last && last.Identity == identity)
+            {
+                image = last.Image;
+            }
+            else
+            {
+                image = loader.Load(photo.FilePath, AnalysisLongSide);
+                _lastImage = (identity, image);
+            }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or PhotoReadException)
         {

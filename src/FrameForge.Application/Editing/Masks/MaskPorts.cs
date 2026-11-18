@@ -75,8 +75,11 @@ public interface IMaskService
     /// <summary>The generator's current source for a kind, or null when no generator handles it.</summary>
     string? CurrentSource(MaskKind kind);
 
-    /// <summary>Null when masks of this kind can be made; otherwise why not.</summary>
+    /// <summary>Null when masks of this kind can be made; otherwise why not. May load models: call it off the UI thread.</summary>
     string? UnavailableReason(MaskKind kind);
+
+    /// <summary>The mask if it is already cached, without computing anything (for grid thumbnails); otherwise null.</summary>
+    MaskOutcome? TryGetCached(Photo photo, MaskReference reference);
 
     /// <exception cref="OperationCanceledException">Cancelled; nothing is cached.</exception>
     Task<MaskOutcome> GetAsync(Photo photo, MaskReference reference, CancellationToken cancellationToken);

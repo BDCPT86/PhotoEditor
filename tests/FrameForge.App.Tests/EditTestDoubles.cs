@@ -96,7 +96,7 @@ internal sealed class FakeEditRenderService : IEditRenderService
         return Task.FromResult(EditRenderer.Render(Source, recipe, maxLongSide, cancellationToken));
     }
 
-    public Task<LocalMasks> LoadMasksAsync(Photo photo, EditRecipe recipe, CancellationToken cancellationToken) => Task.FromResult(LocalMasks.None);
+    public Task<LocalMasks> LoadMasksAsync(Photo photo, EditRecipe recipe, CancellationToken cancellationToken, bool cachedOnly = false) => Task.FromResult(LocalMasks.None);
 }
 
 /// <summary>Face boxes per photo; photos absent from <see cref="Analysed"/> have no face data.</summary>
@@ -128,7 +128,8 @@ internal sealed class EditStack
     public EditStack()
     {
         Controller = new EditController(new EditService(Edits, NullLogger<EditService>.Instance), Presets, Renderer, Faces, NullLogger<EditController>.Instance);
-        Develop = new DevelopViewModel(Renderer, Controller, Faces, NullLogger<DevelopViewModel>.Instance) { CommitDelay = TimeSpan.Zero };
+        MaskList = new MaskListViewModel(Masks, NullLogger<MaskListViewModel>.Instance);
+        Develop = new DevelopViewModel(Renderer, Controller, Faces, MaskList, NullLogger<DevelopViewModel>.Instance) { CommitDelay = TimeSpan.Zero };
     }
 
     public MemoryEditRepository Edits { get; } = new();
@@ -139,7 +140,65 @@ internal sealed class EditStack
 
     public FakeFaceLookup Faces { get; } = new();
 
+    public FakeMaskService Masks { get; } = new();
+
+    public MaskListViewModel MaskList { get; }
+
     public EditController Controller { get; }
 
     public DevelopViewModel Develop { get; }
+}
+
+/// <summary>
+/// Masks without models: Subject is the left half of the photo, Sky the top half. A request can be held open with
+/// <see cref="Hold"/> (to test progress and cancel), and Subject can be made unavailable.
+/// </summary>
+internal sealed class FakeMaskService : FrameForge.Application.Editing.Masks.IMaskService
+{
+    public string? SubjectUnavailable { get; set; }
+
+    public bool SkyNotFound { get; set; }
+
+    /// <summary>When set, requests wait for it (or for cancellation) before answering.</summary>
+    public TaskCompletionSource? Hold { get; set; }
+
+    public List<MaskReference> Requests { get; } = [];
+
+    public static string Source(MaskKind kind) => kind == MaskKind.Subject ? "fake-subject@1" : "fake-sky@1";
+
+    public string? CurrentSource(MaskKind kind) => Source(kind);
+
+    public string? UnavailableReason(MaskKind kind) => kind == MaskKind.Subject ? SubjectUnavailable : null;
+
+    public FrameForge.Application.Editing.Masks.MaskOutcome? TryGetCached(Photo photo, MaskReference reference) => null;
+
+    public async Task<FrameForge.Application.Editing.Masks.MaskOutcome> GetAsync(Photo photo, MaskReference reference, CancellationToken cancellationToken)
+    {
+        Requests.Add(reference);
+        if (Hold is { } hold)
+        {
+            await hold.Task.WaitAsync(cancellationToken).ConfigureAwait(true);
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+        if (reference.Kind == MaskKind.Subject && SubjectUnavailable is { } reason)
+        {
+            return FrameForge.Application.Editing.Masks.MaskOutcome.Unavailable(Source(reference.Kind), reason);
+        }
+
+        if (reference.Kind == MaskKind.Sky && SkyNotFound)
+        {
+            return FrameForge.Application.Editing.Masks.MaskOutcome.Unavailable(Source(reference.Kind), "No sky found. Click the sky to select it.");
+        }
+
+        const int w = 32, h = 24;
+        var alpha = new byte[w * h];
+        for (var i = 0; i < alpha.Length; i++)
+        {
+            alpha[i] = reference.Kind == MaskKind.Subject ? (i % w < w / 2 ? (byte)255 : (byte)0) : (i / w < h / 2 ? (byte)255 : (byte)0);
+        }
+
+        var summary = reference.Kind == MaskKind.Subject ? $"1 person{(reference.Points.Count > 0 ? $" ({reference.Points.Count} clicks)" : string.Empty)}" : "Sky covers 50% of the photo";
+        return new FrameForge.Application.Editing.Masks.MaskOutcome { Mask = new MaskImage(w, h, alpha), Source = Source(reference.Kind), Summary = summary };
+    }
 }

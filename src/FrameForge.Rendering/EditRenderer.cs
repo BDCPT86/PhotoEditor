@@ -52,6 +52,35 @@ public static class EditRenderer
         return new AnalysisImage(width, height, output);
     }
 
+    /// <summary>
+    /// The refined mask exactly as <see cref="Render(AnalysisImage, EditRecipe, IReadOnlyDictionary{Guid, MaskImage}?, int?, CancellationToken)"/>
+    /// uses it, at the output's size and framing (for showing the mask over the photo).
+    /// </summary>
+    public static MaskImage RenderMask(AnalysisImage source, EditRecipe recipe, MaskImage mask, bool invert, int? maxLongSide = null, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(recipe);
+        ArgumentNullException.ThrowIfNull(mask);
+
+        var geometry = new EditGeometry(source.Width, source.Height, recipe);
+        var (width, height) = geometry.OutputSize(maxLongSide);
+        var identity = !recipe.HasGeometry && width == source.Width && height == source.Height;
+        var pixels = identity ? source.Bgra : Resample(source, geometry, width, height, cancellationToken);
+        var field = MaskField.Build(source, geometry, mask, invert, cancellationToken);
+        var alpha = new byte[width * height];
+        Parallel.For(0, height, new ParallelOptions { CancellationToken = cancellationToken }, y =>
+        {
+            var v = (y + 0.5) / height;
+            for (var x = 0; x < width; x++)
+            {
+                var i = (y * width) + x;
+                alpha[i] = (byte)MathF.Round(field.Alpha((x + 0.5) / width, v, MaskField.Luma(pixels, i * 4)) * 255);
+            }
+        });
+
+        return new MaskImage(width, height, alpha);
+    }
+
     /// <summary>The local adjustment's settings as a recipe, so it uses the same operations as the global ones.</summary>
     internal static EditRecipe AsRecipe(LocalAdjustment local) => EditRecipe.Neutral with
     {

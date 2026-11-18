@@ -26,6 +26,7 @@ public sealed partial class DevelopViewModel
     [ObservableProperty] private bool _isAutoSectionOpen = true;
     [ObservableProperty] private bool _isLightSectionOpen = true;
     [ObservableProperty] private bool _isColourSectionOpen = true;
+    [ObservableProperty] private bool _isMasksSectionOpen = true;
     [ObservableProperty] private bool _isCropSectionOpen;
     [ObservableProperty] private bool _isPresetsSectionOpen;
 
@@ -183,6 +184,7 @@ public sealed partial class DevelopViewModel
         var cts = new CancellationTokenSource();
         _autoCts = cts;
         var recipe = CurrentRecipe;
+        var ready = Masks.ReadyMasks(); // options keep the photo's masks, so previews show them too
         SuggestionTitle = title;
         IsSuggesting = true;
         IsComputingSuggestions = true;
@@ -194,7 +196,7 @@ public sealed partial class DevelopViewModel
                     var suggestions = compute(source, recipe, cts.Token);
                     var rendered = suggestions.Options
                         .AsParallel().AsOrdered()
-                        .Select(o => BitmapConversions.ToBitmap(EditRenderer.Render(source, o.Recipe, null, cts.Token)))
+                        .Select(o => BitmapConversions.ToBitmap(EditRenderer.Render(source, o.Recipe, ready, null, cts.Token)))
                         .ToList();
                     return (suggestions, rendered);
                 },

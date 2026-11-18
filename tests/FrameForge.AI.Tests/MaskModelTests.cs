@@ -154,6 +154,13 @@ public sealed class MaskModelTests
         var disc = Math.PI * 80 * 80 / (640 * 480);
         Assert.InRange(mask.Coverage(), disc * 0.8, disc * 1.2);
 
+        // A click on the same image only runs the decoder: the encoding is kept, and a click is quick.
+        var started = System.Diagnostics.Stopwatch.GetTimestamp();
+        segmenter.Segment(image, [new SegmentPrompt(null, [new MaskPoint(0.5, 0.5, true), new MaskPoint(0.1, 0.1, false)])], Ct);
+        var clickMs = System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds;
+        Assert.Equal(1, segmenter.Encodes);
+        TestContext.Current.TestOutputHelper?.WriteLine($"A click took {clickMs:F0} ms (decoder only).");
+
         using var cancelled = new CancellationTokenSource();
         cancelled.Cancel();
         Assert.ThrowsAny<OperationCanceledException>(() => segmenter.Segment(image, [new SegmentPrompt(null, [new MaskPoint(0.5, 0.5, true)])], cancelled.Token));

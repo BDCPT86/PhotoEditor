@@ -11,6 +11,7 @@
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
         <conv:EnumEqualsConverter x:Key="EnumEquals" />
+        <conv:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVisibility" />
 
         <Style x:Key="SliderLabel" TargetType="TextBlock">
             <Setter Property="Foreground" Value="{StaticResource Brush.Text.Primary}" />
@@ -32,6 +33,76 @@
             <Setter Property="MinWidth" Value="0" />
             <Setter Property="Padding" Value="10,6" />
             <Setter Property="Margin" Value="0,0,6,6" />
+        </Style>
+
+        <!-- Masks: small caps-style group label inside a mask's sliders -->
+        <Style x:Key="GroupLabel" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource Brush.Text.Secondary}" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Margin" Value="0,6,0,4" />
+        </Style>
+        <Style x:Key="SmallIconButton" TargetType="Button" BasedOn="{StaticResource IconButton}">
+            <Setter Property="Width" Value="28" />
+            <Setter Property="Height" Value="26" />
+            <Setter Property="FontSize" Value="13" />
+        </Style>
+        <Style x:Key="SmallIconToggle" TargetType="ToggleButton" BasedOn="{StaticResource IconToggle}">
+            <Setter Property="Width" Value="28" />
+            <Setter Property="Height" Value="26" />
+            <Setter Property="FontSize" Value="13" />
+        </Style>
+        <!-- A text-only action inside a mask row (Cancel, Retry) -->
+        <Style x:Key="InlineAction" TargetType="Button">
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Foreground" Value="{StaticResource Brush.Accent}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Margin" Value="8,0,0,0" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <TextBlock x:Name="Text" Text="{TemplateBinding Content}" />
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Text" Property="TextDecorations" Value="Underline" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <!-- Mask rows: selection is an accent bar plus bold name, never colour alone -->
+        <Style x:Key="MaskRow" TargetType="ListBoxItem">
+            <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}" />
+            <Setter Property="Foreground" Value="{StaticResource Brush.Text.Primary}" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="AutomationProperties.Name" Value="{Binding Name}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="Root" Background="Transparent" Padding="0,6" SnapsToDevicePixels="True">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="3" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Rectangle x:Name="Indicator" Fill="{StaticResource Brush.Accent}" Visibility="Hidden" />
+                                <ContentPresenter Grid.Column="1" Margin="9,0,4,0" />
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Root" Property="Background" Value="{StaticResource Brush.Surface.Hover}" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Indicator" Property="Visibility" Value="Visible" />
+                                <Setter TargetName="Root" Property="Background" Value="{StaticResource Brush.Surface.Base}" />
+                                <Setter Property="FontWeight" Value="SemiBold" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
     </UserControl.Resources>
 
@@ -162,6 +233,170 @@
                         </StackPanel>
                     </Expander>
 
+                    <!-- Masks: adjust part of the photo. The overall look comes first, then areas are refined. -->
+                    <Expander Style="{StaticResource PanelSection}" Header="Masks" IsExpanded="{Binding IsMasksSectionOpen}">
+                        <StackPanel DataContext="{Binding Masks}">
+                            <DockPanel Margin="0,0,0,6">
+                                <TextBlock DockPanel.Dock="Right" Text="{Binding CountText}" FontSize="11" VerticalAlignment="Center"
+                                           Foreground="{StaticResource Brush.Text.Secondary}" Typography.NumeralAlignment="Tabular" />
+                                <TextBlock Text="Add" Style="{StaticResource SliderLabel}" />
+                            </DockPanel>
+                            <WrapPanel>
+                                <Button Style="{StaticResource AutoButton}" Content="Subject" Command="{Binding AddSubjectCommand}"
+                                        ToolTip="Select the main people (the largest ones), with a local model" AutomationProperties.Name="Add subject mask" />
+                                <Button Style="{StaticResource AutoButton}" Content="Sky" Command="{Binding AddSkyCommand}"
+                                        ToolTip="Select blue or overcast sky from the top edge (no model)" AutomationProperties.Name="Add sky mask" />
+                                <Button Style="{StaticResource AutoButton}" Content="Background" Command="{Binding AddBackgroundCommand}"
+                                        ToolTip="Everything except the main people" AutomationProperties.Name="Add background mask" />
+                            </WrapPanel>
+
+                            <!-- Why Subject and Background are off -->
+                            <TextBlock TextWrapping="Wrap" FontSize="12" Margin="0,0,0,8" Foreground="{StaticResource Brush.Text.Secondary}"
+                                       AutomationProperties.AutomationId="SubjectUnavailable">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Text" Value="{Binding SubjectUnavailable, StringFormat='⚠ {0}'}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding SubjectUnavailable}" Value="{x:Null}">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+
+                            <TextBlock Style="{StaticResource Text.Secondary}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,4"
+                                       Text="Adjust one part of the photo: add a mask, then move its sliders. Up to 8 masks."
+                                       Visibility="{Binding HasItems, Converter={StaticResource InverseBoolToVisibility}}" />
+
+                            <!-- The masks -->
+                            <ListBox ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}" ItemContainerStyle="{StaticResource MaskRow}"
+                                     Margin="0,0,0,8" Padding="0,2" AutomationProperties.Name="Masks"
+                                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                     Visibility="{Binding HasItems, Converter={StaticResource BoolToVisibility}}">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type vm:LocalAdjustmentViewModel}">
+                                        <DockPanel>
+                                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top">
+                                                <ToggleButton Style="{StaticResource SmallIconToggle}" Content="◑" IsChecked="{Binding Invert}" Margin="0,0,4,0"
+                                                              ToolTip="Invert: adjust everything outside this mask instead" AutomationProperties.Name="Invert mask" />
+                                                <Button Style="{StaticResource SmallIconButton}" Content="✕"
+                                                        Command="{Binding DataContext.DeleteCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                        CommandParameter="{Binding}" ToolTip="Delete this mask (undoable)" AutomationProperties.Name="Delete mask" />
+                                            </StackPanel>
+                                            <StackPanel VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Name}" />
+                                                <!-- Status: computing (with Cancel), ready (what was found), or unavailable (with Retry) -->
+                                                <StackPanel Orientation="Horizontal" Margin="0,2,0,0"
+                                                            Visibility="{Binding IsComputing, Converter={StaticResource BoolToVisibility}}">
+                                                    <ProgressBar Width="56" IsIndeterminate="True" VerticalAlignment="Center" AutomationProperties.Name="Computing mask" />
+                                                    <TextBlock Margin="8,0,0,0" FontSize="12" FontWeight="Normal" Foreground="{StaticResource Brush.Text.Secondary}" Text="{Binding StatusText}" />
+                                                    <Button Style="{StaticResource InlineAction}" Content="Cancel"
+                                                            Command="{Binding DataContext.CancelComputingCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                            CommandParameter="{Binding}" AutomationProperties.Name="Cancel computing the mask" />
+                                                </StackPanel>
+                                                <TextBlock FontSize="12" FontWeight="Normal" TextWrapping="Wrap" Margin="0,2,0,0"
+                                                           Foreground="{StaticResource Brush.Text.Secondary}" Text="{Binding Summary}">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsComputing}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding IsUnavailable}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                                <StackPanel Margin="0,2,0,0" Visibility="{Binding IsUnavailable, Converter={StaticResource BoolToVisibility}}">
+                                                    <TextBlock FontSize="12" FontWeight="Normal" TextWrapping="Wrap" Foreground="{StaticResource Brush.Status.Error}"
+                                                               Text="{Binding Unavailable, StringFormat='⚠ {0}'}" AutomationProperties.LiveSetting="Polite" />
+                                                    <Button Style="{StaticResource InlineAction}" Margin="0,2,0,0" HorizontalAlignment="Left" Content="Retry"
+                                                            Command="{Binding DataContext.RetryCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                            CommandParameter="{Binding}" AutomationProperties.Name="Retry computing the mask" />
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </DockPanel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+
+                            <!-- The selected mask: look at it, refine it with clicks, and its own sliders -->
+                            <StackPanel Visibility="{Binding HasSelection, Converter={StaticResource BoolToVisibility}}">
+                                <WrapPanel Margin="0,0,0,2">
+                                    <ToggleButton Content="Show (O)" IsChecked="{Binding ShowOverlay}" Margin="0,0,6,6" MinWidth="0" Padding="10,6"
+                                                  ToolTip="Show the selected mask on the photo: outside it is darkened, its edge outlined"
+                                                  AutomationProperties.Name="Show mask" />
+                                    <ToggleButton Content="Refine (M)" IsChecked="{Binding IsRefining}" Margin="0,0,6,6" MinWidth="0" Padding="10,6"
+                                                  ToolTip="Click the photo to add to the mask; Alt+click or right-click to remove. Esc stops."
+                                                  AutomationProperties.Name="Refine mask" />
+                                    <Button Content="Clear clicks" Command="{Binding ClearClicksCommand}" Margin="0,0,6,6" MinWidth="0" Padding="10,6"
+                                            ToolTip="{Binding Selected.ClicksText}" />
+                                </WrapPanel>
+
+                                <StackPanel DataContext="{Binding Selected}">
+                                    <TextBlock Style="{StaticResource GroupLabel}" Margin="0,0,0,4">
+                                        <Run Text="{Binding Name, Mode=OneWay}" /><Run Text=" · light" />
+                                    </TextBlock>
+                                    <DockPanel>
+                                        <TextBlock Style="{StaticResource SliderValue}" Text="{Binding Exposure, StringFormat={}{0:+0.00;-0.00;0.00} EV}" />
+                                        <TextBlock Text="Exposure" Style="{StaticResource SliderLabel}" />
+                                    </DockPanel>
+                                    <Slider Style="{StaticResource EditSlider}" Tag="Exposure" Minimum="-5" Maximum="5" SmallChange="0.05" LargeChange="0.5"
+                                            Value="{Binding Exposure}" AutomationProperties.Name="Mask exposure" />
+                                    <DockPanel>
+                                        <TextBlock Style="{StaticResource SliderValue}" Text="{Binding Contrast, StringFormat={}{0:+0;-0;0}}" />
+                                        <TextBlock Text="Contrast" Style="{StaticResource SliderLabel}" />
+                                    </DockPanel>
+                                    <Slider Style="{StaticResource EditSlider}" Tag="Contrast" Minimum="-100" Maximum="100" SmallChange="1" LargeChange="10"
+                                            Value="{Binding Contrast}" AutomationProperties.Name="Mask contrast" />
+                                    <DockPanel>
+                                        <TextBlock Style="{StaticResource SliderValue}" Text="{Binding Highlights, StringFormat={}{0:+0;-0;0}}" />
+                                        <TextBlock Text="Highlights" Style="{StaticResource SliderLabel}" />
+                                    </DockPanel>
+                                    <Slider Style="{StaticResource EditSlider}" Tag="Highlights" Minimum="-100" Maximum="100" SmallChange="1" LargeChange="10"
+                                            Value="{Binding Highlights}" AutomationProperties.Name="Mask highlights" />
+                                    <DockPanel>
+                                        <TextBlock Style="{StaticResource SliderValue}" Text="{Binding Shadows, StringFormat={}{0:+0;-0;0}}" />
+                                        <TextBlock Text="Shadows" Style="{StaticResource SliderLabel}" />
+                                    </DockPanel>
+                                    <Slider Style="{StaticResource EditSlider}" Tag="Shadows" Minimum="-100" Maximum="100" SmallChange="1" LargeChange="10"
+                                            Value="{Binding Shadows}" AutomationProperties.Name="Mask shadows" />
+
+                                    <TextBlock Style="{StaticResource GroupLabel}">
+                                        <Run Text="{Binding Name, Mode=OneWay}" /><Run Text=" · colour" />
+                                    </TextBlock>
+                                    <DockPanel>
+                                        <TextBlock Style="{StaticResource SliderValue}" Text="{Binding Temperature, StringFormat={}{0:+0;-0;0}}" />
+                                        <TextBlock Text="Temperature" Style="{StaticResource SliderLabel}" />
+                                    </DockPanel>
+                                    <Slider Style="{StaticResource EditSlider}" Tag="Temperature" Minimum="-100" Maximum="100" SmallChange="1" LargeChange="10"
+                                            Value="{Binding Temperature}" AutomationProperties.Name="Mask temperature" />
+                                    <DockPanel>
+                                        <TextBlock Style="{StaticResource SliderValue}" Text="{Binding Tint, StringFormat={}{0:+0;-0;0}}" />
+                                        <TextBlock Text="Tint" Style="{StaticResource SliderLabel}" />
+                                    </DockPanel>
+                                    <Slider Style="{StaticResource EditSlider}" Tag="Tint" Minimum="-100" Maximum="100" SmallChange="1" LargeChange="10"
+                                            Value="{Binding Tint}" AutomationProperties.Name="Mask tint" />
+                                    <DockPanel>
+                                        <TextBlock Style="{StaticResource SliderValue}" Text="{Binding Vibrance, StringFormat={}{0:+0;-0;0}}" />
+                                        <TextBlock Text="Vibrance" Style="{StaticResource SliderLabel}" />
+                                    </DockPanel>
+                                    <Slider Style="{StaticResource EditSlider}" Tag="Vibrance" Minimum="-100" Maximum="100" SmallChange="1" LargeChange="10"
+                                            Value="{Binding Vibrance}" AutomationProperties.Name="Mask vibrance" />
+                                    <DockPanel>
+                                        <TextBlock Style="{StaticResource SliderValue}" Text="{Binding Saturation, StringFormat={}{0:+0;-0;0}}" />
+                                        <TextBlock Text="Saturation" Style="{StaticResource SliderLabel}" />
+                                    </DockPanel>
+                                    <Slider Style="{StaticResource EditSlider}" Tag="Saturation" Minimum="-100" Maximum="100" SmallChange="1" LargeChange="10"
+                                            Value="{Binding Saturation}" AutomationProperties.Name="Mask saturation" />
+                                </StackPanel>
+                            </StackPanel>
+                        </StackPanel>
+                    </Expander>
+
                     <!-- Crop and straighten -->
                     <Expander Style="{StaticResource PanelSection}" Header="Crop and straighten" IsExpanded="{Binding IsCropSectionOpen}">
                         <StackPanel>
@@ -222,6 +457,8 @@
                                 <CheckBox Content="Tone" IsChecked="{Binding PresetIncludesTone}" Margin="0,0,10,4" ToolTip="Contrast, highlights, shadows" />
                                 <CheckBox Content="Colour" IsChecked="{Binding PresetIncludesColour}" Margin="0,0,10,4" ToolTip="Saturation, vibrance" />
                                 <CheckBox Content="Crop and rotation" IsChecked="{Binding PresetIncludesGeometry}" Margin="0,0,10,4" />
+                                <CheckBox Content="Masks" IsChecked="{Binding PresetIncludesMasks}" Margin="0,0,10,4"
+                                          ToolTip="The masks and their settings; each photo gets its own mask, and clicks are not copied" />
                             </WrapPanel>
                             <Button Content="Save preset" HorizontalAlignment="Left" Command="{Binding SavePresetCommand}" MinWidth="0" Padding="12,6" />
                         </StackPanel>

@@ -50,6 +50,7 @@ internal sealed partial class ThumbnailLoader : IThumbnailSource, IDisposable
     private readonly IPhotoBitmapLoader _bitmaps;
     private readonly IUiDispatcher _dispatcher;
     private readonly ILogger<ThumbnailLoader> _logger;
+    private readonly Application.Editing.Masks.IMaskService? _masks;
     private readonly LruCache<Guid, (BitmapSource Bitmap, EditRecipe Recipe)> _memory = new(MemoryCapacity);
     private readonly Lock _gate = new();
     private readonly LinkedList<IThumbnailRequester> _pending = new();
@@ -59,12 +60,13 @@ internal sealed partial class ThumbnailLoader : IThumbnailSource, IDisposable
     private readonly Task[] _workers;
     private int _disposed;
 
-    public ThumbnailLoader(IThumbnailService thumbnails, IPhotoBitmapLoader bitmaps, IUiDispatcher dispatcher, ILogger<ThumbnailLoader> logger)
+    public ThumbnailLoader(IThumbnailService thumbnails, IPhotoBitmapLoader bitmaps, IUiDispatcher dispatcher, ILogger<ThumbnailLoader> logger, Application.Editing.Masks.IMaskService? masks = null)
     {
         _thumbnails = thumbnails;
         _bitmaps = bitmaps;
         _dispatcher = dispatcher;
         _logger = logger;
+        _masks = masks;
         _workers = Enumerable.Range(0, WorkerCount).Select(_ => Task.Run(WorkerLoopAsync)).ToArray();
     }
 
@@ -167,6 +169,26 @@ internal sealed partial class ThumbnailLoader : IThumbnailSource, IDisposable
         }
     }
 
+    /// <summary>The recipe's masks that are already cached (none are computed here), by adjustment id.</summary>
+    private Dictionary<Guid, Rendering.MaskImage>? CachedMasks(Photo photo, Core.Editing.EditRecipe recipe)
+    {
+        if (_masks is null || !recipe.HasLocalAdjustments)
+        {
+            return null;
+        }
+
+        var found = new Dictionary<Guid, Rendering.MaskImage>();
+        foreach (var adjustment in recipe.LocalAdjustments.Where(a => !a.HasNoEffect))
+        {
+            if (_masks.TryGetCached(photo, adjustment.Mask)?.Mask is { } mask)
+            {
+                found[adjustment.Id] = mask;
+            }
+        }
+
+        return found;
+    }
+
     private async Task LoadAsync(IThumbnailRequester requester, CancellationToken token)
     {
         var photo = requester.Photo;
@@ -177,8 +199,9 @@ internal sealed partial class ThumbnailLoader : IThumbnailSource, IDisposable
             var recipe = requester.Recipe;
             if (!recipe.IsNeutral)
             {
-                // Edited thumbnails are rendered from the cached thumbnail with the same renderer as export.
-                bitmap = BitmapConversions.ToBitmap(Rendering.EditRenderer.Render(BitmapConversions.ToBuffer(bitmap), recipe, null, token));
+                // Edited thumbnails are rendered from the cached thumbnail with the same renderer as export. Masks come
+                // from the mask cache only: loading the grid never starts a model.
+                bitmap = BitmapConversions.ToBitmap(Rendering.EditRenderer.Render(BitmapConversions.ToBuffer(bitmap), recipe, CachedMasks(photo, recipe), null, token));
             }
 
             _dispatcher.Post(() =>

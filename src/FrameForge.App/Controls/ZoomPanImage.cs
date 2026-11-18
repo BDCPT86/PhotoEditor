@@ -19,6 +19,9 @@ public sealed class ZoomFocus(double x, double y, double width, double height)
     public double Height { get; } = height;
 }
 
+/// <summary>A click on the image in point mode: normalised position (0–1) and whether it adds (true) or removes.</summary>
+public sealed record ImagePoint(double U, double V, bool Include);
+
 /// <summary>
 /// Displays a bitmap with fit / 100% / free zoom and drag-to-pan.
 /// Mouse: wheel zooms around the cursor, drag pans, double-click toggles fit ↔ 100% at the cursor.
@@ -35,6 +38,20 @@ public sealed class ZoomPanImage : Border
     public static readonly DependencyProperty FocusRequestProperty = DependencyProperty.Register(
         nameof(FocusRequest), typeof(ZoomFocus), typeof(ZoomPanImage),
         new FrameworkPropertyMetadata(null, (d, e) => ((ZoomPanImage)d).OnFocusRequested(e.NewValue as ZoomFocus)));
+
+    /// <summary>
+    /// When true, a click that does not drag raises <see cref="PointCommand"/> with the clicked image position: a plain
+    /// click adds, Alt+click or a right-click removes. Dragging still pans and the wheel still zooms; double-click
+    /// zoom is off (use Z), so a quick second click is a second point.
+    /// </summary>
+    public static readonly DependencyProperty IsPointModeProperty = DependencyProperty.Register(
+        nameof(IsPointMode), typeof(bool), typeof(ZoomPanImage), new FrameworkPropertyMetadata(false, (d, _) => ((ZoomPanImage)d).UpdateCursor()));
+
+    public static readonly DependencyProperty PointCommandProperty = DependencyProperty.Register(
+        nameof(PointCommand), typeof(ICommand), typeof(ZoomPanImage), new FrameworkPropertyMetadata(null));
+
+    /// <summary>A drag shorter than this (DIPs) still counts as a click.</summary>
+    private const double ClickSlop = 4;
 
     private static readonly DependencyPropertyKey ZoomTextPropertyKey = DependencyProperty.RegisterReadOnly(
         nameof(ZoomText), typeof(string), typeof(ZoomPanImage), new PropertyMetadata(string.Empty));
@@ -58,6 +75,7 @@ public sealed class ZoomPanImage : Border
     private bool _isFit = true;
     private Point? _dragStart;
     private Point _dragStartOffset;
+    private bool _moved;
 
     public ZoomPanImage()
     {
@@ -86,6 +104,18 @@ public sealed class ZoomPanImage : Border
     {
         get => (ZoomFocus?)GetValue(FocusRequestProperty);
         set => SetValue(FocusRequestProperty, value);
+    }
+
+    public bool IsPointMode
+    {
+        get => (bool)GetValue(IsPointModeProperty);
+        set => SetValue(IsPointModeProperty, value);
+    }
+
+    public ICommand? PointCommand
+    {
+        get => (ICommand?)GetValue(PointCommandProperty);
+        set => SetValue(PointCommandProperty, value);
     }
 
     /// <summary>"Fit" or a percentage such as "100%".</summary>
@@ -121,7 +151,7 @@ public sealed class ZoomPanImage : Border
             return;
         }
 
-        if (e.ClickCount == 2)
+        if (e.ClickCount == 2 && !IsPointMode)
         {
             ToggleFitAnd100(e.GetPosition(this));
             e.Handled = true;
@@ -129,6 +159,7 @@ public sealed class ZoomPanImage : Border
         }
 
         _dragStart = e.GetPosition(this);
+        _moved = false;
         _dragStartOffset = _offset;
         CaptureMouse();
         e.Handled = true;
@@ -143,15 +174,63 @@ public sealed class ZoomPanImage : Border
         }
 
         var current = e.GetPosition(this);
+        _moved |= Math.Abs(current.X - start.X) > ClickSlop || Math.Abs(current.Y - start.Y) > ClickSlop;
         SetOffset(new Point(_dragStartOffset.X + (current.X - start.X), _dragStartOffset.Y + (current.Y - start.Y)));
     }
 
     protected override void OnMouseLeftButtonUp(MouseButtonEventArgs e)
     {
         base.OnMouseLeftButtonUp(e);
+        var wasClick = _dragStart is not null && !_moved;
         _dragStart = null;
         ReleaseMouseCapture();
+        if (wasClick && IsPointMode)
+        {
+            RaisePoint(e.GetPosition(this), include: (Keyboard.Modifiers & ModifierKeys.Alt) == 0);
+            e.Handled = true;
+        }
     }
+
+    protected override void OnMouseRightButtonUp(MouseButtonEventArgs e)
+    {
+        base.OnMouseRightButtonUp(e);
+        if (IsPointMode && Source is not null)
+        {
+            RaisePoint(e.GetPosition(this), include: false);
+            e.Handled = true;
+        }
+    }
+
+    /// <summary>Alt+click: WPF sends Alt to the menu as a system key; keep it here while pointing.</summary>
+    protected override void OnPreviewKeyDown(KeyEventArgs e)
+    {
+        base.OnPreviewKeyDown(e);
+        if (IsPointMode && e.Key == Key.System && e.SystemKey is Key.LeftAlt or Key.RightAlt)
+        {
+            e.Handled = true;
+        }
+    }
+
+    /// <summary>Viewport position → normalised image position, through the current zoom and pan.</summary>
+    internal static (double U, double V) ToImage(Point position, Point offset, double scale, int pixelWidth, int pixelHeight) =>
+        (((position.X - offset.X) / scale) / pixelWidth, ((position.Y - offset.Y) / scale) / pixelHeight);
+
+    private void RaisePoint(Point position, bool include)
+    {
+        if (Source is not { } source)
+        {
+            return;
+        }
+
+        var (u, v) = ToImage(position, _offset, Scale, source.PixelWidth, source.PixelHeight);
+        var point = new ImagePoint(u, v, include);
+        if (u is >= 0 and <= 1 && v is >= 0 and <= 1 && PointCommand?.CanExecute(point) == true)
+        {
+            PointCommand.Execute(point);
+        }
+    }
+
+    private void UpdateCursor() => SetOffset(_offset);
 
     protected override void OnKeyDown(KeyEventArgs e)
     {
@@ -182,6 +261,9 @@ public sealed class ZoomPanImage : Border
 
     private void OnSourceChanged()
     {
+        // While pointing, a re-render of the same photo (same size) keeps the zoom and position being worked on.
+        var keepView = IsPointMode && !_isFit && Source is { } next
+            && Math.Abs(_image.Width - next.PixelWidth) < 0.5 && Math.Abs(_image.Height - next.PixelHeight) < 0.5;
         if (Source is { } source)
         {
             _image.Width = source.PixelWidth;
@@ -189,7 +271,14 @@ public sealed class ZoomPanImage : Border
         }
 
         _image.Source = Source;
-        Fit();
+        if (keepView)
+        {
+            SetOffset(_offset);
+        }
+        else
+        {
+            Fit();
+        }
     }
 
     private void OnFocusRequested(ZoomFocus? focus)
@@ -259,7 +348,8 @@ public sealed class ZoomPanImage : Border
 
         // Smooth when reducing; crisp pixels when inspecting above 100%.
         RenderOptions.SetBitmapScalingMode(_image, _zoom > 1.0 ? BitmapScalingMode.NearestNeighbor : BitmapScalingMode.HighQuality);
-        Cursor = ContentSize.Width > ActualWidth + 0.5 || ContentSize.Height > ActualHeight + 0.5 ? Cursors.SizeAll : null;
+        Cursor = IsPointMode ? Cursors.Cross
+            : ContentSize.Width > ActualWidth + 0.5 || ContentSize.Height > ActualHeight + 0.5 ? Cursors.SizeAll : null;
         SetValue(ZoomTextPropertyKey, Source is null ? string.Empty
             : _isFit ? string.Create(CultureInfo.CurrentCulture, $"Fit ({_zoom:P0})")
             : _zoom.ToString("P0", CultureInfo.CurrentCulture));

@@ -19,7 +19,15 @@ internal sealed class MobileSamSegmenter(InferenceSession encoder, InferenceSess
     public const int LongSide = 1024;
     public const int LowRes = 256;
 
+    private readonly Lock _gate = new();
+
+    // The last photo's encoding (seconds of CPU) is kept, so refining it with clicks only runs the decoder.
+    private (AnalysisImage Image, DenseTensor<float> Embeddings)? _last;
+
     public string VersionTag { get; } = $"{encoderModel.VersionTag}+{decoderModel.VersionTag}";
+
+    /// <summary>How many times the encoder ran (for tests of the encoding cache).</summary>
+    internal int Encodes { get; private set; }
 
     public IReadOnlyList<MaskImage> Segment(AnalysisImage image, IReadOnlyList<SegmentPrompt> prompts, CancellationToken cancellationToken)
     {
@@ -31,19 +39,7 @@ internal sealed class MobileSamSegmenter(InferenceSession encoder, InferenceSess
         }
 
         var (rw, rh) = LongSideSize(image.Width, image.Height);
-        var resized = ImageOps.Resize(image, rw, rh);
-        var input = new DenseTensor<float>([rh, rw, 3]);
-        var span = input.Buffer.Span;
-        var px = resized.Bgra;
-        for (int i = 0, p = 0; i < rw * rh; i++, p += 4)
-        {
-            span[(i * 3) + 0] = px[p + 2]; // R
-            span[(i * 3) + 1] = px[p + 1]; // G
-            span[(i * 3) + 2] = px[p];     // B
-        }
-
-        using var encoded = OnnxRun.Run(encoder, [NamedOnnxValue.CreateFromTensor("input_image", input)], cancellationToken);
-        var embeddings = encoded[0].AsTensor<float>().ToDenseTensor();
+        var embeddings = Encode(image, rw, rh, cancellationToken);
 
         var masks = new List<MaskImage>(prompts.Count);
         foreach (var prompt in prompts)
@@ -65,6 +61,39 @@ internal sealed class MobileSamSegmenter(InferenceSession encoder, InferenceSess
         }
 
         return masks;
+    }
+
+    /// <summary>The image's encoding, reused when the same image (the same object) is segmented again.</summary>
+    private DenseTensor<float> Encode(AnalysisImage image, int rw, int rh, CancellationToken cancellationToken)
+    {
+        lock (_gate)
+        {
+            if (_last is { } last && ReferenceEquals(last.Image, image))
+            {
+                return last.Embeddings;
+            }
+        }
+
+        var resized = ImageOps.Resize(image, rw, rh);
+        var input = new DenseTensor<float>([rh, rw, 3]);
+        var span = input.Buffer.Span;
+        var px = resized.Bgra;
+        for (int i = 0, p = 0; i < rw * rh; i++, p += 4)
+        {
+            span[(i * 3) + 0] = px[p + 2]; // R
+            span[(i * 3) + 1] = px[p + 1]; // G
+            span[(i * 3) + 2] = px[p];     // B
+        }
+
+        using var encoded = OnnxRun.Run(encoder, [NamedOnnxValue.CreateFromTensor("input_image", input)], cancellationToken);
+        var embeddings = encoded[0].AsTensor<float>().ToDenseTensor();
+        lock (_gate)
+        {
+            _last = (image, embeddings);
+            Encodes++;
+        }
+
+        return embeddings;
     }
 
     /// <summary>Size after scaling the long side to 1024, rounded as SAM's ResizeLongestSide does.</summary>

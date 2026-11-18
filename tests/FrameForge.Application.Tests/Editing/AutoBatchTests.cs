@@ -21,7 +21,7 @@ public sealed class AutoBatchTests
         public Task<AnalysisImage> RenderAsync(Photo photo, EditRecipe recipe, int? maxLongSide, CancellationToken cancellationToken) =>
             Task.FromResult(EditRenderer.Render(image, recipe, maxLongSide, cancellationToken));
 
-        public Task<LocalMasks> LoadMasksAsync(Photo photo, EditRecipe recipe, CancellationToken cancellationToken) => Task.FromResult(LocalMasks.None);
+        public Task<LocalMasks> LoadMasksAsync(Photo photo, EditRecipe recipe, CancellationToken cancellationToken, bool cachedOnly = false) => Task.FromResult(LocalMasks.None);
     }
 
     private sealed class Faces(Dictionary<Guid, List<FaceFinding>> data) : IFaceLookup

@@ -22,7 +22,7 @@ src/
                               decisions (PhotoDecision, CullState, ColourLabel, DecisionEdit);
                               library query (LibraryFilter, LibrarySort, LibraryQuery). No dependencies.
   FrameForge.Rendering/       Non-destructive edit rendering (net10.0, pure): EditRenderer (local adjustments from v2), EditGeometry, ToneOps, OKLab,
-                              MaskImage, MaskField (guided-filter mask refinement)
+                              MaskImage, MaskField (guided-filter mask refinement), RenderMask (overlay)
   FrameForge.Analysis/        Deterministic metrics on pixel buffers (net10.0, depends on Core only): SharpnessAnalyzer,
                               ExposureAnalyzer, PerceptualHasher, SimilarityGrouper, AnalysisSettings. No WPF, no AI.
   FrameForge.Application/     Ports and use cases: settings, import, library, thumbnails (ThumbnailKey),

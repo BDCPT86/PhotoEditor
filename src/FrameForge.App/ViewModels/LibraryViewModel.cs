@@ -305,7 +305,13 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
             case CullingAction.BeforeAfter when IsDeveloping:
                 Viewer.Develop.ToggleBeforeAfterCommand.Execute(null);
                 return true;
-            case CullingAction.ToggleCrop or CullingAction.BeforeAfter:
+            case CullingAction.ToggleMaskOverlay when IsDeveloping:
+                Viewer.Develop.Masks.ToggleOverlayCommand.Execute(null);
+                return true;
+            case CullingAction.ToggleRefine when IsDeveloping:
+                Viewer.Develop.Masks.ToggleRefineCommand.Execute(null);
+                return true;
+            case CullingAction.ToggleCrop or CullingAction.BeforeAfter or CullingAction.ToggleMaskOverlay or CullingAction.ToggleRefine:
                 return false;
             case CullingAction.NextFace or CullingAction.PreviousFace when IsViewerOpen && !Viewer.Develop.IsOpen:
                 Viewer.StepFace(action == CullingAction.NextFace ? 1 : -1);

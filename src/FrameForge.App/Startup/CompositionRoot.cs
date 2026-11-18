@@ -51,6 +51,7 @@ internal static class CompositionRoot
 
         // View models and shell
         builder.Services.AddSingleton<LibraryFilterViewModel>();
+        builder.Services.AddSingleton<MaskListViewModel>();
         builder.Services.AddSingleton<DevelopViewModel>();
         builder.Services.AddSingleton<ViewerViewModel>();
         builder.Services.AddSingleton<PresetPanelViewModel>();

@@ -85,6 +85,13 @@ public partial class ViewerView : UserControl
             return;
         }
 
+        if (e.Key == Key.Escape && develop.Masks.IsRefining)
+        {
+            develop.Masks.IsRefining = false;
+            e.Handled = true;
+            return;
+        }
+
         if (IsCompareKey(e.Key))
         {
             develop.ShowOriginal = true; // hold to compare

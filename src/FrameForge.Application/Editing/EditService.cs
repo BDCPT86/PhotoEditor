@@ -198,8 +198,11 @@ public interface IEditRenderService
     /// </summary>
     Task<AnalysisImage> RenderAsync(Photo photo, EditRecipe recipe, int? maxLongSide, CancellationToken cancellationToken);
 
-    /// <summary>Gets (or computes) the masks for a recipe's local adjustments. Never throws for model or file problems.</summary>
-    Task<LocalMasks> LoadMasksAsync(Photo photo, EditRecipe recipe, CancellationToken cancellationToken);
+    /// <summary>
+    /// Gets (or computes) the masks for a recipe's local adjustments. Never throws for model or file problems. With
+    /// <paramref name="cachedOnly"/>, nothing is computed: masks not in the cache are reported as unavailable.
+    /// </summary>
+    Task<LocalMasks> LoadMasksAsync(Photo photo, EditRecipe recipe, CancellationToken cancellationToken, bool cachedOnly = false);
 }
 
 public sealed partial class EditRenderService(IAnalysisImageLoader loader, Masks.IMaskService masks, ILogger<EditRenderService> logger) : IEditRenderService
@@ -233,7 +236,7 @@ public sealed partial class EditRenderService(IAnalysisImageLoader loader, Masks
             cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<LocalMasks> LoadMasksAsync(Photo photo, EditRecipe recipe, CancellationToken cancellationToken)
+    public async Task<LocalMasks> LoadMasksAsync(Photo photo, EditRecipe recipe, CancellationToken cancellationToken, bool cachedOnly = false)
     {
         ArgumentNullException.ThrowIfNull(photo);
         ArgumentNullException.ThrowIfNull(recipe);
@@ -251,7 +254,9 @@ public sealed partial class EditRenderService(IAnalysisImageLoader loader, Masks
                 continue; // nothing to draw, so no mask is needed
             }
 
-            var outcome = await masks.GetAsync(photo, adjustment.Mask, cancellationToken).ConfigureAwait(false);
+            var outcome = cachedOnly
+                ? masks.TryGetCached(photo, adjustment.Mask) ?? Masks.MaskOutcome.Unavailable(adjustment.Mask.Source, "Not computed yet.")
+                : await masks.GetAsync(photo, adjustment.Mask, cancellationToken).ConfigureAwait(false);
             if (outcome.Mask is { } mask)
             {
                 found[adjustment.Id] = mask;

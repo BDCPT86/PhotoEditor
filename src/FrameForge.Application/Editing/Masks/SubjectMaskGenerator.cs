@@ -58,6 +58,8 @@ public sealed class SubjectMaskGenerator(IAiRuntime runtime, SubjectMaskOptions?
     public const int RulesVersion = 1;
 
     private readonly SubjectMaskOptions _options = options ?? SubjectMaskOptions.Default;
+    private readonly Lock _gate = new();
+    private (AnalysisImage Image, IReadOnlyList<DetectedPerson> People)? _lastPeople;
 
     public MaskKind Kind => MaskKind.Subject;
 
@@ -82,7 +84,7 @@ public sealed class SubjectMaskGenerator(IAiRuntime runtime, SubjectMaskOptions?
             return MaskGeneration.NotFound(UnavailableReason ?? "The subject mask models are not available.");
         }
 
-        var people = detector.Detect(image, _options.MinScore, cancellationToken);
+        var people = PeopleIn(detector, image, cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
         var main = MainPeople(people.Select(p => p.Box).ToList(), _options.MainPersonRelativeHeight);
         var plan = Plan(main, points, image.Width, image.Height, _options);
@@ -101,6 +103,26 @@ public sealed class SubjectMaskGenerator(IAiRuntime runtime, SubjectMaskOptions?
         }
 
         return MaskGeneration.Found(mask, Describe(plan.People, plan.ClickRegions, points.Count));
+    }
+
+    /// <summary>The people in the image; the last image's are kept, so a click does not run the detector again.</summary>
+    private IReadOnlyList<DetectedPerson> PeopleIn(IPersonDetector detector, AnalysisImage image, CancellationToken cancellationToken)
+    {
+        lock (_gate)
+        {
+            if (_lastPeople is { } last && ReferenceEquals(last.Image, image))
+            {
+                return last.People;
+            }
+        }
+
+        var people = detector.Detect(image, _options.MinScore, cancellationToken);
+        lock (_gate)
+        {
+            _lastPeople = (image, people);
+        }
+
+        return people;
     }
 
     // ------------------------------------------------------------------ pure rules (tested without models)

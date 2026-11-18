@@ -64,6 +64,8 @@ public sealed class EditRenderServiceTests
 
         public string? UnavailableReason(MaskKind kind) => null;
 
+        public MaskOutcome? TryGetCached(Photo photo, MaskReference reference) => null;
+
         public Task<MaskOutcome> GetAsync(Photo photo, MaskReference reference, CancellationToken cancellationToken)
         {
             Requests++;

@@ -21,7 +21,7 @@ namespace FrameForge.App.ViewModels;
 /// the latest render is shown; older ones are skipped). Changes are saved when the sliders rest for a moment, and
 /// each resting point is one undo step, so dragging a slider is one step, not hundreds. The original is never written.
 /// </summary>
-public sealed partial class DevelopViewModel(IEditRenderService renderer, EditController edits, IFaceLookup faces, ILogger<DevelopViewModel> logger) : ObservableObject
+public sealed partial class DevelopViewModel(IEditRenderService renderer, EditController edits, IFaceLookup faces, MaskListViewModel masks, ILogger<DevelopViewModel> logger) : ObservableObject
 {
     /// <summary>Longest side of the preview copy. Large enough for a full-screen view, small enough to render live.</summary>
     public const int PreviewLongSide = 2048;
@@ -44,6 +44,31 @@ public sealed partial class DevelopViewModel(IEditRenderService renderer, EditCo
     internal Task RenderLoop { get; private set; } = Task.CompletedTask;
 
     public ObservableCollection<EditPreset> Presets => edits.Presets;
+
+    private bool _masksHooked;
+
+    /// <summary>The Masks section: local adjustments, their masks, the overlay and Refine mode.</summary>
+    public MaskListViewModel Masks
+    {
+        get
+        {
+            if (!_masksHooked)
+            {
+                _masksHooked = true;
+                masks.RecipeChanged += (_, _) => RecipeChanged();
+                masks.MasksChanged += (_, _) => ScheduleRender();
+                masks.PropertyChanged += (_, e) =>
+                {
+                    if (e.PropertyName == nameof(MaskListViewModel.IsRefining) && masks.IsRefining && IsCropMode)
+                    {
+                        IsCropMode = false; // Refine and Crop both use clicks on the photo
+                    }
+                };
+            }
+
+            return masks;
+        }
+    }
 
     [ObservableProperty]
     private bool _isOpen;
@@ -111,6 +136,9 @@ public sealed partial class DevelopViewModel(IEditRenderService renderer, EditCo
     [ObservableProperty] private bool _presetIncludesColour = true;
     [ObservableProperty] private bool _presetIncludesGeometry;
 
+    /// <summary>Include the masks and their settings (not the clicks, which belong to this photo).</summary>
+    [ObservableProperty] private bool _presetIncludesMasks;
+
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ApplyPresetCommand), nameof(DeletePresetCommand))]
     private EditPreset? _selectedPreset;
@@ -133,6 +161,7 @@ public sealed partial class DevelopViewModel(IEditRenderService renderer, EditCo
         Straighten = Clamp(Straighten, EditRecipe.MaxStraighten),
         QuarterTurns = ((QuarterTurns % 4) + 4) % 4,
         Crop = Crop,
+        LocalAdjustments = Masks.ToList(),
     };
 
     /// <summary>Opens (or switches) the panel to <paramref name="tile"/>, saving any pending change to the previous photo first.</summary>
@@ -150,10 +179,12 @@ public sealed partial class DevelopViewModel(IEditRenderService renderer, EditCo
         Tile = tile;
         _history.Clear();
         _committed = tile.Recipe;
+        var masksOpening = Masks.OpenAsync(tile.Photo); // knows the photo at once; checks the models in the background
         LoadSliders(tile.Recipe);
         NotifyHistory();
         Message = null;
         await LoadSourceAsync(tile).ConfigureAwait(true);
+        await masksOpening.ConfigureAwait(true);
     }
 
     /// <summary>Saves any pending change and closes the panel.</summary>
@@ -162,6 +193,7 @@ public sealed partial class DevelopViewModel(IEditRenderService renderer, EditCo
         CloseSuggestions();
         await FlushAsync().ConfigureAwait(true);
         _loadCts?.Cancel();
+        Masks.Close();
         IsOpen = false;
         IsCropMode = false;
         ShowOriginal = false;
@@ -244,6 +276,23 @@ public sealed partial class DevelopViewModel(IEditRenderService renderer, EditCo
     [RelayCommand]
     private void ToggleBeforeAfter() => ShowOriginal = !ShowOriginal;
 
+    /// <summary>
+    /// A click on the photo in Refine mode, at normalised (u, v) of the shown edit. It is mapped back through crop,
+    /// straighten and rotation to the upright photo, where masks and their clicks live. Ignored while the photo shows
+    /// something else (Before, an Auto option, crop mode).
+    /// </summary>
+    [RelayCommand]
+    private void AddPoint(Controls.ImagePoint? point)
+    {
+        if (point is null || !Masks.IsRefining || ShowOriginal || FocusedSuggestion is not null || IsCropMode || _source is not { } source)
+        {
+            return;
+        }
+
+        var (x, y) = new EditGeometry(source.Width, source.Height, CurrentRecipe).ToSource(point.U, point.V);
+        Masks.AddPoint(new MaskPoint(Math.Clamp(x / source.Width, 0, 1), Math.Clamp(y / source.Height, 0, 1), point.Include));
+    }
+
     private bool HasSelectedPreset => SelectedPreset is not null;
 
     [RelayCommand(CanExecute = nameof(HasSelectedPreset))]
@@ -267,7 +316,8 @@ public sealed partial class DevelopViewModel(IEditRenderService renderer, EditCo
             | (PresetIncludesWhiteBalance ? PresetGroups.WhiteBalance : 0)
             | (PresetIncludesTone ? PresetGroups.Tone : 0)
             | (PresetIncludesColour ? PresetGroups.Colour : 0)
-            | (PresetIncludesGeometry ? PresetGroups.Geometry : 0);
+            | (PresetIncludesGeometry ? PresetGroups.Geometry : 0)
+            | (PresetIncludesMasks ? PresetGroups.Masks : 0);
         var error = await edits.SavePresetAsync(NewPresetName, CurrentRecipe, groups).ConfigureAwait(true);
         if (error is null)
         {
@@ -339,6 +389,11 @@ public sealed partial class DevelopViewModel(IEditRenderService renderer, EditCo
 
     partial void OnIsCropModeChanged(bool value)
     {
+        if (value)
+        {
+            Masks.IsRefining = false;
+        }
+
         if (!_suppress)
         {
             ScheduleRender();
@@ -489,6 +544,7 @@ public sealed partial class DevelopViewModel(IEditRenderService renderer, EditCo
             Crop = recipe.Crop;
             CropAspect = CropAspect.Free;
             LockedCropRatio = 0;
+            Masks.Load(recipe.LocalAdjustments);
         }
         finally
         {
@@ -558,7 +614,15 @@ public sealed partial class DevelopViewModel(IEditRenderService renderer, EditCo
             while (_pendingRender is { } recipe && _source is { } source)
             {
                 _pendingRender = null;
-                var bitmap = await Task.Run(() => BitmapConversions.ToBitmap(EditRenderer.Render(source, recipe))).ConfigureAwait(true);
+
+                // Snapshots taken on the UI thread; the render itself runs in the background.
+                var ready = Masks.ReadyMasks();
+                var overlay = IsCropMode ? null : Masks.OverlayTarget;
+                var bitmap = await Task.Run(() =>
+                {
+                    var rendered = EditRenderer.Render(source, recipe, ready);
+                    return BitmapConversions.ToBitmap(overlay is { } o ? MaskOverlayPainter.Paint(source, recipe, rendered, o.Mask, o.Invert, o.Points) : rendered);
+                }).ConfigureAwait(true);
                 if (ReferenceEquals(source, _source))
                 {
                     Rendered = bitmap;
