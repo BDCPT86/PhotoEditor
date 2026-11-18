@@ -88,6 +88,143 @@ internal static class SheetPages
         </script></body></html>
         """;
 
+    public const string Mask = """
+        <!doctype html><html lang="en"><head><meta charset="utf-8"><title>Subject masks</title>
+        """ + Style + """
+        <style>
+        .pair{display:flex;gap:10px;justify-content:center;padding:10px 18px 0}
+        figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:8px}
+        figure img{max-width:calc(50vw - 30px);max-height:calc(100vh - 250px);display:block;border-radius:2px;cursor:zoom-in}
+        .seg{display:inline-flex;background:var(--sunken);border:1px solid var(--border);border-radius:5px;padding:2px;gap:2px}
+        .seg button{border:0;background:transparent;color:var(--muted);padding:4px 12px;border-radius:3px}
+        .seg button.on{background:var(--hover);color:var(--text);font-weight:600;box-shadow:inset 0 0 0 1px var(--accent)}
+        .legend{text-align:center;margin:10px 18px 0;font-size:13px}
+        </style></head><body>
+        <header><h1>Subject masks</h1><span class="muted" id="progress"></span><span class="grow"></span>
+        <button id="save">Save answers</button></header>
+        <p class="muted legend">Grade each mask: the subject should be lit, everything else dark, with the amber edge on the outline of the people who are the subject.
+        <b>Good</b> = use as is · <b>Usable</b> = use after a small fix · <b>Bad</b> = wrong person, big parts missing, or much background.
+        Hold <kbd>Space</kbd> to see the photo; click a picture to open it full size.</p>
+        <main id="main"></main>
+        <script>
+        const data = __DATA__;
+        const key = "ff-sheet-" + data.id;
+        const GRADES = [["good", "Good"], ["usable", "Usable"], ["bad", "Bad"]];
+        const KEYS = { a: ["left", "good"], s: ["left", "usable"], d: ["left", "bad"], j: ["right", "good"], k: ["right", "usable"], l: ["right", "bad"] };
+        let answers = {}; try { answers = JSON.parse(localStorage.getItem(key) || "{}"); } catch (e) { answers = {}; }
+        const complete = a => a && a.left && a.right;
+        let index = data.items.findIndex(i => !complete(answers[i.id])); if (index < 0) index = data.items.length;
+        let peek = false;
+        const persist = () => { try { localStorage.setItem(key, JSON.stringify(answers)); } catch (e) {} };
+        const answered = () => data.items.filter(i => complete(answers[i.id])).length;
+        function side(item, name, keys) {
+          const a = answers[item.id] || {}, src = peek ? item.photo : item[name];
+          return '<figure><a href="' + item[name] + '" target="_blank" rel="noopener"><img src="' + src + '" alt="' + (name === "left" ? "Left" : "Right") + ' mask"></a>' +
+            '<span class="seg" role="group" aria-label="' + (name === "left" ? "Left" : "Right") + ' mask grade">' +
+            GRADES.map(([g, label], n) => '<button data-side="' + name + '" data-g="' + g + '"' + (a[name] === g ? ' class="on"' : "") + '>' + label + ' <kbd>' + keys[n] + '</kbd></button>').join("") + '</span></figure>';
+        }
+        function render() {
+          document.getElementById("progress").textContent = answered() + " of " + data.items.length + " graded";
+          const main = document.getElementById("main");
+          if (index >= data.items.length) {
+            main.innerHTML = '<div class="done"><h2>All photos graded</h2><p class="muted">Save your answers, then run <code>score-sheet</code> with the saved file. <kbd>Backspace</kbd> goes back to change any grade.</p><button id="save2">Save answers</button></div>';
+            document.getElementById("save2").onclick = save; return;
+          }
+          const item = data.items[index];
+          main.innerHTML = '<div class="pair">' + side(item, "left", ["A", "S", "D"]) + side(item, "right", ["J", "K", "L"]) + '</div>' +
+            '<div class="bar"><button id="back">Back <kbd>Backspace</kbd></button><span class="muted" style="margin-left:16px">Photo ' + (index + 1) + '</span></div>';
+          main.querySelectorAll("[data-g]").forEach(b => b.onclick = () => grade(b.dataset.side, b.dataset.g));
+          document.getElementById("back").onclick = back;
+          const n = data.items[index + 1]; if (n) { new Image().src = n.left; new Image().src = n.right; }
+        }
+        function grade(sideName, g) {
+          if (index >= data.items.length) return;
+          const id = data.items[index].id; answers[id] = Object.assign({}, answers[id], { [sideName]: g }); persist();
+          if (complete(answers[id])) { index++; }
+          render();
+        }
+        function back() { index = Math.max(0, index - 1); render(); }
+        function save() {
+          const lines = ["id,left,right"].concat(data.items.filter(i => complete(answers[i.id])).map(i => i.id + "," + answers[i.id].left + "," + answers[i.id].right));
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(new Blob([lines.join("\n") + "\n"], { type: "text/csv" }));
+          a.download = "mask-answers-" + data.id + ".csv"; a.click();
+        }
+        document.getElementById("save").onclick = save;
+        document.addEventListener("keydown", e => {
+          const k = e.key.toLowerCase();
+          if (KEYS[k]) grade(KEYS[k][0], KEYS[k][1]);
+          else if (e.key === "Backspace") back();
+          else if (e.key === " ") { if (!peek) { peek = true; render(); } }
+          else return;
+          e.preventDefault();
+        });
+        document.addEventListener("keyup", e => { if (e.key === " ") { peek = false; render(); } });
+        render();
+        </script></body></html>
+        """;
+
+    public const string MaskSingle = """
+        <!doctype html><html lang="en"><head><meta charset="utf-8"><title>Subject masks, round 2</title>
+        """ + Style + """
+        <style>
+        .stage{display:flex;flex-direction:column;align-items:center;gap:10px;padding:10px 18px 0}
+        .stage img{max-width:calc(100vw - 36px);max-height:calc(100vh - 250px);display:block;border-radius:2px;cursor:zoom-in}
+        .legend{text-align:center;margin:10px 18px 0;font-size:13px}
+        </style></head><body>
+        <header><h1>Subject masks, round 2</h1><span class="muted" id="progress"></span><span class="grow"></span>
+        <button id="save">Save answers</button></header>
+        <p class="muted legend">Grade the mask: the subject should be lit, everything else dark, with the amber edge on the outline of the people who are the subject.
+        <b>Good</b> = use as is · <b>Usable</b> = use after a small fix · <b>Bad</b> = wrong person, big parts missing, or much background.
+        Hold <kbd>Space</kbd> to see the photo; click the picture to open it full size.</p>
+        <main id="main"></main>
+        <script>
+        const data = __DATA__;
+        const key = "ff-sheet-" + data.id;
+        const GRADES = [["good", "Good", "1"], ["usable", "Usable", "2"], ["bad", "Bad", "3"]];
+        let answers = {}; try { answers = JSON.parse(localStorage.getItem(key) || "{}"); } catch (e) { answers = {}; }
+        let index = data.items.findIndex(i => !answers[i.id]); if (index < 0) index = data.items.length;
+        let peek = false;
+        const persist = () => { try { localStorage.setItem(key, JSON.stringify(answers)); } catch (e) {} };
+        const answered = () => data.items.filter(i => answers[i.id]).length;
+        function render() {
+          document.getElementById("progress").textContent = answered() + " of " + data.items.length + " graded";
+          const main = document.getElementById("main");
+          if (index >= data.items.length) {
+            main.innerHTML = '<div class="done"><h2>All photos graded</h2><p class="muted">Save your answers, then run <code>score-sheet</code> with the saved file. <kbd>Backspace</kbd> goes back to change any grade.</p><button id="save2">Save answers</button></div>';
+            document.getElementById("save2").onclick = save; return;
+          }
+          const item = data.items[index], chosen = answers[item.id];
+          main.innerHTML = '<div class="stage"><a href="' + item.mask + '" target="_blank" rel="noopener"><img src="' + (peek ? item.photo : item.mask) + '" alt="Mask"></a></div>' +
+            '<div class="bar">' + GRADES.map(([g, label, k]) => '<button data-g="' + g + '"' + (chosen === g ? ' class="chosen"' : "") + '>' + label + ' <kbd>' + k + '</kbd></button>').join("") +
+            '<button id="back">Back <kbd>Backspace</kbd></button><span class="muted" style="margin-left:16px">Photo ' + (index + 1) + '</span></div>';
+          main.querySelectorAll("[data-g]").forEach(b => b.onclick = () => grade(b.dataset.g));
+          document.getElementById("back").onclick = back;
+          const n = data.items[index + 1]; if (n) { new Image().src = n.mask; }
+        }
+        function grade(g) { if (index >= data.items.length) return; answers[data.items[index].id] = g; persist(); index++; render(); }
+        function back() { index = Math.max(0, index - 1); render(); }
+        function save() {
+          const lines = ["id,answer"].concat(data.items.filter(i => answers[i.id]).map(i => i.id + "," + answers[i.id]));
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(new Blob([lines.join("\n") + "\n"], { type: "text/csv" }));
+          a.download = "mask-answers-" + data.id + ".csv"; a.click();
+        }
+        document.getElementById("save").onclick = save;
+        document.addEventListener("keydown", e => {
+          if (e.key === "1") grade("good");
+          else if (e.key === "2") grade("usable");
+          else if (e.key === "3") grade("bad");
+          else if (e.key === "Backspace") back();
+          else if (e.key === " ") { if (!peek) { peek = true; render(); } }
+          else return;
+          e.preventDefault();
+        });
+        document.addEventListener("keyup", e => { if (e.key === " ") { peek = false; render(); } });
+        render();
+        </script></body></html>
+        """;
+
     public const string Crop = """
         <!doctype html><html lang="en"><head><meta charset="utf-8"><title>Crop comparison</title>
         """ + Style + """

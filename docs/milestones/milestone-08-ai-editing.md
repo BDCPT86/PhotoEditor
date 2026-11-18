@@ -7,6 +7,15 @@
 > user's own crops) is done: the user preferred the original over Auto light and cropped much looser than Auto, so both
 > were retuned. In round 2, on fresh photos, the crop size matched, and Auto light no longer lost clearly (5 to 11,
 > p = 0.21). See [evaluation-m08.md](../evaluation-m08.md).
+>
+> **Phase B (approved 2026-11-18):** B1 model spike → B2 recipe v2 → B3 mask pipeline → B4 renderer → B5 Develop UI →
+> B6 batch → B7 evaluation. Subject: MobileSAM (prompted by the M05 faces) against MODNet; Sky: no model first;
+> Background: the inverse of Subject; click-to-select, first planned for later, moved into phase B after B1. B1 round 1 is done: both licences are verified at pinned
+> revisions, and in the blind grading neither model was good enough (good or usable: MobileSAM 37 %, MODNet 47 %),
+> mostly because faces do not say who the subject is. MODNet is rejected. In round 2, YOLOX-s finds the people
+> and MobileSAM masks them: 27 of 30 masks were usable (90 %), none good, usually because bats, hands or feet were
+> cut off. This combination is accepted (B1 done), with box padding and click-to-select to fix missing parts. Next: B2,
+> recipe v2. See [ADR 0008](../decisions/0008-subject-mask-model.md).
 
 > Draft brief. Its number follows M07 (RAW and professional workflow), but it depends only on M05 (model handling) and
 > M06 (the edit recipe and renderer), so it can be scheduled before M07 if preferred.

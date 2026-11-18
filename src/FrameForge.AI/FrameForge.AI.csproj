@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="FrameForge.AI.Tests" />
+    <InternalsVisibleTo Include="FrameForge.Evaluation" />
   </ItemGroup>
 
 </Project>

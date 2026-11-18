@@ -28,6 +28,14 @@ To check faces visually, write `faces.csv` plus copies with boxes drawn on them 
 folder must be outside the photos folder):
 `dotnet run --project tools/FrameForge.Evaluation -c Release -- annotate --models <dir> --photos <folder> --annotations <out folder>`
 
+### Subject masks (Milestone 08 phase B, under evaluation)
+MobileSAM and MODNet were compared for the subject mask; neither is in the app. MODNet was rejected after round 1. In round 2,
+MobileSAM prompted with the people found by YOLOX-s (OpenCV Zoo, Apache-2.0) gave usable masks on 27 of 30 photos and was
+accepted; it is added to the app in B3. Licences, pinned files and
+measurements are in [ADR 0008](decisions/0008-subject-mask-model.md). The blind grading sheet:
+`dotnet run --project tools/FrameForge.Evaluation -c Release -- mask-sheet --models <dir> --photos <folder> --sheet <new dir>`,
+scored with `score-sheet` like the Auto sheets.
+
 ## Principle
 Prefer proven local models and deterministic image metrics. Evaluate model accuracy, speed, memory, hardware compatibility, and licensing before shipping. AI is advisory: users retain control.
 

@@ -17,6 +17,7 @@ namespace FrameForge.Evaluation.Sheets;
 /// <list type="bullet">
 /// <item><b>light</b>: blind A/B of each photo as shot against Auto light's Natural option, sides randomised.</item>
 /// <item><b>crop</b>: the user crops photos with faces; their framing is compared with Auto crop at the same ratio.</item>
+/// <item><b>mask</b>: subject masks from two candidate models, graded blind (see <see cref="MaskSheet"/>).</item>
 /// </list>
 /// A sheet is a folder: <c>index.html</c> (the page), <c>img/</c> (downscaled copies) and <c>sheet.json</c> (the key used
 /// for scoring; not loaded by the page, so the A/B stays blind). Originals are only read.
@@ -29,7 +30,7 @@ internal static class JudgingSheets
     private static readonly CultureInfo Culture = CultureInfo.InvariantCulture;
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = true, PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
-    internal sealed record SheetFile(string Kind, string Id, DateTimeOffset Created, string PhotosFolder, double FaceMinScore, List<LightPair>? Pairs, List<CropItem>? Items);
+    internal sealed record SheetFile(string Kind, string Id, DateTimeOffset Created, string PhotosFolder, double FaceMinScore, List<LightPair>? Pairs, List<CropItem>? Items, List<MaskItem>? Masks = null, List<PersonMaskItem>? People = null);
 
     /// <summary>Photo files in a stable, seeded random order, so a sheet can be rebuilt exactly and sampling is not biased to the start of a shoot.</summary>
     internal static List<string> Sample(IEnumerable<string> files, int seed)
@@ -234,6 +235,8 @@ internal static class JudgingSheets
         {
             "light" => ScoreLight(sheet, raw, report),
             "crop" => ScoreCrop(sheet, raw, report),
+            "mask" => MaskSheet.Score(sheet, raw, report),
+            "mask-people" => MaskSheet.ScorePeople(sheet, raw, report),
             _ => throw new InvalidDataException("Unknown sheet kind: " + sheet.Kind),
         };
     }

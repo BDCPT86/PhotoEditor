@@ -20,12 +20,13 @@ using Microsoft.Extensions.Logging.Abstractions;
 //   review    --photos <dir> --sheets <dir> [--count 6]           (edit contact sheets + render timings; no models needed)
 //   light-sheet --photos <dir> --sheet <new dir> [--count 30] [--seed 1]                 (blind A/B page: Auto light vs as shot)
 //   crop-sheet  --models <dir> --photos <dir> --sheet <new dir> [--count 30] [--seed 1]  (page where you crop photos with faces)
+//   mask-sheet  --models <dir> --photos <dir> --sheet <new dir> [--count 30] [--seed 1] [--round 2] [--exclude <earlier sheet dir>]  (subject masks; round 1 = MobileSAM vs MODNet from faces, round 2 = people → MobileSAM)
 //   score-sheet --sheet <dir> --answers <saved csv> [--out report.md]                  (compares your answers with Auto)
 // <dir> holds the catalogued model files (verified by SHA-256 before use). Photos are opened read-only.
 var culture = CultureInfo.InvariantCulture;
-if (args.Length == 0 || args[0] is not ("benchmark" or "evaluate" or "annotate" or "review" or "light-sheet" or "crop-sheet" or "score-sheet"))
+if (args.Length == 0 || args[0] is not ("benchmark" or "evaluate" or "annotate" or "review" or "light-sheet" or "crop-sheet" or "mask-sheet" or "score-sheet"))
 {
-    Console.Error.WriteLine("Usage:\n  benchmark --models <dir> [--count 100] [--out report.md]\n  evaluate --models <dir> --photos <dir> --labels <labels.csv> [--out report.md]\n  annotate --models <dir> --photos <dir> --annotations <dir>\n  review --photos <dir> --sheets <dir> [--count 6]\n  light-sheet --photos <dir> --sheet <new dir> [--count 30] [--seed 1]\n  crop-sheet --models <dir> --photos <dir> --sheet <new dir> [--count 30] [--seed 1]\n  score-sheet --sheet <dir> --answers <saved csv> [--out report.md]");
+    Console.Error.WriteLine("Usage:\n  benchmark --models <dir> [--count 100] [--out report.md]\n  evaluate --models <dir> --photos <dir> --labels <labels.csv> [--out report.md]\n  annotate --models <dir> --photos <dir> --annotations <dir>\n  review --photos <dir> --sheets <dir> [--count 6]\n  light-sheet --photos <dir> --sheet <new dir> [--count 30] [--seed 1]\n  crop-sheet --models <dir> --photos <dir> --sheet <new dir> [--count 30] [--seed 1]\n  mask-sheet --models <dir> --photos <dir> --sheet <new dir> [--count 30] [--seed 1] [--round 2] [--exclude <earlier sheet dir>]\n  score-sheet --sheet <dir> --answers <saved csv> [--out report.md]");
     return 2;
 }
 
@@ -61,7 +62,7 @@ var exit = args[0] switch
     "benchmark" => Benchmark(int.Parse(options.GetValueOrDefault("count", "100"), culture)),
     "annotate" => Annotate(options),
     "review" => Review(options),
-    "light-sheet" or "crop-sheet" => BuildSheet(args[0], options),
+    "light-sheet" or "crop-sheet" or "mask-sheet" => BuildSheet(args[0], options),
     "score-sheet" => ScoreSheet(options),
     _ => Evaluate(options),
 };
@@ -390,16 +391,35 @@ int BuildSheet(string kind, Dictionary<string, string> opts)
         return 2;
     }
 
-    if (kind == "crop-sheet" && detector is null)
+    if (kind is "crop-sheet" or "mask-sheet" && detector is null)
     {
-        Console.Error.WriteLine("crop-sheet needs the face model in --models.");
+        Console.Error.WriteLine(kind + " needs the face model in --models.");
         return 2;
     }
 
     var count = int.Parse(opts.GetValueOrDefault("count", "30"), culture);
     var seed = int.Parse(opts.GetValueOrDefault("seed", "1"), culture);
     Directory.CreateDirectory(sheetDir);
-    if (kind == "light-sheet")
+    if (kind == "mask-sheet")
+    {
+        // Round 2 (default): people found by YOLOX-s prompt MobileSAM. Round 1: faces prompt MobileSAM, against MODNet.
+        HashSet<string> exclude = new(StringComparer.OrdinalIgnoreCase);
+        if (opts.TryGetValue("exclude", out var excludeSheet))
+        {
+            var previous = FrameForge.Evaluation.Sheets.JudgingSheets.ReadSheet(excludeSheet);
+            exclude.UnionWith((previous.Masks ?? []).Select(m => m.File));
+            exclude.UnionWith((previous.People ?? []).Select(m => m.File));
+        }
+
+        var built = opts.GetValueOrDefault("round", "2") == "1"
+            ? FrameForge.Evaluation.Sheets.MaskSheet.Build(modelsDir!, photosDir, sheetDir, count, seed, detector!, report)
+            : FrameForge.Evaluation.Sheets.MaskSheet.BuildPeople(modelsDir!, photosDir, sheetDir, count, seed, exclude, report);
+        if (built != 0)
+        {
+            return built;
+        }
+    }
+    else if (kind == "light-sheet")
     {
         FrameForge.Evaluation.Sheets.JudgingSheets.BuildLight(photosDir, sheetDir, count, seed, report);
     }

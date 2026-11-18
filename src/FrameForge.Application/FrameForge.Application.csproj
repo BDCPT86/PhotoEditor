@@ -17,6 +17,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="FrameForge.Application.Tests" />
+    <InternalsVisibleTo Include="FrameForge.Evaluation" />
   </ItemGroup>
 
 </Project>
