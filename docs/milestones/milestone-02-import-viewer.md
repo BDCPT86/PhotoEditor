@@ -1,5 +1,7 @@
 # Milestone 02 — Import and Viewer
 
+> **Status (2026-11-16):** Done. See [ADR 0002](../decisions/0002-imaging-and-thumbnails.md).
+
 ## Goal
 Import a folder of JPEGs, generate thumbnails, and browse them in a responsive UI.
 

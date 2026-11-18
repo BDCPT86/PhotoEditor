@@ -1,5 +1,7 @@
 # Milestone 03 — Culling Workflow
 
+> **Status (2026-11-16):** Done. See [ADR 0003](../decisions/0003-culling-and-export.md).
+
 ## Goal
 Allow photographers to review, mark, filter, compare, and export photo selections.
 

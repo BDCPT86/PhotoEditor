@@ -1,5 +1,7 @@
 # Milestone 05 — AI-Assisted Culling
 
+> **Status (2026-11-16):** Done. See [ADR 0005](../decisions/0005-local-ai-models.md). Speed is benchmarked, but the quality of the models has not yet been measured on a human-reviewed set; the app labels AI output as advisory.
+
 ## Goal
 Introduce local AI models as optional recommendations, not automatic final decisions.
 

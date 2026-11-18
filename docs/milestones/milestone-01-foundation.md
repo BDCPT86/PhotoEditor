@@ -1,5 +1,7 @@
 # Milestone 01 — Foundation
 
+> **Status (2026-11-16):** Done. See [ADR 0001](../decisions/0001-foundation-stack.md).
+
 ## Goal
 Create a clean, compiling solution foundation and a minimal WPF shell.
 

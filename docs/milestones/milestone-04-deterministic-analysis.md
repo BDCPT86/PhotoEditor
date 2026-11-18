@@ -1,5 +1,7 @@
 # Milestone 04 — Deterministic Image Analysis
 
+> **Status (2026-11-16):** Done. See [ADR 0004](../decisions/0004-deterministic-analysis.md).
+
 ## Goal
 Add explainable, non-AI image metrics and duplicate grouping.
 

@@ -361,13 +361,13 @@
         </Grid>
 
         <!-- ============================== Side panels (non-modal) -->
-        <views:ExportPanel Grid.Column="1" Margin="12,0,0,0" DataContext="{Binding Export}" HorizontalAlignment="Right"
+        <views:ExportPanel x:Name="ExportSide" Grid.Column="1" Margin="12,0,0,0" DataContext="{Binding Export}" HorizontalAlignment="Right"
                            Visibility="{Binding IsOpen, Converter={StaticResource BoolToVisibility}}" />
-        <views:PresetPanel Grid.Column="1" Margin="12,0,0,0" DataContext="{Binding Presets}" HorizontalAlignment="Right"
+        <views:PresetPanel x:Name="PresetsSide" Grid.Column="1" Margin="12,0,0,0" DataContext="{Binding Presets}" HorizontalAlignment="Right"
                            Visibility="{Binding IsOpen, Converter={StaticResource BoolToVisibility}}" />
 
         <!-- Analysis details: the numbers, thresholds and method behind every badge. -->
-        <Border Grid.Column="1" Margin="12,0,0,0" Style="{StaticResource SidePanel}" DataContext="{Binding Analysis}"
+        <Border x:Name="DetailsSide" Grid.Column="1" Margin="12,0,0,0" Style="{StaticResource SidePanel}" DataContext="{Binding Analysis}"
                 Visibility="{Binding IsDetailsOpen, Converter={StaticResource BoolToVisibility}}">
             <DockPanel>
                 <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
@@ -407,7 +407,7 @@
             </DockPanel>
         </Border>
 
-        <Border Grid.Column="1" Margin="12,0,0,0" Style="{StaticResource SidePanel}" AutomationProperties.Name="Keyboard shortcuts"
+        <Border x:Name="HelpSide" Grid.Column="1" Margin="12,0,0,0" Style="{StaticResource SidePanel}" AutomationProperties.Name="Keyboard shortcuts"
                 Visibility="{Binding IsHelpOpen, Converter={StaticResource BoolToVisibility}}">
             <DockPanel>
                 <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">

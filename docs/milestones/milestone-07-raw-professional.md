@@ -1,5 +1,7 @@
 # Milestone 07 — RAW and Professional Workflow
 
+> **Status (2026-11-18):** Not started. Milestone 08 phase A was done first, because it depends only on M05 and M06.
+
 ## Goal
 Evaluate and integrate RAW decoding and harden the app for professional use.
 

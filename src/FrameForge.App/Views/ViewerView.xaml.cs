@@ -65,6 +65,9 @@ public partial class ViewerView : UserControl
         }
     }
 
+    /// <summary>Gives keyboard focus to the photo (used when a side panel beside the viewer closes).</summary>
+    public void FocusPhoto() => Zoom.Focus();
+
     private DevelopViewModel? Develop => (DataContext as ViewerViewModel)?.Develop;
 
     private static bool IsCompareKey(Key key) => key is Key.Oem5 or Key.OemBackslash;

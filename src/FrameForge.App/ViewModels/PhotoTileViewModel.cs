@@ -244,7 +244,7 @@ public sealed partial class PhotoTileViewModel : ObservableObject, IThumbnailReq
             parts.Add(string.Create(culture, $"{w} × {h}"));
         }
 
-        var camera = string.Join(' ', new[] { photo.CameraMake, photo.CameraModel }.Where(s => !string.IsNullOrWhiteSpace(s)));
+        var camera = CameraName.Format(photo.CameraMake, photo.CameraModel);
         if (camera.Length > 0)
         {
             parts.Add(camera);

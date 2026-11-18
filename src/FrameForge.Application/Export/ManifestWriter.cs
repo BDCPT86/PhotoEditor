@@ -1,5 +1,6 @@
 using System.Globalization;
 using FrameForge.Core.Decisions;
+using FrameForge.Core.Photos;
 
 namespace FrameForge.Application.Export;
 
@@ -23,7 +24,7 @@ public static class ManifestWriter
         foreach (var item in items)
         {
             var photo = item.Photo;
-            var camera = string.Join(' ', new[] { photo.CameraMake, photo.CameraModel }.Where(s => !string.IsNullOrWhiteSpace(s)));
+            var camera = CameraName.Format(photo.CameraMake, photo.CameraModel);
             string?[] values =
             [
                 photo.FilePath,

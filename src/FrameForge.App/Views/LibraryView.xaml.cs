@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 
 namespace FrameForge.App.Views;
 
@@ -25,6 +26,40 @@ public partial class LibraryView : UserControl
                 FocusSelectedTile();
             }
         };
+
+        // When a side panel closes (often by clicking its Close button), the focused control disappears and focus
+        // falls to the window, so no shortcut works until a click. Give it back to whatever is showing.
+        foreach (var panel in new FrameworkElement[] { ExportSide, PresetsSide, DetailsSide, HelpSide })
+        {
+            panel.IsVisibleChanged += (_, e) =>
+            {
+                if (e.NewValue is false)
+                {
+                    Dispatcher.BeginInvoke(RestoreFocusAfterPanel, System.Windows.Threading.DispatcherPriority.Input);
+                }
+            };
+        }
+    }
+
+    private void RestoreFocusAfterPanel()
+    {
+        if (!IsVisible || (IsKeyboardFocusWithin && Keyboard.FocusedElement is UIElement { IsVisible: true }))
+        {
+            return;
+        }
+
+        if (ViewerHost.IsVisible)
+        {
+            ViewerHost.FocusPhoto();
+        }
+        else if (CompareHost.IsVisible)
+        {
+            CompareHost.Focus();
+        }
+        else
+        {
+            FocusSelectedTile();
+        }
     }
 
     private void FocusSelectedTile()

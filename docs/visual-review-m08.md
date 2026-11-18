@@ -22,9 +22,13 @@ These are observations on a handful of photos, not a measured evaluation.
 | Result text | It said the skipped photos were "listed below", but the list is above it. | Now "listed above". |
 
 ## Not yet reviewed
-- Auto light across a wide range of photos (night, indoor, backlit): the blind A/B so far used daytime sports photos only.
-- The retuned Auto light and Auto crop in the app. Round 1 of judging and the retune are in
-  [evaluation-m08.md](evaluation-m08.md), along with round 2 on fresh photos.
+- Auto light across a wide range of photos (night, indoor, backlit): the blind A/B used daytime sports photos only, and
+  the test set has nothing else (its darkest photo has a mean brightness of 90 / 255). This needs other photos.
+- Keyboard focus after closing a side panel with the mouse: fixed, but the in-app check was interrupted (see the
+  pre-merge check below).
+
+The retuned Auto light and Auto crop were checked in the app after the retune (last section below); the judging rounds
+are in [evaluation-m08.md](evaluation-m08.md).
 
 ## Polish pass (after the batch check)
 | Finding | Change made |
@@ -63,7 +67,7 @@ noisy.
 - **Checked:**
   - through UI Automation: Keep + Clipping gave "1 of 1,010 shown", Clear filters restored all 1,010, and the button
     hid again
-  - **not checked by eye**: the screen locked during the check, so the screenshots only captured the lock screen
+  - by eye later, in the app check after the retune (below); the first attempt failed because the screen locked
 
 ## App check after the retune (2026-11-17)
 Isolated test data, the same 1,010 photos.
@@ -77,3 +81,12 @@ Isolated test data, the same 1,010 photos.
 | Auto crop, already framed | On IMG_0604 (close player, already cropped tight by an earlier test) the tray said the photo was "already framed loosely", which contradicted the tight crop on screen. | The message now says "The uncropped photo is already framed loosely…". |
 | Auto crop, own ratio | A distant player at 3:2 got one gentle option (Tight, 3,839 × 2,559 px); Medium and Wide would have kept nearly the whole frame and were dropped. | None. |
 | Batch Auto, crop only (Medium, original ratio, 10 photos) | "Auto changed 9 of 10"; IMG_0604 listed as "not cropped (already framed loosely)". The thumbnails showed gentle trims. **Undo last apply** restored all 9. | None. |
+## Pre-merge check (2026-11-18)
+Isolated test data, the same 1,010 photos.
+
+| Checked | Observation | Change made |
+|---|---|---|
+| Side panel in the viewer (analysis details on IMG_1271) | The photo narrows beside the panel; the header, counter and Develop button stay visible. | None. |
+| Keyboard after closing a side panel | After **Close** was clicked on the details panel, focus fell to the window, and **D** did nothing until the photo was clicked. Same in the grid. | When any side panel (details, shortcuts, Presets, Export) closes and focus has left the page, it returns to the viewer's photo, compare, or the selected tile. Built and unit-tested, but the in-app re-check was interrupted and still needs doing by hand: open a photo, press **I**, click **Close**, press **D**. |
+| Viewer footer | Read "Canon Canon EOS R50": Canon repeats the make in the model. | `CameraName.Format` drops the make when the model already starts with it (also used by the CSV manifest). Seen fixed in the app: "Canon EOS R50". |
+| Auto light on dark or backlit photos | The darkest photo in the set (mean 90 / 255, IMG_1271) is a daytime shot in shade; there are no night or indoor photos. | Not reviewed; listed under "Not yet reviewed". |

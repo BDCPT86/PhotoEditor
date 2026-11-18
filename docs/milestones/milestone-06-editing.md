@@ -1,5 +1,7 @@
 # Milestone 06 — Non-Destructive Editing
 
+> **Status (2026-11-16):** Done. See [ADR 0006](../decisions/0006-non-destructive-editing.md) and [visual-review-m06.md](../visual-review-m06.md).
+
 ## Goal
 Add a recipe-based editing foundation and preview/export pipeline.
 
