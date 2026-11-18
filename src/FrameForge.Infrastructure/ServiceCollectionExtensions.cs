@@ -50,6 +50,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IEditRepository, SqliteEditRepository>();
         services.AddSingleton<IPresetRepository, SqlitePresetRepository>();
         services.AddSingleton<IEditedExportService, FileSystemEditedExportService>();
+        services.AddSingleton<Application.Editing.Masks.IMaskCache, DiskMaskCache>();
 
         // Used only for user-initiated model downloads. Generic agent; no user data is sent.
         services.AddSingleton<IModelStore>(sp => new FileSystemModelStore(

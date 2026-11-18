@@ -29,6 +29,11 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<IEditService, EditService>();
         services.AddSingleton<IEditRenderService, EditRenderService>();
+
+        // Masks for local adjustments (Milestone 08). Requires IAiRuntime and IMaskCache registrations.
+        services.AddSingleton<Editing.Masks.IMaskGenerator>(sp => new Editing.Masks.SubjectMaskGenerator(sp.GetRequiredService<IAiRuntime>()));
+        services.AddSingleton<Editing.Masks.IMaskGenerator, Editing.Masks.SkyMaskGenerator>();
+        services.AddSingleton<Editing.Masks.IMaskService, Editing.Masks.MaskService>();
         return services;
     }
 }

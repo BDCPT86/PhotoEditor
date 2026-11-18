@@ -85,6 +85,10 @@ internal sealed class NoModelsAiRuntime : Application.Ai.IAiRuntime
 
     public Application.Ai.IImageEmbedder? GetImageEmbedder() => null;
 
+    public Application.Ai.IPersonDetector? GetPersonDetector() => null;
+
+    public Application.Ai.IPromptSegmenter? GetPromptSegmenter() => null;
+
     public void Reset()
     {
     }

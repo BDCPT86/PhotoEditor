@@ -185,6 +185,10 @@ public sealed class AiAnalysisServiceTests
 
         public IImageEmbedder? GetImageEmbedder() => Installed ? Embedder : null;
 
+        public IPersonDetector? GetPersonDetector() => null;
+
+        public IPromptSegmenter? GetPromptSegmenter() => null;
+
         public void Reset()
         {
         }

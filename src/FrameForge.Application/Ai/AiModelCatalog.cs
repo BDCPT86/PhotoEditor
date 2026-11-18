@@ -75,5 +75,62 @@ public static class AiModelCatalog
         Notes = "ONNX conversion of Meta's facebook/dinov2-small (Apache-2.0 code and weights) published in onnx-community; the conversion repository itself carries no licence tag.",
     };
 
-    public static IReadOnlyList<ModelDescriptor> All { get; } = [FaceDetector, SceneEmbedder];
+    /// <summary>Milestone 08 (ADR 0008): finds the people that the subject mask is made of.</summary>
+    public static ModelDescriptor PersonDetector { get; } = new()
+    {
+        Id = "yolox-s-person",
+        Name = "YOLOX-s person detector",
+        Purpose = "Finds whole people (not faces) so Select subject knows who to mask. Needed with the two MobileSAM files. Detection only — no recognition or identity.",
+        Version = "2022nov",
+        FileName = "object_detection_yolox_2022nov.onnx",
+        SizeBytes = 35_858_002,
+        Sha256 = "c5c2d13e59ae883e6af3b45daea64af4833a4951c92d116ec270d9ddbe998063",
+        DownloadUrl = new Uri("https://media.githubusercontent.com/media/opencv/opencv_zoo/26cc381e4d2594bb9f47a26eb8fd96c94a13660d/models/object_detection_yolox/object_detection_yolox_2022nov.onnx"),
+        SourcePage = new Uri("https://github.com/opencv/opencv_zoo/tree/26cc381e4d2594bb9f47a26eb8fd96c94a13660d/models/object_detection_yolox"),
+        Licence = "Apache-2.0",
+        LicenceUrl = new Uri("https://github.com/opencv/opencv_zoo/blob/26cc381e4d2594bb9f47a26eb8fd96c94a13660d/models/object_detection_yolox/LICENSE"),
+        Copyright = "Copyright (c) 2021-2022 Megvii Inc.",
+        Notes = "OpenCV Zoo export of YOLOX-s, trained on COCO (annotations CC BY 4.0; images under their Flickr terms). Only the person class is used.",
+    };
+
+    /// <summary>Milestone 08 (ADR 0008): MobileSAM's image encoder, run once per photo.</summary>
+    public static ModelDescriptor SubjectMaskEncoder { get; } = new()
+    {
+        Id = "mobile-sam-encoder",
+        Name = "MobileSAM encoder (subject masks)",
+        Purpose = "Part 1 of 2 of the subject mask model: reads the photo once so people can be outlined. Needed with the MobileSAM decoder and the person detector.",
+        Version = "f706ad9",
+        FileName = "mobile_sam.encoder.onnx",
+        SizeBytes = 28_157_853,
+        Sha256 = "8c1494f7dc70b61b15bc7ab8e4291804d47294d881da137b099b04c1776535dd",
+        DownloadUrl = new Uri("https://huggingface.co/nrl-ai/samexporter-onnx-models/resolve/5050a79cd4b912dd745fff83047c4ef6fbd97be5/mobile_sam/mobile_sam.encoder.onnx"),
+        SourcePage = new Uri("https://huggingface.co/nrl-ai/samexporter-onnx-models/tree/5050a79cd4b912dd745fff83047c4ef6fbd97be5/mobile_sam"),
+        Licence = "Apache-2.0",
+        LicenceUrl = new Uri("https://github.com/ChaoningZhang/MobileSAM/blob/f706ad9c4eb7f219c00d9050e46328518ffb65d2/LICENSE"),
+        Copyright = "MobileSAM authors (Chaoning Zhang et al.); the licence names no holder",
+        Notes = "samexporter ONNX export of the official MobileSAM checkpoint at upstream commit f706ad9 (the export folder carries an Apache-2.0 LICENSE).",
+    };
+
+    /// <summary>Milestone 08 (ADR 0008): MobileSAM's prompt decoder, run once per person or click.</summary>
+    public static ModelDescriptor SubjectMaskDecoder { get; } = new()
+    {
+        Id = "mobile-sam-decoder",
+        Name = "MobileSAM decoder (subject masks)",
+        Purpose = "Part 2 of 2 of the subject mask model: outlines each person, and follows your clicks to add or remove parts.",
+        Version = "f706ad9",
+        FileName = "mobile_sam.decoder.onnx",
+        SizeBytes = 16_502_895,
+        Sha256 = "23c11087a0c1930d863ba37fdf0f2b0080f5a94269191f679ffd16b8415f0a38",
+        DownloadUrl = new Uri("https://huggingface.co/nrl-ai/samexporter-onnx-models/resolve/5050a79cd4b912dd745fff83047c4ef6fbd97be5/mobile_sam/mobile_sam.decoder.onnx"),
+        SourcePage = new Uri("https://huggingface.co/nrl-ai/samexporter-onnx-models/tree/5050a79cd4b912dd745fff83047c4ef6fbd97be5/mobile_sam"),
+        Licence = "Apache-2.0",
+        LicenceUrl = new Uri("https://github.com/ChaoningZhang/MobileSAM/blob/f706ad9c4eb7f219c00d9050e46328518ffb65d2/LICENSE"),
+        Copyright = "MobileSAM authors (Chaoning Zhang et al.); the licence names no holder",
+        Notes = "samexporter ONNX export of the official MobileSAM checkpoint at upstream commit f706ad9.",
+    };
+
+    /// <summary>The files Select subject needs, all three.</summary>
+    public static IReadOnlyList<ModelDescriptor> SubjectMaskModels { get; } = [PersonDetector, SubjectMaskEncoder, SubjectMaskDecoder];
+
+    public static IReadOnlyList<ModelDescriptor> All { get; } = [FaceDetector, SceneEmbedder, PersonDetector, SubjectMaskEncoder, SubjectMaskDecoder];
 }

@@ -225,6 +225,10 @@ internal sealed class FakeAiRuntime : FrameForge.Application.Ai.IAiRuntime
 
     public FrameForge.Application.Ai.IImageEmbedder? GetImageEmbedder() => null;
 
+    public FrameForge.Application.Ai.IPersonDetector? GetPersonDetector() => null;
+
+    public FrameForge.Application.Ai.IPromptSegmenter? GetPromptSegmenter() => null;
+
     public void Reset() => Resets++;
 }
 

@@ -14,7 +14,11 @@ public sealed class AppDataPaths
         LogsDirectory = Path.Combine(RootDirectory, "logs");
         ThumbnailsDirectory = Path.Combine(RootDirectory, "thumbnails");
         ModelsDirectory = Path.Combine(RootDirectory, "models");
+        MasksDirectory = Path.Combine(RootDirectory, "masks");
     }
+
+    /// <summary>Disposable cache of computed masks (Milestone 08); safe to delete, masks are recomputed on demand.</summary>
+    public string MasksDirectory { get; }
 
     /// <summary>Optional AI model files, installed only with the user's consent.</summary>
     public string ModelsDirectory { get; }

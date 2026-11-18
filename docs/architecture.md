@@ -21,7 +21,7 @@ src/
   FrameForge.Core/            Settings; photo types (Photo, PhotoMetadata, ImportStatus, FolderScope, …);
                               decisions (PhotoDecision, CullState, ColourLabel, DecisionEdit);
                               library query (LibraryFilter, LibrarySort, LibraryQuery). No dependencies.
-  FrameForge.Rendering/       Non-destructive edit rendering (net10.0, pure): EditRenderer, EditGeometry, ToneOps, OKLab
+  FrameForge.Rendering/       Non-destructive edit rendering (net10.0, pure): EditRenderer, EditGeometry, ToneOps, OKLab, MaskImage
   FrameForge.Analysis/        Deterministic metrics on pixel buffers (net10.0, depends on Core only): SharpnessAnalyzer,
                               ExposureAnalyzer, PerceptualHasher, SimilarityGrouper, AnalysisSettings. No WPF, no AI.
   FrameForge.Application/     Ports and use cases: settings, import, library, thumbnails (ThumbnailKey),
@@ -30,13 +30,15 @@ src/
                               analysis (PhotoAnalysisService, AnalysisCache, AnalysisInsights, thresholds, ports),
                               AI ports and use cases (AiModelCatalog, IModelStore, IAiRuntime, AiAnalysisService,
                               EmbeddingGrouper, AiInsights), editing (EditService, EditRenderService, EditHistory,
-                              presets, RecipeJson, edited-export port)
+                              presets, RecipeJson, edited-export port), masks (IMaskService/MaskService, MaskKey,
+                              SubjectMaskGenerator, SkyMaskGenerator, IMaskCache)
   FrameForge.Infrastructure/  EF Core/SQLite (DbContext, migrations, photo/decision/analysis/settings repositories),
                               FileSystemPhotoEnumerator, DiskThumbnailService, FileSystemExportService, Sha256FileHasher,
                               LogFileRetention, AppDataPaths, FileSystemModelStore (consent-gated, SHA-256 verified),
-                              SqliteEdit/PresetRepository, FileSystemEditedExportService
+                              SqliteEdit/PresetRepository, FileSystemEditedExportService, DiskMaskCache
   FrameForge.Imaging/         WIC via WPF imaging (net10.0-windows): metadata, thumbnails, full/display/analysis decode
-  FrameForge.AI/              ONNX Runtime (CPU): OnnxAiRuntime, YuNetFaceDetector + YuNetDecoder, DinoV2Embedder, ImageOps
+  FrameForge.AI/              ONNX Runtime (CPU): OnnxAiRuntime, YuNetFaceDetector + YuNetDecoder, DinoV2Embedder,
+                              YoloxPersonDetector, MobileSamSegmenter, OnnxRun (cancellable runs), ImageOps
   FrameForge.App/             WPF: composition root, shell, Library (grid, filters, viewer, compare, export, help,
                               analysis details), Decision/AnalysisController, CullingShortcuts, PhotoGridListBox, …
 tests/

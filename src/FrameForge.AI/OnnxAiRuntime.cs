@@ -17,8 +17,12 @@ public sealed partial class OnnxAiRuntime(IModelStore store, ILogger<OnnxAiRunti
     private readonly Lock _gate = new();
     private YuNetFaceDetector? _faces;
     private DinoV2Embedder? _embedder;
+    private YoloxPersonDetector? _people;
+    private MobileSamSegmenter? _segmenter;
     private bool _facesFailed;
     private bool _embedderFailed;
+    private bool _peopleFailed;
+    private bool _segmenterFailed;
 
     public string? LastError { get; private set; }
 
@@ -48,16 +52,61 @@ public sealed partial class OnnxAiRuntime(IModelStore store, ILogger<OnnxAiRunti
         }
     }
 
+    public IPersonDetector? GetPersonDetector()
+    {
+        lock (_gate)
+        {
+            if (_people is null && !_peopleFailed)
+            {
+                _people = Load(AiModelCatalog.PersonDetector, s => new YoloxPersonDetector(s, AiModelCatalog.PersonDetector), ref _peopleFailed);
+            }
+
+            return _people;
+        }
+    }
+
+    public IPromptSegmenter? GetPromptSegmenter()
+    {
+        lock (_gate)
+        {
+            // Check both files first, so a missing decoder never loads the encoder on every call.
+            if (_segmenter is null && !_segmenterFailed
+                && store.GetStatus(AiModelCatalog.SubjectMaskEncoder).State == ModelState.Installed
+                && store.GetStatus(AiModelCatalog.SubjectMaskDecoder).State == ModelState.Installed)
+            {
+                // Both halves are needed; if the decoder is missing or fails, the encoder is released again.
+                var encoder = Load(AiModelCatalog.SubjectMaskEncoder, s => s, ref _segmenterFailed);
+                var decoder = encoder is null ? null : Load(AiModelCatalog.SubjectMaskDecoder, s => s, ref _segmenterFailed);
+                if (encoder is not null && decoder is not null)
+                {
+                    _segmenter = new MobileSamSegmenter(encoder, decoder, AiModelCatalog.SubjectMaskEncoder, AiModelCatalog.SubjectMaskDecoder);
+                }
+                else
+                {
+                    encoder?.Dispose();
+                }
+            }
+
+            return _segmenter;
+        }
+    }
+
     public void Reset()
     {
         lock (_gate)
         {
             _faces?.Dispose();
             _embedder?.Dispose();
+            _people?.Dispose();
+            _segmenter?.Dispose();
             _faces = null;
             _embedder = null;
+            _people = null;
+            _segmenter = null;
             _facesFailed = false;
             _embedderFailed = false;
+            _peopleFailed = false;
+            _segmenterFailed = false;
             LastError = null;
         }
     }

@@ -28,12 +28,19 @@ To check faces visually, write `faces.csv` plus copies with boxes drawn on them 
 folder must be outside the photos folder):
 `dotnet run --project tools/FrameForge.Evaluation -c Release -- annotate --models <dir> --photos <folder> --annotations <out folder>`
 
-### Subject masks (Milestone 08 phase B, under evaluation)
-MobileSAM and MODNet were compared for the subject mask; neither is in the app. MODNet was rejected after round 1. In round 2,
-MobileSAM prompted with the people found by YOLOX-s (OpenCV Zoo, Apache-2.0) gave usable masks on 27 of 30 photos and was
-accepted; it is added to the app in B3. Licences, pinned files and
-measurements are in [ADR 0008](decisions/0008-subject-mask-model.md). The blind grading sheet:
-`dotnet run --project tools/FrameForge.Evaluation -c Release -- mask-sheet --models <dir> --photos <folder> --sheet <new dir>`,
+### Subject masks (Milestone 08 phase B)
+MobileSAM and MODNet were compared for the subject mask. MODNet was rejected after round 1. In round 2, MobileSAM
+prompted with the people found by YOLOX-s (OpenCV Zoo, Apache-2.0) gave usable masks on 27 of 30 photos and was
+accepted. Licences, pinned files and measurements are in [ADR 0008](decisions/0008-subject-mask-model.md).
+
+Since B3 the three files (YOLOX-s, MobileSAM encoder and decoder) are in the app's catalogue, optional and installed
+only with consent like the Milestone 05 models. Select subject needs all three; Select sky uses no model. How masks
+are made, cached and refined with clicks is in [ADR 0010](decisions/0010-mask-pipeline.md). Nothing in the app uses
+masks before the renderer (B4) and Develop's Masks section (B5).
+
+The blind grading sheets (round 1 = faces → MobileSAM vs MODNet, round 2 = people → MobileSAM, round 3 = the app's
+subject mask with padded against unpadded boxes):
+`dotnet run --project tools/FrameForge.Evaluation -c Release -- mask-sheet --round 3 --models <dir> --photos <folder> --sheet <new dir> --seed 3 --exclude "<round 1 dir>;<round 2 dir>"`,
 scored with `score-sheet` like the Auto sheets.
 
 ## Principle

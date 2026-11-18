@@ -162,7 +162,8 @@ src/
   FrameForge.Application/     Use cases and ports (import, library, settings, thumbnail keys)
   FrameForge.Infrastructure/  SQLite/EF Core, file system scanning, thumbnail disk cache, logging, app data paths
   FrameForge.Imaging/         JPEG metadata, thumbnails, and display decoding via Windows Imaging Component
-  FrameForge.AI/              Optional local models via ONNX Runtime (CPU): YuNet faces, DINOv2 scene embeddings
+  FrameForge.AI/              Optional local models via ONNX Runtime (CPU): YuNet faces, DINOv2 scene embeddings,
+                              YOLOX-s people + MobileSAM for subject masks
   FrameForge.App/             WPF composition root, shell, grid, viewer, view models, theme
 tests/
   FrameForge.Analysis.Tests/  (synthetic image fixtures, no binary files)
