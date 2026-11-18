@@ -30,8 +30,8 @@ internal sealed record PaddingItem(
 
 /// <summary>
 /// Milestone 08 phase B, step B3: checks the box padding on fresh photos (none from rounds 1–2). Each photo is masked
-/// twice by the app's own <see cref="SubjectMaskGenerator"/>, once with <see cref="SubjectMaskOptions.Default"/> (padded)
-/// and once with <see cref="SubjectMaskOptions.Unpadded"/> (round 2's prompts), and both are graded Good / Usable / Bad
+/// twice by the app's own <see cref="SubjectMaskGenerator"/>, once with <see cref="SubjectMaskOptions.Padded"/>
+/// and once with <see cref="SubjectMaskOptions.Unpadded"/> (round 2's prompts, the app's default), and both are graded Good / Usable / Bad
 /// without knowing which is which.
 /// </summary>
 internal static class PaddingSheet
@@ -49,7 +49,7 @@ internal static class PaddingSheet
         }
 
         using var runtime = new FolderRuntime(paths[0]!, paths[1]!, paths[2]!);
-        var padded = new SubjectMaskGenerator(runtime, SubjectMaskOptions.Default);
+        var padded = new SubjectMaskGenerator(runtime, SubjectMaskOptions.Padded);
         var unpadded = new SubjectMaskGenerator(runtime, SubjectMaskOptions.Unpadded);
         var loader = new WicAnalysisImageLoader();
         var encoder = new WicJpegEncoder();

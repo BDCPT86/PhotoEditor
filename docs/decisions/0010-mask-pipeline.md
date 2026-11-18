@@ -1,8 +1,8 @@
 # 0010 — Mask pipeline: making, caching and refining masks
 
 **Date:** 2026-11-18
-**Status:** Accepted (Milestone 08 phase B, step B3). The box padding is checked on round 3 (below) before the subject
-mask counts as done.
+**Status:** Accepted (Milestone 08 phase B, step B3). The box padding was rejected after the blind round 3 grading
+(below); boxes are used as detected.
 
 ## Context
 Recipe version 2 (ADR 0009) stores mask *references*: a kind, the source that makes the mask, an invert flag and
@@ -24,10 +24,10 @@ asked for padded boxes and click-to-select. Sky starts without a model.
 - **Subject** (`SubjectMaskGenerator`, Application, so its rules are tested without models):
   - YOLOX-s finds people with a score of at least 0.5. The main people are those at least half the height of the
     tallest, as in round 2.
-  - Each main person's box is padded and prompts MobileSAM once. The masks are combined.
-  - **Padding** is a share of the person's height, measured in pixels on both axes: 15 % on each side, 10 % above and
-    3 % below. It is meant for bats, raised arms and caps, the parts round 2 cut off. The values were set before
-    round 3 and are not tuned on rounds 1–2.
+  - Each main person's box, as detected, prompts MobileSAM once. The masks are combined.
+  - **No padding.** Padding each box for bats, raised arms and caps (15 % of the person's height on each side, 10 %
+    above, 3 % below, set before round 3) made masks worse in round 3, so it is off. It stays available as
+    `SubjectMaskOptions.Padded` for comparisons. Missing parts are left to clicks.
   - **Clicks:**
     - An Include click inside a person's box joins that person's prompt. Outside every box it prompts a region of its
       own, such as a hidden player or a ball.
@@ -84,5 +84,25 @@ asked for padded boxes and click-to-select. Sky starts without a model.
   edge.
 - Speed is unchanged from round 2 (about 4.6 s per subject mask on this laptop). It is measured again in B7.
 
-## Round 3: padded against unpadded boxes
-Pending the user's grading. See [evaluation-m08.md](../evaluation-m08.md) when it is done.
+## Round 3: padded against unpadded boxes (2026-11-18)
+- **Sample:** 30 fresh photos (seed 3), none of them from rounds 1–2, all with people.
+- **Method:** each photo masked twice by the app's own `SubjectMaskGenerator`, once with padded and once with unpadded
+  boxes, shown side by side, sides random. Each mask was graded good, usable or bad by the user.
+- **Masks:** the padding changed the mask on all 30 photos. Median share of the photo inside the mask: padded 6.8 %,
+  unpadded 6.4 %.
+
+| | Good | Usable | Bad | Good or usable (95 % interval) |
+|---|---:|---:|---:|---|
+| Padded | 7 | 21 | 2 | 93 % (79–98 %) |
+| **Unpadded (now the default)** | 20 | 9 | 1 | **97 % (83–99 %)** |
+
+- **Graded better:** unpadded on 14 photos, padded on none, equal on 16 (sign test p < 0.001). The padded mask lost a
+  grade on single players and groups alike.
+- **Why (not checked photo by photo):** the larger box probably lets MobileSAM take in more background or
+  neighbouring people, instead of the bats and arms it was meant to reach.
+- **Comparing rounds:** unpadded masks got 20 "good" here against none in round 2, with the same prompts. Either the
+  photos or the grading bar differed between rounds, so the result to rely on is the comparison within this sheet,
+  not round against round.
+- **Speed in this run:** median 2.4 s per subject mask (detect, encode, decode), against about 4.6 s in round 2. This
+  is probably a quieter machine, not a speed-up. It is measured properly in B7.
+- **Decision:** padding off. The answers and the report stay outside the repository with the user's photos.

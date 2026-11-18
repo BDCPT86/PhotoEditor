@@ -9,7 +9,7 @@ namespace FrameForge.Application.Tests.Editing;
 /// <summary>Select subject's rules (main people, padding, clicks), run without the models.</summary>
 public sealed class SubjectMaskTests
 {
-    private static readonly SubjectMaskOptions Options = SubjectMaskOptions.Default;
+    private static readonly SubjectMaskOptions Options = SubjectMaskOptions.Padded;
     private static readonly NormalisedBox Batter = new(0.40, 0.20, 0.50, 0.90);
     private static readonly NormalisedBox Keeper = new(0.60, 0.40, 0.70, 0.85);
     private static readonly NormalisedBox Fielder = new(0.05, 0.40, 0.08, 0.55);
@@ -36,6 +36,16 @@ public sealed class SubjectMaskTests
 
         var edge = SubjectMaskGenerator.Pad(new NormalisedBox(0.0, 0.0, 0.1, 1.0), 1500, 1000, Options);
         Assert.Equal(new NormalisedBox(0, 0, edge.Right, 1), edge);
+    }
+
+    [Fact]
+    public void TheAppDefault_PromptsWithTheBoxAsDetected()
+    {
+        // Round 3 (ADR 0010): unpadded boxes were graded better on 14 of 30 photos, padded ones on none.
+        var plan = SubjectMaskGenerator.Plan([Batter], [], 1500, 1000, SubjectMaskOptions.Default);
+
+        Assert.Equal(Batter, Assert.Single(plan.Prompts).Box);
+        Assert.Equal(SubjectMaskOptions.Default, SubjectMaskOptions.Unpadded);
     }
 
     [Fact]
@@ -134,7 +144,7 @@ public sealed class SubjectMaskTests
         Assert.Contains(AiModelCatalog.PersonDetector.VersionTag, source, StringComparison.Ordinal);
         Assert.Contains(AiModelCatalog.SubjectMaskEncoder.VersionTag, source, StringComparison.Ordinal);
         Assert.Contains(AiModelCatalog.SubjectMaskDecoder.VersionTag, source, StringComparison.Ordinal);
-        Assert.NotEqual(source, new SubjectMaskGenerator(new Runtime(), SubjectMaskOptions.Unpadded).Source);
+        Assert.NotEqual(source, new SubjectMaskGenerator(new Runtime(), SubjectMaskOptions.Padded).Source);
         Assert.True(source.Length <= MaskReference.MaxSourceLength);
     }
 

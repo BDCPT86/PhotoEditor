@@ -18,9 +18,10 @@
 > [ADR 0008](../decisions/0008-subject-mask-model.md). B2 is done: recipe schema v2 adds local adjustments (mask
 > references plus settings), still writes version 1 when there are none, and presets get a Masks group; see
 > [ADR 0009](../decisions/0009-recipe-schema-v2.md). B3 is implemented: the mask service, the subject mask (YOLOX-s
-> people with padded boxes → MobileSAM, refined by clicks), a sky mask without a model, the three catalogue entries
-> and a disk cache; see [ADR 0010](../decisions/0010-mask-pipeline.md). The padding is being checked on a round 3
-> sheet (padded against unpadded, blind). Next: B4, the renderer.
+> people → MobileSAM, refined by clicks), a sky mask without a model, the three catalogue entries and a disk cache;
+> see [ADR 0010](../decisions/0010-mask-pipeline.md). Padding the boxes was tried and rejected: in a blind round 3,
+> unpadded masks were graded better on 14 of 30 photos and padded ones on none, with 29 of 30 unpadded masks good or
+> usable (20 good). Next: B4, the renderer.
 
 > Draft brief. Its number follows M07 (RAW and professional workflow), but it depends only on M05 (model handling) and
 > M06 (the edit recipe and renderer), so it can be scheduled before M07 if preferred.

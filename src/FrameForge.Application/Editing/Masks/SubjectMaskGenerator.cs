@@ -7,16 +7,20 @@ using FrameForge.Rendering;
 namespace FrameForge.Application.Editing.Masks;
 
 /// <summary>
-/// How the subject is found (ADR 0008). Padding is a share of each person's height, added because MobileSAM keeps the
-/// mask inside the box it is given and YOLOX's box hugs the body, which cut off bats, raised arms and caps in round 2.
-/// The padding values were set before round 3 and are checked on it, not tuned on rounds 1–2.
+/// How the subject is found (ADR 0008, ADR 0010). Each main person's box is used as detected. Padding (a share of the
+/// person's height) was tried for bats, raised arms and caps, but in the blind round 3 grading the unpadded masks were
+/// better on 14 of 30 photos and the padded ones on none, so it is off; missing parts are left to click-to-select.
 /// </summary>
 public sealed record SubjectMaskOptions
 {
+    /// <summary>What the app uses: unpadded boxes, as in rounds 2 and 3.</summary>
     public static SubjectMaskOptions Default { get; } = new();
 
-    /// <summary>Round 2's prompts (no padding), for comparison on the round 3 sheet.</summary>
-    public static SubjectMaskOptions Unpadded { get; } = new() { PadSide = 0, PadTop = 0, PadBottom = 0 };
+    /// <summary>Same as <see cref="Default"/>; named for the round 3 comparison.</summary>
+    public static SubjectMaskOptions Unpadded => Default;
+
+    /// <summary>The padding graded in round 3 (and rejected): 15 % on each side, 10 % above, 3 % below.</summary>
+    public static SubjectMaskOptions Padded { get; } = new() { PadSide = 0.15, PadTop = 0.10, PadBottom = 0.03 };
 
     /// <summary>OpenCV Zoo's default confidence threshold for YOLOX.</summary>
     public float MinScore { get; init; } = 0.5f;
@@ -25,20 +29,20 @@ public sealed record SubjectMaskOptions
     public double MainPersonRelativeHeight { get; init; } = 0.5;
 
     /// <summary>Added on the left and on the right, as a share of the person's height (a bat or an arm held out).</summary>
-    public double PadSide { get; init; } = 0.15;
+    public double PadSide { get; init; }
 
     /// <summary>Added above, as a share of the person's height (raised arms, a bat lifted, a cap).</summary>
-    public double PadTop { get; init; } = 0.10;
+    public double PadTop { get; init; }
 
     /// <summary>Added below, as a share of the person's height (feet and shoes).</summary>
-    public double PadBottom { get; init; } = 0.03;
+    public double PadBottom { get; init; }
 
     /// <summary>Part of the mask source, so other settings never reuse a cached mask.</summary>
     public string Tag => string.Create(CultureInfo.InvariantCulture, $"s{MinScore:0.##}m{MainPersonRelativeHeight:0.##}p{PadSide:0.###}-{PadTop:0.###}-{PadBottom:0.###}");
 }
 
 /// <summary>
-/// Select subject: YOLOX-s finds the people, the main ones (by height) are kept, each one's padded box prompts
+/// Select subject: YOLOX-s finds the people, the main ones (by height) are kept, each one's box prompts
 /// MobileSAM, and the masks are combined (ADR 0008). Clicks refine it:
 /// <list type="bullet">
 /// <item>an Include click inside a person's box is added to that person's prompt; outside every box it selects a
@@ -101,7 +105,7 @@ public sealed class SubjectMaskGenerator(IAiRuntime runtime, SubjectMaskOptions?
 
     // ------------------------------------------------------------------ pure rules (tested without models)
 
-    /// <summary>What will be segmented: one prompt per kept person (padded box plus its clicks) and per lone click.</summary>
+    /// <summary>What will be segmented: one prompt per kept person (its box plus its clicks) and per lone click.</summary>
     internal sealed record PromptPlan(IReadOnlyList<SegmentPrompt> Prompts, int People, int ClickRegions);
 
     /// <summary>People at least <paramref name="relativeHeight"/> of the tallest one's height, left to right.</summary>

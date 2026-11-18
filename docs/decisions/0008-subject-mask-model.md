@@ -126,7 +126,9 @@ good or usable) on fresh photos. MODNet is rejected.
 Before the subject mask counts as done, the following are required:
 - **Missing parts:** pad each person's box (more at the top and sides, for bats and raised arms) and check thin parts
   at the mask's resolution. This is done in B3 and checked with a fresh round 3 sheet, not tuned on rounds 1–2.
-  *(B3: implemented, with click-to-select rules, in [ADR 0010](0010-mask-pipeline.md); round 3 grading pending.)*
+  *(B3: tried and rejected. In the blind round 3 grading, unpadded boxes were better on 14 of 30 photos and padded
+  ones on none, so boxes are used as detected and missing parts are left to clicks. See
+  [ADR 0010](0010-mask-pipeline.md).)*
 - **Click-to-select in phase B:** a click adds a positive point (include this bat) or a negative one (not this
   umpire) to the same SAM prompt. This fixes the wrong-people cases, and SAM supports it directly.
 - **Speed:** 4.6 s per photo on this laptop in sustained runs is over the brief's goal of under 1 s. Masks are

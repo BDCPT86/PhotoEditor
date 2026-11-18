@@ -39,7 +39,7 @@ are made, cached and refined with clicks is in [ADR 0010](decisions/0010-mask-pi
 masks before the renderer (B4) and Develop's Masks section (B5).
 
 The blind grading sheets (round 1 = faces → MobileSAM vs MODNet, round 2 = people → MobileSAM, round 3 = the app's
-subject mask with padded against unpadded boxes):
+subject mask with padded against unpadded boxes; padding was rejected, see ADR 0010):
 `dotnet run --project tools/FrameForge.Evaluation -c Release -- mask-sheet --round 3 --models <dir> --photos <folder> --sheet <new dir> --seed 3 --exclude "<round 1 dir>;<round 2 dir>"`,
 scored with `score-sheet` like the Auto sheets.
 
