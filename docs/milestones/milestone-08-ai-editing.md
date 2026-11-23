@@ -30,7 +30,7 @@
 > rules pick up bluish roofs touching the top edge, left for B7. B6 is implemented: presets with masks work them out
 > photo by photo (progress, estimate, countdown, cancel, Undo last apply), leave out a mask that can't be made and list
 > the photo, and are refused up front without the subject models; edited exports list masks they left out. See
-> [ADR 0013](../decisions/0013-batch-masks.md). Next: B7, evaluation and speed.
+> [ADR 0013](../decisions/0013-batch-masks.md). Checked in the app by the user, with the folder filter. Next: B7, evaluation and speed.
 
 > Draft brief. Its number follows M07 (RAW and professional workflow), but it depends only on M05 (model handling) and
 > M06 (the edit recipe and renderer), so it can be scheduled before M07 if preferred.

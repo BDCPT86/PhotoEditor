@@ -45,4 +45,4 @@ photos that can't be handled to be listed.
 - **Export:** an export of photos whose masks are not cached yet is slow for the same reason; it shows progress per
   photo as before.
 - **Tests:** the per-photo step, the panel path (refusal, notes, undo, estimate, countdown) and the export summary.
-  Not checked in the app yet.
+  Checked in the app by the user (visual review M08, B6); no issues found.

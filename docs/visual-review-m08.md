@@ -128,3 +128,10 @@ repository.
 - Background (Subject inverted)
 - the Masks preset group
 - export with masks
+
+## B6 — presets with masks on many photos, and the folder filter (2026-11-23)
+
+Checked by the user in the app, on their own library, following the steps in the user guide: a preset with masks applied
+to a grid selection (estimate, progress and countdown, notes for photos where a mask was left out, Undo last apply),
+edited export, and the Library's folder filter. The user reported that everything looked fine; no screenshots were
+taken and no issues were found.
