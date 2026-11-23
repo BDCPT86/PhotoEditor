@@ -90,3 +90,41 @@ Isolated test data, the same 1,010 photos.
 | Keyboard after closing a side panel | After **Close** was clicked on the details panel, focus fell to the window, and **D** did nothing until the photo was clicked. Same in the grid. | When any side panel (details, shortcuts, Presets, Export) closes and focus has left the page, it returns to the viewer's photo, compare, or the selected tile. Built and unit-tested, but the in-app re-check was interrupted and still needs doing by hand: open a photo, press **I**, click **Close**, press **D**. |
 | Viewer footer | Read "Canon Canon EOS R50": Canon repeats the make in the model. | `CameraName.Format` drops the make when the model already starts with it (also used by the CSV manifest). Seen fixed in the app: "Canon EOS R50". |
 | Auto light on dark or backlit photos | The darkest photo in the set (mean 90 / 255, IMG_1271) is a daytime shot in shade; there are no night or indoor photos. | Not reviewed; listed under "Not yet reviewed". |
+
+## Masks in Develop (phase B, B5) — 2026-11-23
+Checked in the app on the test data folder (`FRAMEFORGE_DATA_DIR`, the log confirmed the override) with the three
+subject-model files installed there, on the user's photos (kept out of the repository). Screenshots stay outside the
+repository.
+
+**What worked**
+- **Subject (IMG_0604, one player in front, three people behind):**
+  - The mask took about 2 s, and the overlay greyed everything but the player, with a clean amber edge.
+  - The three smaller people behind were left out, as the main-people rule intends.
+  - With +0.8 EV and shadows +30 on the mask, the player brightened and the background did not change.
+  - At 100 % of the preview, the edges against the grass (arm, shoulder, shirt) show no visible halo.
+- **Refine:**
+  - One click on a background player added him as an area of his own. Click to updated mask took about 1.2 s,
+    including re-rendering the 2048 px preview.
+  - A right-click on the main player removed him.
+  - Both clicks were drawn as ⊕ and ⊖ markers, and the hint on the photo stayed visible while refining.
+  - Esc left Refine, and Ctrl+Z undid each click in turn.
+- **Sky (IMG_0605):** the patches of sky above the trees were selected (4 % of the photo), with edges following the
+  foliage, in about 0.7 s.
+- **Grid:** IMG_0604's thumbnail shows the brighter player (from the mask cache).
+
+**Fixed after the check**
+- **Row text:** the status wrapped badly ("1 person and 1 clicked area (1 / click)"). It now reads "1 person + 1 area
+  · 1 click".
+
+**Found, left for B7 (sky evaluation), not tuned on these photos**
+- **No sky in the photo:** on IMG_0604 the sky rules picked up pale blue roof sheeting along the top edge ("Sky covers
+  1%"). An Alt+click removes it.
+- **Roof touching the sky:** on IMG_0605 the mask also ran into a blue roof that touches the sky. Alt+click cannot
+  separate them, because removal works on connected areas.
+
+**Not checked in the app (covered by tests only)**
+- the reasons shown when the models are missing
+- Cancel while a mask is computing
+- Background (Subject inverted)
+- the Masks preset group
+- export with masks

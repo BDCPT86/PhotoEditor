@@ -131,8 +131,8 @@ public sealed class SubjectMaskTests
 
     [Theory]
     [InlineData(2, 0, 0, "2 people")]
-    [InlineData(1, 1, 2, "1 person and 1 clicked area (2 clicks)")]
-    [InlineData(0, 2, 2, "2 clicked areas (2 clicks)")]
+    [InlineData(1, 1, 2, "1 person + 1 area · 2 clicks")]
+    [InlineData(0, 2, 2, "2 areas · 2 clicks")]
     public void Describe_SaysWhatWasSelected(int people, int regions, int clicks, string expected) =>
         Assert.Equal(expected, SubjectMaskGenerator.Describe(people, regions, clicks));
 

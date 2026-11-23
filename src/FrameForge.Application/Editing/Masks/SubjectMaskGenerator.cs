@@ -231,10 +231,10 @@ public sealed class SubjectMaskGenerator(IAiRuntime runtime, SubjectMaskOptions?
 
         if (clickRegions > 0)
         {
-            parts.Add(clickRegions == 1 ? "1 clicked area" : $"{clickRegions} clicked areas");
+            parts.Add(clickRegions == 1 ? "1 area" : $"{clickRegions} areas");
         }
 
-        var what = parts.Count == 0 ? "Nothing" : string.Join(" and ", parts);
-        return clicks switch { 0 => what, 1 => what + " (1 click)", _ => $"{what} ({clicks} clicks)" };
+        var what = parts.Count == 0 ? "Nothing" : string.Join(" + ", parts);
+        return clicks switch { 0 => what, 1 => what + " · 1 click", _ => $"{what} · {clicks} clicks" };
     }
 }

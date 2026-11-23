@@ -1,7 +1,8 @@
 # 0012 — Develop's Masks section and Refine
 
 **Date:** 2026-11-18
-**Status:** Accepted (Milestone 08 phase B, step B5). Visual review on the user's photos pending.
+**Status:** Accepted (Milestone 08 phase B, step B5). Checked in the app on the user's photos on 2026-11-23 (see
+[visual-review-m08.md](../visual-review-m08.md)).
 
 ## Context
 Masks can be made (ADR 0010) and drawn (ADR 0011). Develop needs a way to add them, adjust each one, see what is

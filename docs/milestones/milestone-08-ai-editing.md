@@ -26,7 +26,8 @@
 > export use it. See [ADR 0011](../decisions/0011-local-adjustment-rendering.md). B5 is implemented: Develop's **Masks**
 > section (add Subject, Sky or Background; per-mask sliders, invert, delete, show (O), Refine with clicks (M), progress
 > with cancel, reasons when a mask is unavailable, a Masks preset group), with clicks reusing the photo's model work so
-> only the decoder runs; see [ADR 0012](../decisions/0012-develop-masks-ui.md). Visual review pending. Next: B6,
+> only the decoder runs; see [ADR 0012](../decisions/0012-develop-masks-ui.md). Checked in the app (visual review M08); sky
+> rules pick up bluish roofs touching the top edge, left for B7. Next: B6,
 > batch with masks.
 
 > Draft brief. Its number follows M07 (RAW and professional workflow), but it depends only on M05 (model handling) and
