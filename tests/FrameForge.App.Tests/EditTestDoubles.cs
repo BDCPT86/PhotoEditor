@@ -127,7 +127,7 @@ internal sealed class EditStack
 {
     public EditStack()
     {
-        Controller = new EditController(new EditService(Edits, NullLogger<EditService>.Instance), Presets, Renderer, Faces, NullLogger<EditController>.Instance);
+        Controller = new EditController(new EditService(Edits, NullLogger<EditService>.Instance), Presets, Renderer, Faces, Masks, NullLogger<EditController>.Instance);
         MaskList = new MaskListViewModel(Masks, NullLogger<MaskListViewModel>.Instance);
         Develop = new DevelopViewModel(Renderer, Controller, Faces, MaskList, NullLogger<DevelopViewModel>.Instance) { CommitDelay = TimeSpan.Zero };
     }

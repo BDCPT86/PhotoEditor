@@ -11,6 +11,9 @@ public sealed record ExportProgress(int Total, int Completed, int Failed, long B
 
 public sealed record ExportFailure(string SourcePath, string Reason);
 
+/// <summary>A photo that was exported, but with part of its edit left out, and why (e.g. a mask that could not be made).</summary>
+public sealed record ExportNote(string SourcePath, string Note);
+
 public sealed record ExportSummary
 {
     public required string Destination { get; init; }
@@ -23,6 +26,9 @@ public sealed record ExportSummary
     public int Renamed { get; init; }
 
     public IReadOnlyList<ExportFailure> Failures { get; init; } = [];
+
+    /// <summary>Photos exported without one of their masks (edited JPEGs), with the reason.</summary>
+    public IReadOnlyList<ExportNote> Notes { get; init; } = [];
 
     public long BytesCopied { get; init; }
 

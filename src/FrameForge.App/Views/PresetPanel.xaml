@@ -57,6 +57,19 @@
                 <Button Content="Undo last apply" Command="{Binding UndoBatchCommand}"
                         Visibility="{Binding Edits.CanUndoBatch, Converter={StaticResource BoolToVisibility}}" />
             </StackPanel>
+            <!-- A preset with masks works them out photo by photo: say how long that takes before it starts -->
+            <TextBlock Text="{Binding EstimateText}" TextWrapping="Wrap" FontSize="12" Margin="0,8,0,0"
+                       Foreground="{StaticResource Brush.Text.Secondary}" AutomationProperties.AutomationId="PresetEstimate">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding EstimateText}" Value="{x:Null}">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
 
             <!-- Auto on the selection: options chosen in advance, reviewed afterwards with the Auto-applied filter -->
             <Border BorderBrush="{StaticResource Brush.Border}" BorderThickness="0,1,0,0" Margin="0,20,0,0" Padding="0,14,0,0"
@@ -115,11 +128,13 @@
 
             <StackPanel Margin="0,16,0,0" Visibility="{Binding IsApplying, Converter={StaticResource BoolToVisibility}}">
                 <ProgressBar Minimum="0" Maximum="1" Value="{Binding ProgressValue, Mode=OneWay}" AutomationProperties.Name="Preset progress" />
+                <TextBlock Text="{Binding ProgressText}" FontSize="12" Margin="0,6,0,0" Foreground="{StaticResource Brush.Text.Secondary}"
+                           Typography.NumeralAlignment="Tabular" AutomationProperties.LiveSetting="Polite" />
                 <Button Content="Cancel" HorizontalAlignment="Right" Margin="0,8,0,0" Command="{Binding CancelCommand}" />
             </StackPanel>
 
-            <ItemsControl ItemsSource="{Binding AutoNotes}" Margin="0,10,0,0" MaxHeight="160" Focusable="False"
-                          AutomationProperties.Name="Photos Auto could not fully handle">
+            <ItemsControl ItemsSource="{Binding Notes}" Margin="0,10,0,0" MaxHeight="160" Focusable="False"
+                          AutomationProperties.Name="Photos the last batch could not fully handle">
                 <ItemsControl.Template>
                     <ControlTemplate TargetType="ItemsControl">
                         <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
@@ -129,7 +144,7 @@
                 </ItemsControl.Template>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <TextBlock Text="{Binding}" FontSize="12" TextTrimming="CharacterEllipsis" Foreground="{StaticResource Brush.Text.Secondary}" />
+                        <TextBlock Text="{Binding}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,4" Foreground="{StaticResource Brush.Text.Secondary}" />
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>

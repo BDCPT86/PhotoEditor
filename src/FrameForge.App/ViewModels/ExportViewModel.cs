@@ -214,7 +214,7 @@ public sealed partial class ExportViewModel(
                 summary = await exporter.CopyAsync(items, destination, progress, cts.Token).ConfigureAwait(true);
             }
 
-            SetResult(Describe(summary, manifest, Mode == ExportMode.EditedJpegs), warning: summary.Failures.Count > 0 || summary.WasCancelled);
+            SetResult(Describe(summary, manifest, Mode == ExportMode.EditedJpegs), warning: summary.Failures.Count > 0 || summary.Notes.Count > 0 || summary.WasCancelled);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
         {
@@ -282,6 +282,14 @@ public sealed partial class ExportViewModel(
         if (summary.Renamed > 0)
         {
             text += string.Create(culture, $" {summary.Renamed:N0} renamed to avoid replacing existing files.");
+        }
+
+        if (summary.Notes.Count > 0)
+        {
+            var photos = summary.Notes.Select(n => n.SourcePath).Distinct(StringComparer.OrdinalIgnoreCase).Count();
+            text += string.Create(culture, $" {photos:N0} saved without a mask: ")
+                + string.Join("; ", summary.Notes.Take(3).Select(n => $"{Path.GetFileName(n.SourcePath)} ({n.Note})"))
+                + (summary.Notes.Count > 3 ? "…" : string.Empty);
         }
 
         if (summary.Failures.Count > 0)

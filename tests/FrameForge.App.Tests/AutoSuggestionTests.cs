@@ -170,8 +170,8 @@ public sealed class AutoSuggestionTests
         }
 
         Assert.False(f.Tile(3).AutoApplied);
-        Assert.Equal(3, f.PresetPanel.AutoNotes.Count);
-        Assert.Contains("not cropped", f.PresetPanel.AutoNotes[0], StringComparison.Ordinal);
+        Assert.Equal(3, f.PresetPanel.Notes.Count);
+        Assert.Contains("not cropped", f.PresetPanel.Notes[0], StringComparison.Ordinal);
 
         f.Library.Filter.Analysis = AnalysisFilterChoice.AutoApplied;
         Assert.Equal(3, f.Library.Photos.Count);

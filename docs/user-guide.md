@@ -166,8 +166,12 @@ in too.
 - **Apply to one photo:** select it in the Presets list in Develop and choose **Apply** (one undo step).
 - **Apply to many:** select photos in the grid, choose **Presets…**, pick one and **Apply to selected**. There's
   progress and cancel, and **Undo last apply** puts every photo back.
-- A preset changes only the settings it was saved with. With **Masks**, each photo gets its own masks worked out; clicks
-  are never copied from one photo to another.
+- A preset changes only the settings it was saved with.
+- **Presets with masks** work out each photo's own masks as they go (clicks are never copied between photos), so they
+  take longer: the panel says roughly how long before you start (a subject takes 2–5 s per photo) and counts down while
+  it runs. If a mask can't be made for a photo (no people, no sky), that photo gets the rest of the preset without the
+  mask and is listed with the reason. A preset with a subject mask needs the subject models (section 7); without them it
+  says so and doesn't start.
 - **Auto for many:** in the same panel, the **Auto** section runs Light, Level and/or Crop on every selected photo in
   that order, with the option you choose now. Photos it couldn't help are listed, and the **Auto-applied** chip shows
   what it changed.
@@ -178,7 +182,8 @@ Choose **Export…** in the Library, pick which **Photos** (all marked Keep, or 
 the grid**.
 - **Copy files to a folder:** the originals, copied unchanged.
 - **Edited JPEGs:** new JPEGs with each photo's edits, masks included, at the **Quality** and **Longest side** you
-  choose, optionally keeping the camera metadata (EXIF).
+  choose, optionally keeping the camera metadata (EXIF). Masks not worked out yet are worked out during the export. If
+  one can't be made, the JPEG is still saved with the rest of the edit, and the result says which photo and why.
 - **Selection manifest (CSV):** a list of the photos and your decisions, with no image files.
 
 Existing files are never replaced: a name clash is saved as `name (2).jpg`. If you export into a folder that is part of

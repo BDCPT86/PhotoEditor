@@ -27,8 +27,10 @@
 > section (add Subject, Sky or Background; per-mask sliders, invert, delete, show (O), Refine with clicks (M), progress
 > with cancel, reasons when a mask is unavailable, a Masks preset group), with clicks reusing the photo's model work so
 > only the decoder runs; see [ADR 0012](../decisions/0012-develop-masks-ui.md). Checked in the app (visual review M08); sky
-> rules pick up bluish roofs touching the top edge, left for B7. Next: B6,
-> batch with masks.
+> rules pick up bluish roofs touching the top edge, left for B7. B6 is implemented: presets with masks work them out
+> photo by photo (progress, estimate, countdown, cancel, Undo last apply), leave out a mask that can't be made and list
+> the photo, and are refused up front without the subject models; edited exports list masks they left out. See
+> [ADR 0013](../decisions/0013-batch-masks.md). Next: B7, evaluation and speed.
 
 > Draft brief. Its number follows M07 (RAW and professional workflow), but it depends only on M05 (model handling) and
 > M06 (the edit recipe and renderer), so it can be scheduled before M07 if preferred.

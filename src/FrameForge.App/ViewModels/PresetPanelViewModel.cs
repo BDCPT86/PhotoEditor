@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.Input;
 using FrameForge.App.Services;
 using FrameForge.Application.Editing;
 using FrameForge.Application.Editing.Auto;
+using FrameForge.Application.Editing.Masks;
 using FrameForge.Core.Editing;
 using Microsoft.Extensions.Logging;
 
@@ -63,6 +64,58 @@ public sealed partial class PresetPanelViewModel(EditController edits, ILogger<P
         }
     }
 
+    /// <summary>
+    /// For a preset with masks: roughly how long the selected photos will take, because each needs its masks worked
+    /// out. Null for presets without masks (they apply in seconds).
+    /// </summary>
+    public string? EstimateText =>
+        SelectedPreset is { } preset && MaskBatch.Estimate(preset, TargetCount) is { } range
+            ? MaskBatch.KindsNeeded(preset).Contains(MaskKind.Subject)
+                ? string.Create(CultureInfo.CurrentCulture, $"Has masks: about {FormatRange(range)} for {TargetCount:N0} photo(s), because each photo's subject is found (2–5 s each). You can cancel and keep what's done.")
+                : string.Create(CultureInfo.CurrentCulture, $"Has masks: about {FormatRange(range)} for {TargetCount:N0} photo(s), because each photo's mask is worked out.")
+            : null;
+
+    /// <summary>While a preset with masks runs: how far it is and roughly how long is left.</summary>
+    [ObservableProperty]
+    private string? _progressText;
+
+    partial void OnSelectedPresetChanged(EditPreset? value) => OnPropertyChanged(nameof(EstimateText));
+
+    partial void OnTargetCountChanged(int value) => OnPropertyChanged(nameof(EstimateText));
+
+    internal static string FormatRange((TimeSpan Low, TimeSpan High) range)
+    {
+        var low = Format(range.Low);
+        var high = Format(range.High);
+        if (low == high)
+        {
+            return low;
+        }
+
+        // "7–17 min" when both ends are in minutes; otherwise each end keeps its own units.
+        return range.High.TotalMinutes < 60 ? $"{low.Replace(" min", string.Empty, StringComparison.Ordinal)}–{high}" : $"{low}–{high}";
+    }
+
+    internal static string Format(TimeSpan time) => time.TotalMinutes switch
+    {
+        < 1 => "1 min",
+        < 60 => string.Create(CultureInfo.CurrentCulture, $"{Math.Ceiling(time.TotalMinutes):0} min"),
+        _ => string.Create(CultureInfo.CurrentCulture, $"{(int)time.TotalHours} h {time.Minutes:0} min"),
+    };
+
+    /// <summary>"37 of 200 · about 9 min left", from the speed so far (shown once a few photos are done).</summary>
+    internal static string Countdown(int done, int total, TimeSpan elapsed)
+    {
+        var head = string.Create(CultureInfo.CurrentCulture, $"{done:N0} of {total:N0}");
+        if (done < 3 || done >= total)
+        {
+            return head;
+        }
+
+        var left = TimeSpan.FromTicks(elapsed.Ticks / done * (total - done));
+        return left.TotalMinutes < 1 ? head + " · under a minute left" : $"{head} · about {Format(left)} left";
+    }
+
     private bool CanApply() => !IsApplying && SelectedPreset is not null;
 
     [RelayCommand(CanExecute = nameof(CanApply))]
@@ -75,24 +128,45 @@ public sealed partial class PresetPanelViewModel(EditController edits, ILogger<P
             return;
         }
 
+        if (await Edits.WhyPresetCannotRunAsync(preset).ConfigureAwait(true) is { } blocked)
+        {
+            SetResult(blocked, warning: true);
+            return;
+        }
+
         using var cts = new CancellationTokenSource();
         _cts = cts;
         IsApplying = true;
         ProgressValue = 0;
         ResultText = null;
+        Notes.Clear();
+        var withMasks = MaskBatch.HasMasks(preset);
+        var clock = System.Diagnostics.Stopwatch.StartNew();
         try
         {
             var result = await Edits.ApplyPresetAsync(
                 targets,
                 preset,
-                new Progress<BatchProgress>(p => ProgressValue = p.Total == 0 ? 1 : (double)p.Completed / p.Total),
+                new Progress<BatchProgress>(p =>
+                {
+                    ProgressValue = p.Total == 0 ? 1 : (double)p.Completed / p.Total;
+                    ProgressText = withMasks ? Countdown(p.Completed, p.Total, clock.Elapsed) : null;
+                }),
                 cts.Token).ConfigureAwait(true);
+
+            var names = targets.ToDictionary(t => t.Id, t => t.FileName);
+            foreach (var (id, note) in result.Notes)
+            {
+                Notes.Add($"{names.GetValueOrDefault(id, "?")}: {note}");
+            }
+
             var culture = CultureInfo.CurrentCulture;
-            SetResult(
-                result.WasCancelled
-                    ? string.Create(culture, $"Cancelled: “{preset.Name}” was applied to {result.Changes.Count:N0} of {targets.Count:N0} photos. Undo restores them.")
-                    : string.Create(culture, $"Applied “{preset.Name}” to {result.Changes.Count:N0} photo(s)."),
-                warning: result.WasCancelled);
+            var head = result.WasCancelled
+                ? string.Create(culture, $"Cancelled: “{preset.Name}” was applied to {result.Changes.Count:N0} of {targets.Count:N0} photos. Undo restores them.")
+                : string.Create(culture, $"Applied “{preset.Name}” to {result.Changes.Count:N0} photo(s).");
+            var tail = result.Notes.Count == 0 ? string.Empty
+                : string.Create(culture, $" {result.Notes.Count:N0} got the preset without a mask (listed above).");
+            SetResult(head + tail, warning: result.WasCancelled);
         }
         catch (Exception ex) when (ex is IOException or System.Data.Common.DbException or InvalidOperationException or ArgumentException)
         {
@@ -102,6 +176,7 @@ public sealed partial class PresetPanelViewModel(EditController edits, ILogger<P
         finally
         {
             _cts = null;
+            ProgressText = null;
             IsApplying = false;
         }
     }
@@ -135,8 +210,8 @@ public sealed partial class PresetPanelViewModel(EditController edits, ILogger<P
     [ObservableProperty]
     private string _cropAspect = "Original";
 
-    /// <summary>Photos the last Auto run could not fully handle, and why (e.g. no faces to frame).</summary>
-    public ObservableCollection<string> AutoNotes { get; } = [];
+    /// <summary>Photos the last batch could not fully handle, and why (no faces to frame, a mask left out).</summary>
+    public ObservableCollection<string> Notes { get; } = [];
 
     internal AutoBatchOptions AutoOptions => new()
     {
@@ -163,7 +238,7 @@ public sealed partial class PresetPanelViewModel(EditController edits, ILogger<P
         IsApplying = true;
         ProgressValue = 0;
         ResultText = null;
-        AutoNotes.Clear();
+        Notes.Clear();
         try
         {
             var result = await Edits.ApplyAutoAsync(
@@ -175,7 +250,7 @@ public sealed partial class PresetPanelViewModel(EditController edits, ILogger<P
             var names = targets.ToDictionary(t => t.Id, t => t.FileName);
             foreach (var (id, note) in result.Notes)
             {
-                AutoNotes.Add($"{names.GetValueOrDefault(id, "?")}: {note}");
+                Notes.Add($"{names.GetValueOrDefault(id, "?")}: {note}");
             }
 
             var culture = CultureInfo.CurrentCulture;

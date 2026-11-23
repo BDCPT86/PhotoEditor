@@ -55,6 +55,7 @@ public sealed partial class FileSystemEditedExportService(
         var taken = new HashSet<string>(existing.Concat(plan.Select(p => p.TargetFileName)), StringComparer.OrdinalIgnoreCase);
 
         var failures = new List<ExportFailure>();
+        var notes = new List<ExportNote>();
         int exported = 0, renamed = 0, completed = 0, withoutMetadata = 0;
         long bytes = 0;
         var cancelled = false;
@@ -69,8 +70,16 @@ public sealed partial class FileSystemEditedExportService(
                 var item = items[i];
                 try
                 {
+                    // Masks first (computed and cached if missing), so any left out can be reported; the render then reads them from the cache.
+                    var local = await renderer.LoadMasksAsync(item.Photo, item.Recipe, cancellationToken).ConfigureAwait(false);
                     var image = await renderer.RenderAsync(item.Photo, item.Recipe, options.MaxLongSide, cancellationToken).ConfigureAwait(false);
                     var (name, size, metadataKept) = WriteOne(image, item, destination, plan[i].TargetFileName, taken, options, cancellationToken);
+                    foreach (var (id, reason) in local.Unavailable)
+                    {
+                        var mask = item.Recipe.LocalAdjustments.FirstOrDefault(a => a.Id == id)?.Mask.DisplayName ?? "A mask";
+                        notes.Add(new ExportNote(item.Photo.FilePath, $"{mask} left out: {reason}"));
+                    }
+
                     exported++;
                     bytes += size;
                     renamed += plan[i].WasRenamed || !string.Equals(name, plan[i].TargetFileName, StringComparison.Ordinal) ? 1 : 0;
@@ -99,6 +108,7 @@ public sealed partial class FileSystemEditedExportService(
             Exported = exported,
             Renamed = renamed,
             Failures = failures,
+            Notes = notes,
             BytesCopied = bytes,
             WasCancelled = cancelled,
         };

@@ -19,6 +19,7 @@ public sealed partial class EditController(
     IPresetRepository presets,
     IEditRenderService renderer,
     IFaceLookup faces,
+    FrameForge.Application.Editing.Masks.IMaskService masks,
     ILogger<EditController> logger) : ObservableObject
 {
     private BatchEditResult? _lastBatch;
@@ -64,10 +65,45 @@ public sealed partial class EditController(
         }
     }
 
+    /// <summary>
+    /// Why a preset can't be applied right now, or null. A preset with a subject or background mask needs the subject
+    /// models; without them every photo would come out without its mask, so the batch is refused up front.
+    /// </summary>
+    public async Task<string?> WhyPresetCannotRunAsync(EditPreset preset)
+    {
+        ArgumentNullException.ThrowIfNull(preset);
+        if (!FrameForge.Application.Editing.Masks.MaskBatch.KindsNeeded(preset).Contains(MaskKind.Subject))
+        {
+            return null;
+        }
+
+        var reason = await Task.Run(() => masks.UnavailableReason(MaskKind.Subject)).ConfigureAwait(true);
+        return reason is null ? null : $"“{preset.Name}” has a subject mask, which can't be made yet: {reason}";
+    }
+
+    /// <summary>
+    /// Applies a preset to the targets as one undoable batch. A preset with masks works them out photo by photo
+    /// (slow, cancellable); a mask that can't be made is left off that photo and noted in the result.
+    /// </summary>
     public async Task<BatchEditResult> ApplyPresetAsync(IReadOnlyList<PhotoTileViewModel> targets, EditPreset preset, IProgress<BatchProgress>? progress, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(targets);
-        var result = await edits.ApplyPresetAsync(targets.Select(t => (t.Id, t.Recipe)).ToList(), preset, progress, cancellationToken).ConfigureAwait(true);
+        ArgumentNullException.ThrowIfNull(preset);
+        var current = targets.Select(t => (t.Id, t.Recipe)).ToList();
+        BatchEditResult result;
+        if (FrameForge.Application.Editing.Masks.MaskBatch.HasMasks(preset))
+        {
+            var photos = targets.ToDictionary(t => t.Id, t => t.Photo);
+            result = await edits.ApplyAsync(
+                current,
+                (id, recipe, ct) => FrameForge.Application.Editing.Masks.MaskBatch.ApplyAsync(photos[id], recipe, preset, masks, ct),
+                progress,
+                cancellationToken).ConfigureAwait(true);
+        }
+        else
+        {
+            result = await edits.ApplyPresetAsync(current, preset, progress, cancellationToken).ConfigureAwait(true);
+        }
         foreach (var (id, _, after) in result.Changes)
         {
             if (_tiles.TryGetValue(id, out var tile))
