@@ -30,13 +30,33 @@ public sealed record LibraryFilter
 
     public IReadOnlySet<ColourLabel>? Labels { get; init; }
 
-    /// <summary>Only photos that are missing or unreadable.</summary>
+    /// <summary>Only missing or unreadable photos.</summary>
     public bool ProblemsOnly { get; init; }
+
+    /// <summary>Only photos in this folder or its subfolders (case-insensitive); null = every folder.</summary>
+    public string? Folder { get; init; }
+
+    /// <summary>True when <paramref name="folderPath"/> is <paramref name="folder"/> or inside it.</summary>
+    public static bool IsInFolder(string folderPath, string folder)
+    {
+        ArgumentNullException.ThrowIfNull(folderPath);
+        ArgumentNullException.ThrowIfNull(folder);
+        var root = folder.TrimEnd('\\', '/');
+        return folderPath.Equals(root, StringComparison.OrdinalIgnoreCase)
+            || (folderPath.Length > root.Length
+                && folderPath.StartsWith(root, StringComparison.OrdinalIgnoreCase)
+                && folderPath[root.Length] is '\\' or '/');
+    }
 
     public bool Matches(Photo photo, PhotoDecision decision)
     {
         ArgumentNullException.ThrowIfNull(photo);
         ArgumentNullException.ThrowIfNull(decision);
+
+        if (Folder is not null && !IsInFolder(photo.FolderPath, Folder))
+        {
+            return false;
+        }
 
         if (ProblemsOnly && photo.Status == ImportStatus.Imported)
         {

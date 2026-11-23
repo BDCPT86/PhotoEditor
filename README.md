@@ -24,6 +24,7 @@ save edited JPEGs. **Auto** suggests a few options for light, levelling and crop
    to the current photo, and the next photo opens automatically after a Keep/Reject/Review/Unset (Settings → Culling).
    **Ctrl+Z / Ctrl+Y** undo and redo. Press **F1** for all shortcuts.
 4. **Work through what's left:** choose **Show → Unset**. Each decided photo leaves the view, and selection moves on.
+   With more than one folder imported, **Folder** (first in the filter bar) shows one folder and its subfolders.
 5. **Compare:** select 2–4 photos and press **C**. ← / → choose the photo that decision keys apply to.
 6. **Export…:** copy every Keep photo (or the current view) to a folder, or save a CSV manifest of the selection.
 7. **Analyze:** measures every photo once and remembers the results; later runs only analyse new or changed photos.

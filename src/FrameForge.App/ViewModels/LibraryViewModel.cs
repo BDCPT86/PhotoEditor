@@ -578,6 +578,7 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
             Decisions.Register(_all);
             await Edits.LoadAsync(_all, cancellationToken).ConfigureAwait(true);
             await Analysis.Controller.LoadAsync(_all, cancellationToken).ConfigureAwait(true);
+            Filter.SetFolders(_all.Select(t => t.Photo.FolderPath));
             RebuildView();
         }
         finally

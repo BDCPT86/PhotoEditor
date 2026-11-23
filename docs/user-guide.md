@@ -55,7 +55,11 @@ time that folder is imported.
 on to the next one.
 
 ## 4. Filter and sort
-The bar above the grid filters by **Show** (All, Unset, Keep, Review, Reject, and **Problems**: unreadable or missing
+**Folder** comes first once you have imported more than one folder. It lists every folder that holds photos, with how
+many photos each has, and shows one folder (with its subfolders) or **All folders**. When two folders have the same
+name, enough of their path is shown to tell them apart, and the full path appears when you hover over one.
+
+The rest of the bar filters by **Show** (All, Unset, Keep, Review, Reject, and **Problems**: unreadable or missing
 files), **Rating**, **Label** and
 **Analysis** badges, and sorts by **Folder**, **Captured**, **Name** or **Rating**. The count line shows how many photos
 match and how many are kept, under review or rejected. **F5** applies the filter and sort again.
@@ -170,7 +174,8 @@ in too.
 
 ## 11. Export
 Choose **Export…** in the Library, pick which **Photos** (all marked Keep, or those shown in the grid), and what to
-**Export as**:
+**Export as**. To export only one folder's keepers, choose that **Folder** and **Show → Keep**, then **Photos shown in
+the grid**.
 - **Copy files to a folder:** the originals, copied unchanged.
 - **Edited JPEGs:** new JPEGs with each photo's edits, masks included, at the **Quality** and **Longest side** you
   choose, optionally keeping the camera metadata (EXIF).
