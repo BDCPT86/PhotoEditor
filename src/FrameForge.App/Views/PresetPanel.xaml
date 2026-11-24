@@ -21,9 +21,9 @@
     <Border Style="{StaticResource SidePanel}">
         <DockPanel>
             <DockPanel DockPanel.Dock="Top" Margin="0,0,0,16">
-                <Button DockPanel.Dock="Right" Content="Close" MinWidth="0" Command="{Binding CloseCommand}"
+                <Button DockPanel.Dock="Right" Style="{StaticResource Button.Icon}" Content="&#xE711;" Margin="0,0,-8,0" ToolTip="Close (Esc)" AutomationProperties.Name="Close" Command="{Binding CloseCommand}"
                         IsEnabled="{Binding IsApplying, Converter={StaticResource InverseBool}}" />
-                <TextBlock Text="Presets" Style="{StaticResource Text.SectionLabel}" FontSize="16" VerticalAlignment="Center" />
+                <TextBlock Text="Presets" Style="{StaticResource Text.PanelTitle}" />
             </DockPanel>
 
             <!-- Scrolls on short windows, so the Auto controls, progress and results stay reachable -->
@@ -53,7 +53,7 @@
             <TextBlock Style="{StaticResource Text.Secondary}" Margin="0,0,0,8" AutomationProperties.AutomationId="PresetTargetCount"
                        Text="{Binding TargetCount, StringFormat='Applies to {0:N0} selected photo(s)'}" />
             <StackPanel Orientation="Horizontal">
-                <Button Content="Apply to selected" Command="{Binding ApplyCommand}" Margin="0,0,8,0" />
+                <Button Style="{StaticResource Button.Primary}" Content="Apply to selected" Command="{Binding ApplyCommand}" Margin="0,0,8,0" />
                 <Button Content="Undo last apply" Command="{Binding UndoBatchCommand}"
                         Visibility="{Binding Edits.CanUndoBatch, Converter={StaticResource BoolToVisibility}}" />
             </StackPanel>
@@ -72,7 +72,7 @@
             </TextBlock>
 
             <!-- Auto on the selection: options chosen in advance, reviewed afterwards with the Auto-applied filter -->
-            <Border BorderBrush="{StaticResource Brush.Border}" BorderThickness="0,1,0,0" Margin="0,20,0,0" Padding="0,14,0,0"
+            <Border BorderBrush="{StaticResource Brush.Hairline}" BorderThickness="0,1,0,0" Margin="0,24,0,0" Padding="0,18,0,0"
                     IsEnabled="{Binding IsApplying, Converter={StaticResource InverseBool}}">
                 <StackPanel>
                     <TextBlock Text="Auto" Style="{StaticResource Text.SectionLabel}" />
@@ -80,7 +80,7 @@
                                Text="Runs on every selected photo, in this order. Choose the option now; review the results afterwards with the Auto-applied filter." />
 
                     <CheckBox Content="Light" IsChecked="{Binding AutoLight}" Margin="0,0,0,4" />
-                    <Border Style="{StaticResource SegmentGroup}" Margin="22,0,0,10" IsEnabled="{Binding AutoLight}" AutomationProperties.Name="Auto light option">
+                    <Border Style="{StaticResource SegmentGroup}" Margin="24,0,0,12" IsEnabled="{Binding AutoLight}" AutomationProperties.Name="Auto light option">
                         <StackPanel Orientation="Horizontal">
                             <RadioButton Style="{StaticResource Segment}" GroupName="LightVariant" Content="Natural"
                                          IsChecked="{Binding LightVariant, Converter={StaticResource EnumEquals}, ConverterParameter=Natural}" />
@@ -94,7 +94,7 @@
                     <CheckBox Content="Level (to the main line, when one is found)" IsChecked="{Binding AutoLevel}" Margin="0,0,0,10" />
 
                     <CheckBox Content="Crop around the main faces" IsChecked="{Binding AutoCrop}" Margin="0,0,0,4" />
-                    <StackPanel Margin="22,0,0,10" IsEnabled="{Binding AutoCrop}">
+                    <StackPanel Margin="24,0,0,12" IsEnabled="{Binding AutoCrop}">
                         <Border Style="{StaticResource SegmentGroup}" AutomationProperties.Name="Auto crop framing" Margin="0,0,0,4">
                             <StackPanel Orientation="Horizontal">
                                 <RadioButton Style="{StaticResource Segment}" GroupName="CropVariant" Content="Tight"

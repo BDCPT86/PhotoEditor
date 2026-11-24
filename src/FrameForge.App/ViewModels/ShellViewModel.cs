@@ -20,6 +20,7 @@ public sealed partial class ShellViewModel : ObservableObject
     {
         _settings = settings;
         _logger = logger;
+        Library = library;
 
         Pages =
         [
@@ -29,7 +30,16 @@ public sealed partial class ShellViewModel : ObservableObject
         ];
     }
 
+    /// <summary>The library page; the sidebar shows its views and folders on every page.</summary>
+    public LibraryViewModel Library { get; }
+
     public IReadOnlyList<NavigationItem> Pages { get; }
+
+    public bool IsLibraryPage => SelectedPage?.Page == AppPage.Library;
+
+    public bool IsSettingsPage => SelectedPage?.Page == AppPage.Settings;
+
+    public bool IsAboutPage => SelectedPage?.Page == AppPage.About;
 
     [ObservableProperty]
     private NavigationItem? _selectedPage;
@@ -60,6 +70,9 @@ public sealed partial class ShellViewModel : ObservableObject
     partial void OnSelectedPageChanged(NavigationItem? value)
     {
         CurrentPage = value?.ViewModel;
+        OnPropertyChanged(nameof(IsLibraryPage));
+        OnPropertyChanged(nameof(IsSettingsPage));
+        OnPropertyChanged(nameof(IsAboutPage));
         if (CurrentPage is not null)
         {
             _ = ActivatePageAsync(CurrentPage);

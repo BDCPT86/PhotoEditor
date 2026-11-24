@@ -5,13 +5,14 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="clr-namespace:FrameForge.App.ViewModels"
         xmlns:views="clr-namespace:FrameForge.App.Views"
+        xmlns:conv="clr-namespace:FrameForge.App.Converters"
         xmlns:core="clr-namespace:FrameForge.Core.Settings;assembly=FrameForge.Core"
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance Type=vm:ShellViewModel}"
         Title="FrameForge AI"
-        Width="1280" Height="800" MinWidth="800" MinHeight="500"
+        Width="1440" Height="900" MinWidth="960" MinHeight="560"
         WindowStartupLocation="CenterScreen"
-        Background="{StaticResource Brush.Surface.Base}"
+        Background="{StaticResource Brush.Canvas}"
         Foreground="{StaticResource Brush.Text.Primary}"
         FontFamily="{StaticResource Font.UI}"
         FontSize="{StaticResource FontSize.Body}"
@@ -28,6 +29,9 @@
     </Window.InputBindings>
 
     <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+        <conv:DepthToIndentConverter x:Key="DepthToIndent" />
+
         <!-- Page view model → view mapping. Navigation is entirely data-driven. -->
         <DataTemplate DataType="{x:Type vm:LibraryViewModel}">
             <views:LibraryView />
@@ -38,68 +42,172 @@
         <DataTemplate DataType="{x:Type vm:AboutViewModel}">
             <views:AboutView />
         </DataTemplate>
+
+        <!-- Sidebar rows dim their selection while another page (Settings, About) is shown. -->
+        <Style x:Key="SidebarList" TargetType="ListBox" BasedOn="{StaticResource NavigationList}">
+            <Setter Property="KeyboardNavigation.DirectionalNavigation" Value="Contained" />
+            <Setter Property="KeyboardNavigation.TabNavigation" Value="Once" />
+        </Style>
     </Window.Resources>
 
     <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
-        </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="200" />
+            <ColumnDefinition Width="228" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
-        <!-- Top bar -->
-        <Border Grid.Row="0" Grid.ColumnSpan="2"
-                Background="{StaticResource Brush.Surface.Sunken}"
-                BorderBrush="{StaticResource Brush.Border}" BorderThickness="0,0,0,1"
-                Padding="16,10">
-            <TextBlock Text="FrameForge" FontWeight="SemiBold" FontSize="14" />
-        </Border>
+        <!-- ============================== Sidebar: library views, folders, then Settings and About -->
+        <Border Grid.Column="0" Background="{StaticResource Brush.Chrome}" BorderBrush="{StaticResource Brush.Hairline}" BorderThickness="0,0,1,0">
+            <DockPanel>
+                <!-- Wordmark, aligned with the page header -->
+                <TextBlock DockPanel.Dock="Top" Margin="20,16,0,4" Text="FrameForge" FontFamily="{StaticResource Font.Display}"
+                           FontSize="{StaticResource FontSize.Section}" FontWeight="SemiBold" Foreground="{StaticResource Brush.Text.Primary}" />
 
-        <!-- Left navigation -->
-        <Border Grid.Row="1" Grid.Column="0"
-                Background="{StaticResource Brush.Surface.Sunken}"
-                BorderBrush="{StaticResource Brush.Border}" BorderThickness="0,0,1,0"
-                Padding="0,8">
-            <ListBox Style="{StaticResource NavigationList}"
-                     ItemsSource="{Binding Pages}"
-                     SelectedItem="{Binding SelectedPage}"
-                     IsEnabled="{Binding IsReady}"
-                     AutomationProperties.Name="Main navigation">
-                <ListBox.ItemContainerStyle>
-                    <Style TargetType="ListBoxItem" BasedOn="{StaticResource NavigationListItem}">
-                        <Setter Property="AutomationProperties.Name" Value="{Binding Title}" />
-                        <Setter Property="AutomationProperties.AcceleratorKey" Value="{Binding ShortcutText}" />
-                    </Style>
-                </ListBox.ItemContainerStyle>
-                <ListBox.ItemTemplate>
-                    <DataTemplate DataType="{x:Type vm:NavigationItem}">
-                        <DockPanel ToolTip="{Binding ShortcutText}">
-                            <TextBlock DockPanel.Dock="Right" Text="{Binding ShortcutText}"
-                                       Foreground="{StaticResource Brush.Text.Disabled}" FontWeight="Normal" FontSize="11"
-                                       VerticalAlignment="Center" />
-                            <TextBlock Text="{Binding Title}" VerticalAlignment="Center" />
+                <!-- Settings and About, at the foot -->
+                <StackPanel DockPanel.Dock="Bottom" Margin="0,8,0,12">
+                    <TextBlock Margin="20,0,16,8" TextWrapping="Wrap" TextTrimming="None"
+                               Text="{Binding StatusMessage}" AutomationProperties.AutomationId="ShellStatus">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Status}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding StatusMessage}" Value="Ready">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <Button Style="{StaticResource NavigationButton}" Tag="{Binding IsSettingsPage}" IsEnabled="{Binding IsReady}"
+                            Command="{Binding NavigateCommand}" CommandParameter="{x:Static core:AppPage.Settings}"
+                            ToolTip="Settings (Ctrl+2)" AutomationProperties.Name="Settings" AutomationProperties.AcceleratorKey="Ctrl+2">
+                        <DockPanel>
+                            <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE713;" Width="16" Margin="0,0,10,0" />
+                            <TextBlock DockPanel.Dock="Right" Text="Ctrl+2" Style="{StaticResource Text.Count}" FontSize="{StaticResource FontSize.Caption}" />
+                            <TextBlock Text="Settings" VerticalAlignment="Center" />
                         </DockPanel>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
+                    </Button>
+                    <Button Style="{StaticResource NavigationButton}" Tag="{Binding IsAboutPage}" IsEnabled="{Binding IsReady}"
+                            Command="{Binding NavigateCommand}" CommandParameter="{x:Static core:AppPage.About}"
+                            ToolTip="About (Ctrl+3)" AutomationProperties.Name="About" AutomationProperties.AcceleratorKey="Ctrl+3">
+                        <DockPanel>
+                            <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE946;" Width="16" Margin="0,0,10,0" />
+                            <TextBlock DockPanel.Dock="Right" Text="Ctrl+3" Style="{StaticResource Text.Count}" FontSize="{StaticResource FontSize.Caption}" />
+                            <TextBlock Text="About" VerticalAlignment="Center" />
+                        </DockPanel>
+                    </Button>
+                </StackPanel>
+
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False" DataContext="{Binding Library.Filter}" IsEnabled="{Binding DataContext.IsReady, RelativeSource={RelativeSource AncestorType=Window}}">
+                    <StackPanel>
+                        <!-- Library views: the decision states and the last import; counts cover the whole library -->
+                        <TextBlock Text="Library" Style="{StaticResource Text.SidebarHeading}" Margin="20,16,0,6" />
+                        <ListBox x:Name="ScopeList" Style="{StaticResource SidebarList}" ItemsSource="{Binding Scopes}" SelectedItem="{Binding SelectedScope}"
+                                 AutomationProperties.Name="Library views"
+                                 SelectionChanged="OnSidebarSelectionChanged" PreviewMouseLeftButtonUp="OnSidebarClicked">
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem" BasedOn="{StaticResource NavigationListItem}">
+                                    <Setter Property="AutomationProperties.Name" Value="{Binding Title}" />
+                                    <Setter Property="AutomationProperties.HelpText" Value="{Binding ToolTip}" />
+                                    <Setter Property="ToolTip" Value="{Binding ToolTip}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsAvailable}" Value="False">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                        <!-- On Settings or About the library selection steps back -->
+                                        <DataTrigger Binding="{Binding DataContext.IsLibraryPage, RelativeSource={RelativeSource AncestorType=Window}}" Value="False">
+                                            <Setter Property="Opacity" Value="0.6" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:LibraryScopeItem}">
+                                    <DockPanel>
+                                        <!-- The same marks the grid uses, so a view and its photos read alike -->
+                                        <TextBlock x:Name="Mark" Width="16" Margin="0,0,10,0" FontWeight="Bold" TextAlignment="Center" VerticalAlignment="Center" />
+                                        <TextBlock DockPanel.Dock="Right" Text="{Binding CountText}" Style="{StaticResource Text.Count}" />
+                                        <TextBlock Text="{Binding Title}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                    </DockPanel>
+                                    <DataTemplate.Triggers>
+                                        <DataTrigger Binding="{Binding Scope}" Value="{x:Static vm:LibraryScope.All}">
+                                            <Setter TargetName="Mark" Property="FontFamily" Value="{StaticResource Font.Icon}" />
+                                            <Setter TargetName="Mark" Property="FontWeight" Value="Normal" />
+                                            <Setter TargetName="Mark" Property="Text" Value="&#xE8B9;" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Scope}" Value="{x:Static vm:LibraryScope.Undecided}">
+                                            <Setter TargetName="Mark" Property="Text" Value="○" />
+                                            <Setter TargetName="Mark" Property="FontWeight" Value="Normal" />
+                                            <Setter TargetName="Mark" Property="Foreground" Value="{StaticResource Brush.Text.Tertiary}" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Scope}" Value="{x:Static vm:LibraryScope.Kept}">
+                                            <Setter TargetName="Mark" Property="Text" Value="✓" />
+                                            <Setter TargetName="Mark" Property="Foreground" Value="{StaticResource Brush.Decision.Keep}" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Scope}" Value="{x:Static vm:LibraryScope.ToReview}">
+                                            <Setter TargetName="Mark" Property="Text" Value="?" />
+                                            <Setter TargetName="Mark" Property="Foreground" Value="{StaticResource Brush.Decision.Review}" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Scope}" Value="{x:Static vm:LibraryScope.Rejected}">
+                                            <Setter TargetName="Mark" Property="Text" Value="✕" />
+                                            <Setter TargetName="Mark" Property="Foreground" Value="{StaticResource Brush.Decision.Reject}" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Scope}" Value="{x:Static vm:LibraryScope.LastImport}">
+                                            <Setter TargetName="Mark" Property="FontFamily" Value="{StaticResource Font.Icon}" />
+                                            <Setter TargetName="Mark" Property="FontWeight" Value="Normal" />
+                                            <Setter TargetName="Mark" Property="Text" Value="&#xE81C;" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Scope}" Value="{x:Static vm:LibraryScope.Problems}">
+                                            <Setter TargetName="Mark" Property="FontFamily" Value="{StaticResource Font.Icon}" />
+                                            <Setter TargetName="Mark" Property="FontWeight" Value="Normal" />
+                                            <Setter TargetName="Mark" Property="Text" Value="&#xE7BA;" />
+                                            <Setter TargetName="Mark" Property="Foreground" Value="{StaticResource Brush.Status.Error}" />
+                                        </DataTrigger>
+                                    </DataTemplate.Triggers>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                        <!-- Folders: the imported folder hierarchy; a folder includes its subfolders -->
+                        <StackPanel Visibility="{Binding HasFolders, Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock Text="Folders" Style="{StaticResource Text.SidebarHeading}" />
+                            <ListBox x:Name="FolderList" Style="{StaticResource SidebarList}" ItemsSource="{Binding Folders}" SelectedItem="{Binding Folder}"
+                                     AutomationProperties.Name="Folders"
+                                     SelectionChanged="OnSidebarSelectionChanged" PreviewMouseLeftButtonUp="OnSidebarClicked">
+                                <ListBox.ItemContainerStyle>
+                                    <Style TargetType="ListBoxItem" BasedOn="{StaticResource NavigationListItem}">
+                                        <Setter Property="AutomationProperties.Name" Value="{Binding TreeName}" />
+                                        <Setter Property="AutomationProperties.HelpText" Value="{Binding ToolTip}" />
+                                        <Setter Property="ToolTip" Value="{Binding ToolTip}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding DataContext.IsLibraryPage, RelativeSource={RelativeSource AncestorType=Window}}" Value="False">
+                                                <Setter Property="Opacity" Value="0.6" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ListBox.ItemContainerStyle>
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type vm:FolderOption}">
+                                        <DockPanel Margin="{Binding Depth, Converter={StaticResource DepthToIndent}}">
+                                            <TextBlock x:Name="Icon" Style="{StaticResource Text.Icon}" Text="&#xE8B7;" Width="16" Margin="0,0,10,0"
+                                                       Foreground="{StaticResource Brush.Text.Tertiary}" />
+                                            <TextBlock DockPanel.Dock="Right" Text="{Binding CountText}" Style="{StaticResource Text.Count}" Margin="8,0,0,0" />
+                                            <TextBlock Text="{Binding TreeName}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                        </DockPanel>
+                                        <DataTemplate.Triggers>
+                                            <DataTrigger Binding="{Binding Path}" Value="{x:Null}">
+                                                <Setter TargetName="Icon" Property="Text" Value="&#xE8D5;" />
+                                            </DataTrigger>
+                                        </DataTemplate.Triggers>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </DockPanel>
         </Border>
 
-        <!-- Current page -->
-        <ContentControl Grid.Row="1" Grid.Column="1"
-                        Content="{Binding CurrentPage}"
-                        Focusable="False"
-                        Margin="32,24" />
-
-        <!-- Status bar -->
-        <Border Grid.Row="2" Grid.ColumnSpan="2"
-                Background="{StaticResource Brush.Surface.Sunken}"
-                BorderBrush="{StaticResource Brush.Border}" BorderThickness="0,1,0,0"
-                Padding="16,4">
-            <TextBlock Text="{Binding StatusMessage}" Style="{StaticResource Text.Secondary}" FontSize="12" />
-        </Border>
+        <!-- ============================== Current page -->
+        <ContentControl Grid.Column="1" Content="{Binding CurrentPage}" Focusable="False" />
     </Grid>
 </Window>

@@ -36,6 +36,9 @@ public sealed record LibraryFilter
     /// <summary>Only photos in this folder or its subfolders (case-insensitive); null = every folder.</summary>
     public string? Folder { get; init; }
 
+    /// <summary>Only photos first imported at or after this time (UTC); null = any time.</summary>
+    public DateTime? ImportedSinceUtc { get; init; }
+
     /// <summary>True when <paramref name="folderPath"/> is <paramref name="folder"/> or inside it.</summary>
     public static bool IsInFolder(string folderPath, string folder)
     {
@@ -54,6 +57,11 @@ public sealed record LibraryFilter
         ArgumentNullException.ThrowIfNull(decision);
 
         if (Folder is not null && !IsInFolder(photo.FolderPath, Folder))
+        {
+            return false;
+        }
+
+        if (ImportedSinceUtc is { } since && photo.ImportedUtc < since)
         {
             return false;
         }

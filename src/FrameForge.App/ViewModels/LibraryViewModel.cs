@@ -198,29 +198,129 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
             }
 
             var culture = CultureInfo.CurrentCulture;
-            int keep = 0, review = 0, reject = 0, problems = 0;
-            foreach (var tile in _all)
-            {
-                switch (tile.Decision.State)
-                {
-                    case CullState.Keep: keep++; break;
-                    case CullState.Review: review++; break;
-                    case CullState.Reject: reject++; break;
-                }
-
-                if (tile.Status != ImportStatus.Imported)
-                {
-                    problems++;
-                }
-            }
-
+            var counts = CountScopes();
             var shown = Photos.Count == _all.Count
                 ? string.Create(culture, $"{_all.Count:N0} photos")
                 : string.Create(culture, $"{Photos.Count:N0} of {_all.Count:N0} shown");
-            var text = string.Create(culture, $"{shown}  ·  {keep:N0} keep  ·  {review:N0} review  ·  {reject:N0} reject");
+            var text = string.Create(culture, $"{shown}  ·  {counts[LibraryScope.Kept]:N0} keep  ·  {counts[LibraryScope.ToReview]:N0} review  ·  {counts[LibraryScope.Rejected]:N0} reject");
+            var problems = counts[LibraryScope.Problems];
             return problems > 0 ? text + string.Create(culture, $"  ·  {problems:N0} problem(s)") : text;
         }
     }
+
+    /// <summary>Decision totals for the footer (whole library), e.g. "312 keep · 40 review · 280 reject".</summary>
+    public string DecisionSummaryText
+    {
+        get
+        {
+            if (_all.Count == 0)
+            {
+                return string.Empty;
+            }
+
+            var counts = CountScopes();
+            return string.Create(
+                CultureInfo.CurrentCulture,
+                $"{counts[LibraryScope.Kept]:N0} keep  ·  {counts[LibraryScope.ToReview]:N0} review  ·  {counts[LibraryScope.Rejected]:N0} reject  ·  {counts[LibraryScope.Undecided]:N0} undecided");
+        }
+    }
+
+    /// <summary>The page heading: the sidebar view, narrowed to a folder when one is chosen ("Kept · Randoms").</summary>
+    public string ViewTitle => Filter.Folder?.Path is null
+        ? Filter.SelectedScope.Title
+        : $"{Filter.SelectedScope.Title}  ·  {Filter.Folder.TreeName}";
+
+    /// <summary>Next to the heading: how many photos are shown ("84" or "84 of 1,010" when toolbar filters narrow it).</summary>
+    public string ShownCountText
+    {
+        get
+        {
+            var culture = CultureInfo.CurrentCulture;
+            if (_all.Count == 0)
+            {
+                return string.Empty;
+            }
+
+            var scoped = LibraryQuery.Apply(_all, t => t.Photo, t => t.Decision, Filter.ToFilter() with { MinRating = 0, Labels = null }, Filter.Sort).Count;
+            return Photos.Count == scoped
+                ? Photos.Count.ToString("N0", culture)
+                : string.Create(culture, $"{Photos.Count:N0} of {scoped:N0}");
+        }
+    }
+
+    private Dictionary<LibraryScope, int> CountScopes()
+    {
+        var counts = Enum.GetValues<LibraryScope>().ToDictionary(s => s, _ => 0);
+        var lastImport = LastImportUtc();
+        foreach (var tile in _all)
+        {
+            var scope = tile.Decision.State switch
+            {
+                CullState.Keep => LibraryScope.Kept,
+                CullState.Review => LibraryScope.ToReview,
+                CullState.Reject => LibraryScope.Rejected,
+                _ => LibraryScope.Undecided,
+            };
+            counts[scope]++;
+            if (tile.Status != ImportStatus.Imported)
+            {
+                counts[LibraryScope.Problems]++;
+            }
+
+            if (lastImport is { } since && tile.Photo.ImportedUtc >= since)
+            {
+                counts[LibraryScope.LastImport]++;
+            }
+        }
+
+        counts[LibraryScope.All] = _all.Count;
+        return counts;
+    }
+
+    /// <summary>
+    /// One import stamps every photo it adds with the same time, and later imports keep that first time, so the
+    /// newest stamp marks the photos the most recent import added.
+    /// </summary>
+    private DateTime? LastImportUtc() => _all.Count == 0 ? null : _all.Max(t => t.Photo.ImportedUtc);
+
+    /// <summary>Refreshes the sidebar counts and the footer after the library or a decision changes.</summary>
+    private void UpdateCounts()
+    {
+        Filter.SetCounts(CountScopes(), LastImportUtc());
+        OnPropertyChanged(nameof(CountText));
+        OnPropertyChanged(nameof(DecisionSummaryText));
+        OnPropertyChanged(nameof(ShownCountText));
+    }
+
+    // ---------------------------------------------------------------- grid density
+
+    /// <summary>Thumbnail size in the grid (Ctrl+ − / Ctrl+ =). Remembered between sessions.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(TileSize), nameof(ShowFileNames))]
+    private GridDensity _density = GridDensity.Medium;
+
+    /// <summary>Cell size for the grid's wrap panel: image area plus the one-line caption.</summary>
+    public System.Windows.Size TileSize => Density switch
+    {
+        GridDensity.Compact => new System.Windows.Size(136, 128),
+        GridDensity.Large => new System.Windows.Size(272, 248),
+        _ => new System.Windows.Size(196, 182),
+    };
+
+    /// <summary>Compact tiles drop the file name; decisions and ratings stay.</summary>
+    public bool ShowFileNames => Density != GridDensity.Compact;
+
+    partial void OnDensityChanged(GridDensity value)
+    {
+        if (_loaded)
+        {
+            _ = SaveSettingAsync(AppSettings.LibraryGridDensity, value);
+        }
+    }
+
+    [RelayCommand]
+    private void ChangeDensity(int step) =>
+        Density = (GridDensity)Math.Clamp((int)Density + step, (int)GridDensity.Compact, (int)GridDensity.Large);
 
     public override async Task OnNavigatedToAsync(CancellationToken cancellationToken)
     {
@@ -236,6 +336,7 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
         try
         {
             IncludeSubfolders = await _settings.GetAsync(AppSettings.ImportIncludeSubfolders, cancellationToken).ConfigureAwait(true);
+            Density = await _settings.GetAsync(AppSettings.LibraryGridDensity, cancellationToken).ConfigureAwait(true);
             _autoAdvance = await _settings.GetAsync(AppSettings.ViewerAutoAdvance, cancellationToken).ConfigureAwait(true);
             await ReloadAsync(cancellationToken).ConfigureAwait(true);
         }
@@ -460,7 +561,7 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
 
     private void OnDecisionsChanged(DecisionChange change)
     {
-        OnPropertyChanged(nameof(CountText));
+        UpdateCounts();
         if (IsViewerOpen || IsCompareOpen)
         {
             // These work on a stable snapshot; the grid is rebuilt when they close.
@@ -514,6 +615,8 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
 
         Photos = new ObservableCollection<PhotoTileViewModel>(view);
         SelectedPhoto = selected is not null && Photos.Contains(selected) ? selected : null;
+        OnPropertyChanged(nameof(ViewTitle));
+        OnPropertyChanged(nameof(ShownCountText));
         if (Export.IsOpen)
         {
             Export.RefreshCounts();
@@ -532,6 +635,28 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
             return;
         }
 
+        await ImportFolderCoreAsync(folder, cancellationToken).ConfigureAwait(true);
+    }
+
+    /// <summary>Imports a folder dropped on the window (same import as the picker; the Cancel button stops either).</summary>
+    [RelayCommand(IncludeCancelCommand = true, CanExecute = nameof(CanImportDropped))]
+    private Task ImportDroppedAsync(string folder, CancellationToken cancellationToken) =>
+        ImportFolderCoreAsync(folder, cancellationToken);
+
+    private bool CanImportDropped(string folder) => !IsImporting && !string.IsNullOrWhiteSpace(folder);
+
+    partial void OnIsImportingChanged(bool value) => ImportDroppedCommand.NotifyCanExecuteChanged();
+
+    /// <summary>Stops whichever import is running (from the picker or a dropped folder).</summary>
+    [RelayCommand]
+    private void CancelImport()
+    {
+        ImportCancelCommand.Execute(null);
+        ImportDroppedCancelCommand.Execute(null);
+    }
+
+    private async Task ImportFolderCoreAsync(string folder, CancellationToken cancellationToken)
+    {
         await SaveSettingAsync(AppSettings.ImportLastFolder, folder).ConfigureAwait(true);
 
         IsImporting = true;
@@ -580,6 +705,7 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
             await Analysis.Controller.LoadAsync(_all, cancellationToken).ConfigureAwait(true);
             Filter.SetFolders(_all.Select(t => t.Photo.FolderPath));
             RebuildView();
+            UpdateCounts();
         }
         finally
         {

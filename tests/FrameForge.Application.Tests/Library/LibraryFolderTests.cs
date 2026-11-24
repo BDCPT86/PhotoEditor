@@ -28,6 +28,32 @@ public sealed class LibraryFolderTests
     }
 
     [Fact]
+    public void Build_NestsSubfolders_UnderTheirNearestListedParent()
+    {
+        var folders = LibraryFolders.Build(
+        [
+            @"C:\Shoot", @"C:\Shoot\Day 1", @"C:\Shoot\2026\Day 2", @"C:\Other",
+        ]);
+
+        Assert.Equal(
+            [(@"C:\Other", 0, "Other"), (@"C:\Shoot", 0, "Shoot"), (@"C:\Shoot\2026\Day 2", 1, @"2026\Day 2"), (@"C:\Shoot\Day 1", 1, "Day 1")],
+            folders.Select(f => (f.Path, f.Depth, f.Name)));
+    }
+
+    [Fact]
+    public void ImportedSince_KeepsOnlyPhotosFirstImportedFromThatTime()
+    {
+        var before = new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc);
+        var after = before.AddDays(1);
+        Photo P(string name, DateTime imported) => new() { Id = Guid.NewGuid(), FilePath = $@"C:\S\{name}", FileName = name, FolderPath = @"C:\S", ImportedUtc = imported };
+        var photos = new[] { P("old.jpg", before), P("new.jpg", after) };
+
+        var shown = LibraryQuery.Apply(photos, p => p, _ => PhotoDecision.Unset, new LibraryFilter { ImportedSinceUtc = after }, LibrarySort.FileName);
+
+        Assert.Equal(["new.jpg"], shown.Select(p => p.FileName));
+    }
+
+    [Fact]
     public void Build_ListsEachFolderOnce_WithItsPhotosAndItsSubfolders()
     {
         var folders = LibraryFolders.Build(

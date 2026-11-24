@@ -11,14 +11,27 @@ folder, cull it with the keyboard, use analysis as hints, edit, and export.
 - **Automatic tools only suggest.** Analysis badges, AI picks, Auto options and masks are hints or previews. Nothing
   changes until you apply it, and you can undo it.
 
-This guide describes FrameForge as of Milestone 08 phase B (masks). Press **F1** in the app for the keyboard list at
-any time.
+This guide describes FrameForge as of Milestone 08 phase B (masks), with the redesigned interface. Press **F1** in the
+app for the keyboard list at any time.
 
 ---
 
+## Finding your way around
+- **Sidebar (left):** under **Library**, the views: **All photos**, **Undecided** (no Keep, Review or Reject yet),
+  **Kept**, **To review**, **Rejected**, **Last import** (the photos the most recent import added) and, only when there
+  are any, **Problems** (missing or unreadable files). Each shows how many photos it holds. Under **Folders**, every
+  imported folder, nested under its parent; a folder includes its subfolders. A view and a folder combine: **Kept** with
+  a folder chosen shows that folder's keepers. **Settings** and **About** are at the bottom.
+- **Header:** the view you are in and how many photos it shows, then the main actions: **Import**, **Analyze**,
+  **Compare**, **Presets** and **Export**, and **?** for the shortcut list.
+- **Second row:** narrow the view by **Rating**, **Label** and **Analysis** finding; **Clear refinements** appears while
+  one is on. On the right, **Sort** and the thumbnail size.
+- **Footer:** progress for import and Analyze (with **Cancel**), the result of the last action, and the library's
+  totals (keep, review, reject, undecided).
+
 ## 1. Import a folder
-1. On the **Library** page, choose **Import folder…** (Ctrl+I) and pick a folder of JPEGs. Tick **Include
-   subfolders** first if you want those too; the choice is remembered.
+1. Choose **Import** (Ctrl+I) and pick a folder of JPEGs, or drop a folder from File Explorer onto the window. The
+   small arrow beside Import has **Include subfolders**; the choice is remembered.
 2. Import reads only each file's details (size, date, camera, exposure). Thumbnails are made as tiles scroll into
    view, so a large folder is usable at once.
 3. You can cancel at any time. Importing the same folder again continues where it stopped, picks up new files, and
@@ -28,8 +41,14 @@ Files that can't be read are listed as **Unreadable**. Files deleted since the l
 time that folder is imported.
 
 ## 2. Look at your photos
-- **Grid:** arrow keys move, Shift/Ctrl+click or Shift+arrows select several. Tiles show your decision, stars, label,
-  ✎ for edited photos, and analysis badges.
+- **Grid:** arrow keys move, Shift/Ctrl+click or Shift+arrows select several. Selected photos get a light frame; the
+  photo with keyboard focus also has a thin blue outline. Each tile shows your decision (✓ ? ✕, top right), stars and
+  label under the photo, ✎ before the name of an edited photo, and the analysis findings that matter for culling (top
+  left). Group size, face count and clipping appear when you point at or select a tile.
+- **Thumbnail size:** three sizes, from the buttons at the right of the second row or **Ctrl+−** / **Ctrl+=**. The
+  smallest hides file names. The size is remembered.
+- **Right-click** a photo (or press the **Menu** key) for the same actions as the keys: open, Develop, compare,
+  decisions, rating, label, similar group, analysis details and presets, each with its key shown.
 - **Viewer:** press **Enter** on a photo. ← / → go to the previous or next photo, **Esc** goes back to the grid.
   - **Z** or a double-click switches between fit and 100 %. **+ / −** or the mouse wheel zoom, and dragging pans.
   - **F / Shift+F** jump the 100 % view from face to face, to check focus quickly (needs face analysis, see
@@ -51,34 +70,38 @@ time that folder is imported.
   itself. You can turn that off in **Settings → Culling**.
 - Decisions are saved as you make them and survive a restart. Undo history does not.
 
-**Work through what's left:** choose **Show → Unset**. Each photo you decide leaves the view, and the selection moves
-on to the next one.
+**Work through what's left:** choose **Undecided** in the sidebar. Each photo you decide leaves the view, and the
+selection moves on to the next one. The sidebar counts update as you go.
 
-## 4. Filter and sort
-**Folder** comes first once you have imported more than one folder. It lists every folder that holds photos, with how
-many photos each has, and shows one folder (with its subfolders) or **All folders**. When two folders have the same
-name, enough of their path is shown to tell them apart, and the full path appears when you hover over one.
-
-The rest of the bar filters by **Show** (All, Unset, Keep, Review, Reject, and **Problems**: unreadable or missing
-files), **Rating**, **Label** and
-**Analysis** badges, and sorts by **Folder**, **Captured**, **Name** or **Rating**. The count line shows how many photos
-match and how many are kept, under review or rejected. **F5** applies the filter and sort again.
+## 4. Views, folders, filters and sort
+- **Views and folders** are in the sidebar (see *Finding your way around*). When two folders have the same name, enough
+  of their path is shown to tell them apart, and the full path appears when you point at one.
+- **Rating** (Any, or 1★ to 5★ meaning at least that many), **Label** (any, or one colour) and **Analysis** (likely
+  blurry, clipping, similar groups, exact duplicates, AI pick, AI: faces soft, changed by Auto) narrow the current view
+  further. A filter that is on turns its caption blue. **Clear refinements** sets them back to Any and keeps the view
+  and folder.
+- **Sort** by Folder, Capture time, File name or Rating. **F5** applies the filter and sort again.
+- The number beside the heading counts the photos shown; "84 of 312" means the refinements hide the rest of the view.
+  When nothing matches, **Show all photos** goes back to everything.
 
 ## 5. Compare
-Select 2–4 photos and press **C**. They appear side by side. **← / →** choose which one your decision keys apply to,
-and **Esc** goes back.
+Select 2–4 photos and press **C** (or choose **Compare**). They appear side by side. **← / →** choose which one your
+decision keys apply to (it has the light frame and **Active**), and **Esc** goes back. Beside each photo's name are its
+**AI pick**, **◆ sharpest**, **≈ blurry?** and **☺ faces soft** findings: the ones that decide between similar shots.
 
 ## 6. Analyze (measurements, not AI)
 **Analyze** measures every photo once and remembers the results; later runs only look at new or changed photos.
 Nothing is decided or deleted for you.
 
-| Badge | Meaning |
-|---|---|
-| **≈ blurry?** | The sharpness score is below your threshold. |
-| **◐ clip** | Too many pixels are pure white or pure black. |
-| **▣ n** | One of n similar photos (a burst or the same scene). |
-| **◆ sharpest** | The sharpest photo in its similar group. |
-| **= duplicate** | An identical file exists elsewhere in the library. |
+| Mark on the tile | Meaning | Shown |
+|---|---|---|
+| **≈ blur** | The sharpness score is below your threshold. | Always |
+| **◆** | The sharpest photo in its similar group. | Always |
+| **= dup** | An identical file exists elsewhere in the library. | Always |
+| **◐** | Too many pixels are pure white or pure black. | When you point at or select the tile |
+| **▣ n** | One of n similar photos (a burst or the same scene). | When you point at or select the tile |
+
+Point at any mark for its name.
 
 - Press **I** to see the exact numbers and why each badge was given.
 - Press **G** to select a photo's similar group, then **C** to compare it.
@@ -96,11 +119,11 @@ you confirm.
 
 | Model | What it adds |
 |---|---|
-| YuNet face detector | **☺ n** (faces found), **AI faces soft**, zoom to faces (F), and Auto crop to faces. |
+| YuNet face detector | **☺ n** (faces found, shown when you point at a tile), **☺ soft** (all faces look soft), zoom to faces (F), and Auto crop to faces. |
 | DINOv2 small | Groups similar scenes and suggests an **AI pick** per group, with Low, Medium or High confidence. **I** shows why. |
 | YOLOX-s person detector + MobileSAM encoder + MobileSAM decoder | **Select subject** and **Background** masks in Develop (all three are needed). |
 
-The **AI pick** and **AI faces soft** chips filter by those badges. AI results never change your decisions, and their
+**Analysis → AI pick** and **Analysis → AI: faces soft** filter by those findings. AI results never change your decisions, and their
 quality is reported only where it has been measured on a set you reviewed yourself. Treat them as hints.
 
 ## 8. Edit in Develop
@@ -165,7 +188,8 @@ in too.
 - **Save:** in Develop, under **Presets**, type a name, tick what to include (Exposure, White balance, Tone, Colour,
   Crop and rotation, Masks), and choose **Save preset**.
 - **Apply to one photo:** select it in the Presets list in Develop and choose **Apply** (one undo step).
-- **Apply to many:** select photos in the grid, choose **Presets…**, pick one and **Apply to selected**. There's
+- **Apply to many:** select photos in the grid, choose **Presets** (or right-click → **Apply preset or Auto…**), pick one
+  and **Apply to selected**. There's
   progress and cancel, and **Undo last apply** puts every photo back.
 - A preset changes only the settings it was saved with.
 - **Presets with masks** work out each photo's own masks as they go (clicks are never copied between photos), so they
@@ -174,13 +198,13 @@ in too.
   mask and is listed with the reason. A preset with a subject mask needs the subject models (section 7); without them it
   says so and doesn't start.
 - **Auto for many:** in the same panel, the **Auto** section runs Light, Level and/or Crop on every selected photo in
-  that order, with the option you choose now. Photos it couldn't help are listed, and the **Auto-applied** chip shows
-  what it changed.
+  that order, with the option you choose now. Photos it couldn't help are listed, and **Analysis → Changed by Auto** shows what it
+  changed.
 
 ## 11. Export
-Choose **Export…** in the Library, pick which **Photos** (all marked Keep, or those shown in the grid), and what to
-**Export as**. To export only one folder's keepers, choose that **Folder** and **Show → Keep**, then **Photos shown in
-the grid**.
+Choose **Export** in the header, pick which **Photos** (all marked Keep, or those shown in the grid), and what to
+**Export as**, then **Choose destination and export…**. To export only one folder's keepers, choose **Kept** and that
+folder in the sidebar, then **Photos shown in the grid**.
 - **Copy files to a folder:** the originals, copied unchanged.
 - **Edited JPEGs:** new JPEGs with each photo's edits, masks included, at the **Quality** and **Longest side** you
   choose, optionally keeping the camera metadata (EXIF). Masks not worked out yet are worked out during the export. If
@@ -195,6 +219,9 @@ your library, FrameForge warns you that the copies will appear as new photos at 
 |---|---|---|
 | Anywhere | **F1** or **?** | Show or hide the shortcut list |
 | Anywhere | **Ctrl+I** | Import folder |
+| Anywhere | **Ctrl+1 / 2 / 3** | Library, Settings, About |
+| Grid | **Ctrl+− / Ctrl+=** | Smaller / larger thumbnails |
+| Grid | Right-click, **Menu** key | Actions for the selected photos |
 | Grid / viewer | **P X V U** | Keep, reject, review, unset |
 | Grid / viewer | **1–5**, **0** | Stars, clear stars |
 | Grid / viewer | **6–9**, **Shift+0** | Labels, clear label |
@@ -227,6 +254,9 @@ Deleting the whole `FrameForge` folder resets the app; your photos are not touch
 
 ## 14. Limits worth knowing
 - JPEG only for now (RAW is planned).
+- At the largest thumbnail size on a high-DPI screen (150 % and up), thumbnails can look slightly soft: they are made at
+  320 px.
+- There are no collections yet; the sidebar shows views and folders only.
 - AI runs on the CPU. A subject mask takes from half a second to a few seconds the first time, depending on how busy
   the computer is.
 - The quality of analysis, AI picks and masks has only been measured on small sets the developer reviewed. Use them

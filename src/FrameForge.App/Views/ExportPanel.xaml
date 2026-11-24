@@ -21,9 +21,9 @@
     <Border Style="{StaticResource SidePanel}">
         <StackPanel>
             <DockPanel Margin="0,0,0,16">
-                <Button DockPanel.Dock="Right" Content="Close" MinWidth="0" Command="{Binding CloseCommand}"
+                <Button DockPanel.Dock="Right" Style="{StaticResource Button.Icon}" Content="&#xE711;" Margin="0,0,-8,0" ToolTip="Close (Esc)" AutomationProperties.Name="Close" Command="{Binding CloseCommand}"
                         IsEnabled="{Binding IsExporting, Converter={StaticResource InverseBool}}" />
-                <TextBlock Text="Export" Style="{StaticResource Text.SectionLabel}" FontSize="16" VerticalAlignment="Center" />
+                <TextBlock Text="Export" Style="{StaticResource Text.PanelTitle}" />
             </DockPanel>
 
             <StackPanel IsEnabled="{Binding IsExporting, Converter={StaticResource InverseBool}}">
@@ -32,18 +32,18 @@
                              IsChecked="{Binding Scope, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:ExportScope.Keep}}" />
                 <RadioButton GroupName="ExportScope" Content="Photos shown in the grid (current filter)" Margin="0,0,0,4"
                              IsChecked="{Binding Scope, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:ExportScope.CurrentView}}" />
-                <TextBlock Text="{Binding CountText}" Style="{StaticResource Text.Secondary}" Margin="0,0,0,16" AutomationProperties.AutomationId="ExportCount" />
+                <TextBlock Text="{Binding CountText}" Style="{StaticResource Text.Hint}" Margin="24,0,0,20" AutomationProperties.AutomationId="ExportCount" />
 
                 <TextBlock Text="Export as" Style="{StaticResource Text.SectionLabel}" />
                 <RadioButton GroupName="ExportMode" Content="Copy files to a folder"
                              IsChecked="{Binding Mode, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:ExportMode.CopyFiles}}" />
                 <RadioButton GroupName="ExportMode" Content="Edited JPEGs (applies each photo's edits)"
                              IsChecked="{Binding Mode, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:ExportMode.EditedJpegs}}" />
-                <RadioButton GroupName="ExportMode" Content="Selection manifest (CSV)" Margin="0,0,0,8"
+                <RadioButton GroupName="ExportMode" Content="Selection manifest (CSV)" Margin="0,0,0,12"
                              IsChecked="{Binding Mode, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:ExportMode.Manifest}}" />
 
                 <!-- Edited JPEG options -->
-                <Grid Margin="20,0,0,12">
+                <Grid Margin="24,0,0,12">
                     <Grid.Style>
                         <Style TargetType="Grid">
                             <Setter Property="Visibility" Value="Collapsed" />
@@ -76,14 +76,14 @@
                     <CheckBox Grid.Row="2" Grid.ColumnSpan="2" Content="Keep camera metadata (EXIF)" IsChecked="{Binding KeepMetadata}" />
                 </Grid>
 
-                <TextBlock Style="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,16" TextWrapping="Wrap"
+                <TextBlock Style="{StaticResource Text.Hint}" Margin="0,4,0,20"
                            Text="Originals are only read. Existing files are never replaced: name clashes are saved as “name (2).jpg”." />
 
-                <Button Content="Choose destination and export…" HorizontalAlignment="Left" Command="{Binding StartCommand}" />
+                <Button Style="{StaticResource Button.Primary}" Content="Choose destination and export…" HorizontalAlignment="Left" Command="{Binding StartCommand}" />
             </StackPanel>
 
             <!-- Confirmation when the destination is inside (or contains) an imported folder -->
-            <Border Margin="0,16,0,0" Padding="12" BorderThickness="1" BorderBrush="{StaticResource Brush.Decision.Review}" CornerRadius="3"
+            <Border Margin="0,16,0,0" Style="{StaticResource Surface.Callout}"
                     Visibility="{Binding HasPendingDestination, Converter={StaticResource BoolToVisibility}}"
                     AutomationProperties.AutomationId="ExportConfirm">
                 <StackPanel>

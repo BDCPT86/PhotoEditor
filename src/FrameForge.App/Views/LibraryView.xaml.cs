@@ -41,6 +41,56 @@ public partial class LibraryView : UserControl
         }
     }
 
+    /// <summary>The chevron beside Import opens its options menu under it.</summary>
+    private void OnImportOptionsClick(object sender, RoutedEventArgs e)
+    {
+        if (ImportOptions.ContextMenu is { } menu)
+        {
+            menu.PlacementTarget = ImportOptions;
+            menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+            menu.DataContext = DataContext;
+            menu.IsOpen = true;
+        }
+    }
+
+    // ---------------------------------------------------------------- drag and drop: a folder from Explorer imports it
+
+    private static string? DroppedFolder(DragEventArgs e) =>
+        e.Data.GetDataPresent(DataFormats.FileDrop) && e.Data.GetData(DataFormats.FileDrop) is string[] paths
+            ? paths.FirstOrDefault(System.IO.Directory.Exists)
+            : null;
+
+    private bool CanAcceptDrop(DragEventArgs e) =>
+        DataContext is ViewModels.LibraryViewModel library
+        && !library.IsViewerOpen && !library.IsCompareOpen
+        && DroppedFolder(e) is { } folder && library.ImportDroppedCommand.CanExecute(folder);
+
+    private void OnDragOver(object sender, DragEventArgs e)
+    {
+        var accept = CanAcceptDrop(e);
+        e.Effects = accept ? DragDropEffects.Copy : DragDropEffects.None;
+        DropHint.Visibility = accept ? Visibility.Visible : Visibility.Collapsed;
+        if (accept && DroppedFolder(e) is { } folder)
+        {
+            DropHintText.Text = $"Drop to import “{System.IO.Path.GetFileName(folder.TrimEnd('\\'))}”";
+        }
+
+        e.Handled = true;
+    }
+
+    private void OnDragLeave(object sender, DragEventArgs e) => DropHint.Visibility = Visibility.Collapsed;
+
+    private void OnDrop(object sender, DragEventArgs e)
+    {
+        DropHint.Visibility = Visibility.Collapsed;
+        if (CanAcceptDrop(e) && DroppedFolder(e) is { } folder && DataContext is ViewModels.LibraryViewModel library)
+        {
+            library.ImportDroppedCommand.Execute(folder);
+        }
+
+        e.Handled = true;
+    }
+
     private void RestoreFocusAfterPanel()
     {
         if (!IsVisible || (IsKeyboardFocusWithin && Keyboard.FocusedElement is UIElement { IsVisible: true }))

@@ -8,255 +8,258 @@
              xmlns:controls="clr-namespace:FrameForge.App.Controls"
              xmlns:shortcuts="clr-namespace:FrameForge.App.Shortcuts"
              xmlns:library="clr-namespace:FrameForge.Core.Library;assembly=FrameForge.Core"
+             xmlns:settings="clr-namespace:FrameForge.Core.Settings;assembly=FrameForge.Core"
              xmlns:vwp="clr-namespace:WpfToolkit.Controls;assembly=VirtualizingWrapPanel"
              xmlns:conv="clr-namespace:FrameForge.App.Converters"
+             xmlns:decisions="clr-namespace:FrameForge.Core.Decisions;assembly=FrameForge.Core"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance Type=vm:LibraryViewModel}"
-             shortcuts:ShortcutBehavior.Handler="{Binding}">
+             shortcuts:ShortcutBehavior.Handler="{Binding}"
+             AllowDrop="True" DragEnter="OnDragOver" DragOver="OnDragOver" DragLeave="OnDragLeave" Drop="OnDrop">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
         <conv:InverseBooleanConverter x:Key="InverseBool" />
+        <conv:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVisibility" />
         <conv:EnumEqualsConverter x:Key="EnumEquals" />
+
+        <!-- Toolbar action: icon + label, quiet until hovered -->
+        <Style x:Key="ToolbarButton" TargetType="Button" BasedOn="{StaticResource Button.Quiet}">
+            <Setter Property="Padding" Value="10,5,12,5" />
+            <Setter Property="Margin" Value="2,0,0,0" />
+        </Style>
+        <Style x:Key="ToolbarIcon" TargetType="TextBlock" BasedOn="{StaticResource Text.Icon}">
+            <Setter Property="Margin" Value="0,0,8,0" />
+            <Setter Property="Foreground" Value="{StaticResource Brush.Text.Secondary}" />
+        </Style>
+        <!-- Inline caption before a filter group ("Rating", "Label") -->
+        <Style x:Key="FilterLabel" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource Brush.Text.Tertiary}" />
+            <Setter Property="FontSize" Value="{StaticResource FontSize.Meta}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="0,0,8,0" />
+        </Style>
+        <!-- A filter group turns its caption accent while it narrows the view (Tag = active) -->
+        <Style x:Key="FilterGroup" TargetType="StackPanel">
+            <Setter Property="Orientation" Value="Horizontal" />
+            <Setter Property="Margin" Value="0,0,24,8" />
+        </Style>
+        <Style x:Key="FilterGroupLabel" TargetType="TextBlock" BasedOn="{StaticResource FilterLabel}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource AncestorType=StackPanel}}" Value="True">
+                    <Setter Property="Foreground" Value="{StaticResource Brush.Accent}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <!-- Marks that only matter on a closer look: shown while the tile is hovered or selected -->
+        <Style x:Key="RevealOnHover" TargetType="WrapPanel">
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
+                    <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
+                    <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="FilterCombo" TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+            <Setter Property="MinHeight" Value="26" />
+            <Setter Property="SelectedValuePath" Value="Tag" />
+        </Style>
     </UserControl.Resources>
 
     <UserControl.InputBindings>
         <KeyBinding Modifiers="Control" Key="I" Command="{Binding ImportCommand}" />
+        <KeyBinding Modifiers="Control" Key="OemPlus" Command="{Binding ChangeDensityCommand}" CommandParameter="1" />
+        <KeyBinding Modifiers="Control" Key="Add" Command="{Binding ChangeDensityCommand}" CommandParameter="1" />
+        <KeyBinding Modifiers="Control" Key="OemMinus" Command="{Binding ChangeDensityCommand}" CommandParameter="-1" />
+        <KeyBinding Modifiers="Control" Key="Subtract" Command="{Binding ChangeDensityCommand}" CommandParameter="-1" />
     </UserControl.InputBindings>
 
-    <!-- Side panels sit in their own column, so they push the grid and viewer aside instead of covering filters. -->
+    <!-- Side panels sit in their own column, so they push the grid and viewer aside instead of covering it. -->
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
 
-        <!-- ============================== Grid mode ============================== -->
+        <!-- ============================== Grid mode -->
         <Grid x:Name="GridMode">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <!-- Toolbar: import/analyse on the left, actions on the right; the actions drop to a second row instead of clipping -->
-            <controls:SplitToolbarPanel Grid.Row="0" Margin="0,0,0,10">
-                <StackPanel Orientation="Horizontal">
-                    <Button Content="_Import folder…" Command="{Binding ImportCommand}"
-                            ToolTip="Import a folder of JPEG photos (Ctrl+I)" />
-                    <CheckBox Margin="16,0,0,0" Content="Include _subfolders"
-                              IsChecked="{Binding IncludeSubfolders}" IsEnabled="{Binding IsImporting, Converter={StaticResource InverseBool}}" />
+            <!-- Header: what you are looking at (view, folder, count) and the four primary actions -->
+            <Border Grid.Row="0" Background="{StaticResource Brush.Chrome}" Padding="24,12,16,8">
+                <controls:SplitToolbarPanel Gap="24">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding ViewTitle}" Style="{StaticResource Text.PageTitle}" Margin="0" VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis" MaxWidth="520" AutomationProperties.AutomationId="ViewTitle" />
+                        <TextBlock Text="{Binding ShownCountText}" Margin="12,4,0,0" FontSize="{StaticResource FontSize.Body}" VerticalAlignment="Center"
+                                   Foreground="{StaticResource Brush.Text.Tertiary}" Typography.NumeralAlignment="Tabular"
+                                   AutomationProperties.AutomationId="ShownCount" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <!-- Import, with its one option behind the chevron -->
+                        <Button Style="{StaticResource ToolbarButton}" Command="{Binding ImportCommand}" Margin="0"
+                                ToolTip="Import a folder of JPEG photos (Ctrl+I). You can also drop a folder on the window."
+                                AutomationProperties.Name="Import folder">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Style="{StaticResource ToolbarIcon}" Text="&#xE8B5;" />
+                                <AccessText Text="_Import" />
+                            </StackPanel>
+                        </Button>
+                        <Button x:Name="ImportOptions" Style="{StaticResource Button.Icon}" Width="22" Margin="0" FontSize="9" Content="&#xE70D;"
+                                ToolTip="Import options" AutomationProperties.Name="Import options" Click="OnImportOptionsClick">
+                            <Button.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="Include _subfolders" IsCheckable="True" IsChecked="{Binding IncludeSubfolders}"
+                                              IsEnabled="{Binding IsImporting, Converter={StaticResource InverseBool}}" />
+                                </ContextMenu>
+                            </Button.ContextMenu>
+                        </Button>
 
-                    <StackPanel Orientation="Horizontal" Margin="24,0,0,0"
-                                Visibility="{Binding IsImporting, Converter={StaticResource BoolToVisibility}}">
-                        <ProgressBar Width="180" VerticalAlignment="Center" Minimum="0" Maximum="1"
-                                     Value="{Binding ImportProgressValue, Mode=OneWay}"
-                                     IsIndeterminate="{Binding IsImportProgressIndeterminate}"
-                                     AutomationProperties.Name="Import progress" />
-                        <TextBlock Margin="12,0" VerticalAlignment="Center" Text="{Binding ImportProgressText}"
-                                   Foreground="{StaticResource Brush.Text.Secondary}"
-                                   AutomationProperties.AutomationId="ImportStatus" />
-                        <Button Content="Cancel" Command="{Binding ImportCancelCommand}" ToolTip="Stop the import; photos read so far are kept" />
+                        <Button Style="{StaticResource ToolbarButton}" Command="{Binding Analysis.AnalyzeCommand}" Margin="8,0,0,0"
+                                ToolTip="Measure sharpness and exposure, and find duplicates (heuristics, not AI). Already-analysed photos are skipped."
+                                AutomationProperties.Name="Analyze">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Style="{StaticResource ToolbarIcon}" Text="&#xE9D9;" />
+                                <AccessText Text="_Analyze" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource ToolbarButton}" Command="{Binding OpenCompareCommand}"
+                                ToolTip="Compare 2–4 selected photos side by side (C)" AutomationProperties.Name="Compare">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Style="{StaticResource ToolbarIcon}" Text="&#xE8A9;" />
+                                <AccessText Text="_Compare" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource ToolbarButton}" Command="{Binding OpenPresetsCommand}"
+                                ToolTip="Apply a saved edit preset, or Auto, to the selected photos" AutomationProperties.Name="Presets">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Style="{StaticResource ToolbarIcon}" Text="&#xE790;" />
+                                <AccessText Text="_Presets" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource ToolbarButton}" Command="{Binding OpenExportCommand}"
+                                ToolTip="Copy kept photos, export edited JPEGs, or save a selection manifest" AutomationProperties.Name="Export">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Style="{StaticResource ToolbarIcon}" Text="&#xEDE1;" />
+                                <AccessText Text="_Export" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource Button.Icon}" Margin="10,0,0,0" Content="&#xE897;" AutomationProperties.Name="Keyboard shortcuts"
+                                Command="{Binding RunShortcutCommand}" CommandParameter="{x:Static shortcuts:CullingAction.ToggleHelp}"
+                                ToolTip="Keyboard shortcuts (F1)" />
+                    </StackPanel>
+                </controls:SplitToolbarPanel>
+            </Border>
+
+            <!-- Secondary row: refine (rating, label, analysis), then how the grid is ordered and sized -->
+            <Border Grid.Row="1" Background="{StaticResource Brush.Chrome}" BorderBrush="{StaticResource Brush.Hairline}" BorderThickness="0,0,0,1" Padding="24,4,16,4">
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="16,0,0,8" VerticalAlignment="Top">
+                        <TextBlock Text="Sort" Style="{StaticResource FilterLabel}" />
+                        <ComboBox Style="{StaticResource FilterCombo}" MinWidth="120" DataContext="{Binding Filter}" SelectedValue="{Binding Sort}"
+                                  AutomationProperties.Name="Sort by">
+                            <ComboBoxItem Content="Folder" Tag="{x:Static library:LibrarySort.FolderAndName}" />
+                            <ComboBoxItem Content="Capture time" Tag="{x:Static library:LibrarySort.CaptureTime}" />
+                            <ComboBoxItem Content="File name" Tag="{x:Static library:LibrarySort.FileName}" />
+                            <ComboBoxItem Content="Rating" Tag="{x:Static library:LibrarySort.Rating}" />
+                        </ComboBox>
+                        <!-- Thumbnail size: three steps, Ctrl+− / Ctrl+= -->
+                        <Border Style="{StaticResource SegmentGroup}" Margin="16,0,0,0" AutomationProperties.Name="Thumbnail size" VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal">
+                                <RadioButton Style="{StaticResource Segment}" GroupName="Density" ToolTip="Small thumbnails (Ctrl+−)" AutomationProperties.Name="Small thumbnails"
+                                             IsChecked="{Binding Density, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static settings:GridDensity.Compact}}">
+                                    <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE80A;" FontSize="10" />
+                                </RadioButton>
+                                <RadioButton Style="{StaticResource Segment}" GroupName="Density" ToolTip="Medium thumbnails" AutomationProperties.Name="Medium thumbnails"
+                                             IsChecked="{Binding Density, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static settings:GridDensity.Medium}}">
+                                    <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE80A;" FontSize="12" />
+                                </RadioButton>
+                                <RadioButton Style="{StaticResource Segment}" GroupName="Density" ToolTip="Large thumbnails (Ctrl+=)" AutomationProperties.Name="Large thumbnails"
+                                             IsChecked="{Binding Density, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static settings:GridDensity.Large}}">
+                                    <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE80A;" FontSize="14" />
+                                </RadioButton>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
 
-                    <Button Margin="16,0,0,0" Content="_Analyze" Command="{Binding Analysis.AnalyzeCommand}"
-                            ToolTip="Measure sharpness and exposure, and find duplicates (heuristics, not AI). Already-analysed photos are skipped." />
-                    <StackPanel Orientation="Horizontal" Margin="12,0,0,0" DataContext="{Binding Analysis}"
-                                Visibility="{Binding IsAnalyzing, Converter={StaticResource BoolToVisibility}}">
-                        <ProgressBar Width="140" VerticalAlignment="Center" Minimum="0" Maximum="1"
-                                     Value="{Binding ProgressValue, Mode=OneWay}" AutomationProperties.Name="Analysis progress" />
-                        <TextBlock Margin="12,0" VerticalAlignment="Center" Text="{Binding ProgressText}"
-                                   Foreground="{StaticResource Brush.Text.Secondary}" AutomationProperties.AutomationId="AnalysisStatus" />
-                        <Button Content="Cancel" Command="{Binding AnalyzeCancelCommand}" ToolTip="Stop; results so far are kept" />
-                    </StackPanel>
-
-                </StackPanel>
-                <StackPanel Orientation="Horizontal">
-                    <Button Content="_Compare (C)" Command="{Binding OpenCompareCommand}"
-                            ToolTip="Compare 2–4 selected photos side by side" />
-                    <Button Content="_Presets…" Margin="8,0,0,0" Command="{Binding OpenPresetsCommand}"
-                            ToolTip="Apply a saved edit preset to the selected photos" />
-                    <Button Content="_Export…" Margin="8,0,0,0" Command="{Binding OpenExportCommand}"
-                            ToolTip="Copy kept photos, export edited JPEGs, or save a selection manifest" />
-                    <Button Content="?" MinWidth="44" Margin="8,0,0,0" FontWeight="SemiBold" AutomationProperties.Name="Keyboard shortcuts"
-                            Command="{Binding RunShortcutCommand}" CommandParameter="{x:Static shortcuts:CullingAction.ToggleHelp}"
-                            ToolTip="Keyboard shortcuts (F1)" />
-                </StackPanel>
-            </controls:SplitToolbarPanel>
-
-            <!--
-                Filter and sort: one captioned segmented control per group. Groups flow and wrap as whole units, so a
-                narrower grid (side panel open) moves a group to the next line instead of breaking it apart.
-            -->
-            <WrapPanel Grid.Row="1" Margin="0,0,0,4" DataContext="{Binding Filter}" AutomationProperties.Name="Filter and sort">
-                <WrapPanel.Resources>
-                    <!-- A group's Tag is true while it narrows the view: its caption and track take the accent colour. -->
-                    <Style TargetType="StackPanel" x:Key="FilterGroup">
-                        <Setter Property="Margin" Value="0,0,16,6" />
-                    </Style>
-                    <Style x:Key="FilterGroupCaption" TargetType="TextBlock" BasedOn="{StaticResource Text.FilterCaption}">
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource AncestorType=StackPanel}}" Value="True">
-                                <Setter Property="Foreground" Value="{StaticResource Brush.Accent}" />
-                                <Setter Property="FontWeight" Value="SemiBold" />
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                    <Style x:Key="FilterGroupTrack" TargetType="Border" BasedOn="{StaticResource SegmentGroup}">
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource AncestorType=StackPanel}}" Value="True">
-                                <Setter Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </WrapPanel.Resources>
-
-                <!-- Folder: first, because it scopes everything else. Shown once the library has more than one folder. -->
-                <StackPanel Style="{StaticResource FilterGroup}" Tag="{Binding IsFolderActive}"
-                            Visibility="{Binding HasSeveralFolders, Converter={StaticResource BoolToVisibility}}">
-                    <TextBlock Text="Folder" Style="{StaticResource FilterGroupCaption}" />
-                    <ComboBox ItemsSource="{Binding Folders}" SelectedItem="{Binding Folder}" MinWidth="180" MaxWidth="320"
-                              AutomationProperties.Name="Folder" ToolTip="{Binding Folder.ToolTip}">
-                        <ComboBox.ItemTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding Display}" ToolTip="{Binding ToolTip}" TextTrimming="CharacterEllipsis"
-                                           AutomationProperties.Name="{Binding Display}" />
-                            </DataTemplate>
-                        </ComboBox.ItemTemplate>
-                        <ComboBox.Style>
-                            <Style TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsFolderActive}" Value="True">
-                                        <Setter Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </ComboBox.Style>
-                    </ComboBox>
-                </StackPanel>
-
-                <StackPanel Style="{StaticResource FilterGroup}" Tag="{Binding IsStateActive}">
-                    <TextBlock Text="Show" Style="{StaticResource FilterGroupCaption}" />
-                    <Border Style="{StaticResource FilterGroupTrack}">
-                        <StackPanel Orientation="Horizontal">
-                            <RadioButton Style="{StaticResource Segment}" GroupName="State" Content="All" IsChecked="{Binding State, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:StateFilterChoice.All}}" />
-                            <RadioButton Style="{StaticResource Segment}" GroupName="State" Content="Unset" IsChecked="{Binding State, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:StateFilterChoice.Unset}}" />
-                            <RadioButton Style="{StaticResource Segment}" GroupName="State" Content="Keep" IsChecked="{Binding State, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:StateFilterChoice.Keep}}" />
-                            <RadioButton Style="{StaticResource Segment}" GroupName="State" Content="Review" IsChecked="{Binding State, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:StateFilterChoice.Review}}" />
-                            <RadioButton Style="{StaticResource Segment}" GroupName="State" Content="Reject" IsChecked="{Binding State, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:StateFilterChoice.Reject}}" />
-                            <RadioButton Style="{StaticResource Segment}" GroupName="State" Content="Problems" ToolTip="Missing or unreadable files" IsChecked="{Binding State, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:StateFilterChoice.Problems}}" />
+                    <WrapPanel DataContext="{Binding Filter}" AutomationProperties.Name="Refine">
+                        <StackPanel Style="{StaticResource FilterGroup}" Tag="{Binding IsRatingActive}">
+                            <TextBlock Text="Rating" Style="{StaticResource FilterGroupLabel}" />
+                            <Border Style="{StaticResource SegmentGroup}">
+                                <StackPanel Orientation="Horizontal">
+                                    <RadioButton Style="{StaticResource Segment}" GroupName="Rating" Content="Any" AutomationProperties.Name="Any rating" IsChecked="{Binding MinRating, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:RatingFilterChoice.Any}}" />
+                                    <RadioButton Style="{StaticResource Segment}" GroupName="Rating" Content="1★" AutomationProperties.Name="1 star or more" ToolTip="1 star or more" IsChecked="{Binding MinRating, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:RatingFilterChoice.One}}" />
+                                    <RadioButton Style="{StaticResource Segment}" GroupName="Rating" Content="2★" AutomationProperties.Name="2 stars or more" ToolTip="2 stars or more" IsChecked="{Binding MinRating, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:RatingFilterChoice.Two}}" />
+                                    <RadioButton Style="{StaticResource Segment}" GroupName="Rating" Content="3★" AutomationProperties.Name="3 stars or more" ToolTip="3 stars or more" IsChecked="{Binding MinRating, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:RatingFilterChoice.Three}}" />
+                                    <RadioButton Style="{StaticResource Segment}" GroupName="Rating" Content="4★" AutomationProperties.Name="4 stars or more" ToolTip="4 stars or more" IsChecked="{Binding MinRating, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:RatingFilterChoice.Four}}" />
+                                    <RadioButton Style="{StaticResource Segment}" GroupName="Rating" Content="5★" AutomationProperties.Name="5 stars" ToolTip="5 stars" IsChecked="{Binding MinRating, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:RatingFilterChoice.Five}}" />
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
-                    </Border>
-                </StackPanel>
 
-                <StackPanel Style="{StaticResource FilterGroup}" Tag="{Binding IsRatingActive}">
-                    <TextBlock Text="Rating ★" Style="{StaticResource FilterGroupCaption}" />
-                    <Border Style="{StaticResource FilterGroupTrack}">
-                        <StackPanel Orientation="Horizontal">
-                            <RadioButton Style="{StaticResource Segment}" GroupName="Rating" Content="Any" AutomationProperties.Name="Any rating" IsChecked="{Binding MinRating, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:RatingFilterChoice.Any}}" />
-                            <RadioButton Style="{StaticResource Segment}" GroupName="Rating" Content="1+" AutomationProperties.Name="1 star or more" ToolTip="1 star or more" IsChecked="{Binding MinRating, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:RatingFilterChoice.One}}" />
-                            <RadioButton Style="{StaticResource Segment}" GroupName="Rating" Content="2+" AutomationProperties.Name="2 stars or more" ToolTip="2 stars or more" IsChecked="{Binding MinRating, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:RatingFilterChoice.Two}}" />
-                            <RadioButton Style="{StaticResource Segment}" GroupName="Rating" Content="3+" AutomationProperties.Name="3 stars or more" ToolTip="3 stars or more" IsChecked="{Binding MinRating, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:RatingFilterChoice.Three}}" />
-                            <RadioButton Style="{StaticResource Segment}" GroupName="Rating" Content="4+" AutomationProperties.Name="4 stars or more" ToolTip="4 stars or more" IsChecked="{Binding MinRating, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:RatingFilterChoice.Four}}" />
-                            <RadioButton Style="{StaticResource Segment}" GroupName="Rating" Content="5" AutomationProperties.Name="5 stars" ToolTip="5 stars" IsChecked="{Binding MinRating, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:RatingFilterChoice.Five}}" />
+                        <StackPanel Style="{StaticResource FilterGroup}" Tag="{Binding IsLabelActive}">
+                            <TextBlock Text="Label" Style="{StaticResource FilterGroupLabel}" />
+                            <Border Style="{StaticResource SegmentGroup}">
+                                <StackPanel Orientation="Horizontal">
+                                    <RadioButton Style="{StaticResource Segment}" GroupName="Label" Content="Any" AutomationProperties.Name="Any label" IsChecked="{Binding Label, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:LabelFilterChoice.Any}}" />
+                                    <RadioButton Style="{StaticResource Segment}" GroupName="Label" AutomationProperties.Name="Red" ToolTip="Red label (6)" IsChecked="{Binding Label, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:LabelFilterChoice.Red}}">
+                                        <Ellipse Style="{StaticResource LabelSwatch}" Fill="{StaticResource Brush.Label.Red}" />
+                                    </RadioButton>
+                                    <RadioButton Style="{StaticResource Segment}" GroupName="Label" AutomationProperties.Name="Yellow" ToolTip="Yellow label (7)" IsChecked="{Binding Label, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:LabelFilterChoice.Yellow}}">
+                                        <Ellipse Style="{StaticResource LabelSwatch}" Fill="{StaticResource Brush.Label.Yellow}" />
+                                    </RadioButton>
+                                    <RadioButton Style="{StaticResource Segment}" GroupName="Label" AutomationProperties.Name="Green" ToolTip="Green label (8)" IsChecked="{Binding Label, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:LabelFilterChoice.Green}}">
+                                        <Ellipse Style="{StaticResource LabelSwatch}" Fill="{StaticResource Brush.Label.Green}" />
+                                    </RadioButton>
+                                    <RadioButton Style="{StaticResource Segment}" GroupName="Label" AutomationProperties.Name="Blue" ToolTip="Blue label (9)" IsChecked="{Binding Label, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:LabelFilterChoice.Blue}}">
+                                        <Ellipse Style="{StaticResource LabelSwatch}" Fill="{StaticResource Brush.Label.Blue}" />
+                                    </RadioButton>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
-                    </Border>
-                </StackPanel>
 
-                <StackPanel Style="{StaticResource FilterGroup}" Tag="{Binding IsLabelActive}">
-                    <TextBlock Text="Label" Style="{StaticResource FilterGroupCaption}" />
-                    <Border Style="{StaticResource FilterGroupTrack}">
-                        <StackPanel Orientation="Horizontal">
-                            <RadioButton Style="{StaticResource Segment}" GroupName="Label" Content="Any" AutomationProperties.Name="Any label" IsChecked="{Binding Label, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:LabelFilterChoice.Any}}" />
-                            <RadioButton Style="{StaticResource Segment}" GroupName="Label" AutomationProperties.Name="Red" ToolTip="Red label" IsChecked="{Binding Label, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:LabelFilterChoice.Red}}">
-                                <Ellipse Style="{StaticResource LabelSwatch}" Fill="{StaticResource Brush.Label.Red}" />
-                            </RadioButton>
-                            <RadioButton Style="{StaticResource Segment}" GroupName="Label" AutomationProperties.Name="Yellow" ToolTip="Yellow label" IsChecked="{Binding Label, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:LabelFilterChoice.Yellow}}">
-                                <Ellipse Style="{StaticResource LabelSwatch}" Fill="{StaticResource Brush.Label.Yellow}" />
-                            </RadioButton>
-                            <RadioButton Style="{StaticResource Segment}" GroupName="Label" AutomationProperties.Name="Green" ToolTip="Green label" IsChecked="{Binding Label, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:LabelFilterChoice.Green}}">
-                                <Ellipse Style="{StaticResource LabelSwatch}" Fill="{StaticResource Brush.Label.Green}" />
-                            </RadioButton>
-                            <RadioButton Style="{StaticResource Segment}" GroupName="Label" AutomationProperties.Name="Blue" ToolTip="Blue label" IsChecked="{Binding Label, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:LabelFilterChoice.Blue}}">
-                                <Ellipse Style="{StaticResource LabelSwatch}" Fill="{StaticResource Brush.Label.Blue}" />
-                            </RadioButton>
+                        <!-- Analysis findings: many choices, so one drop-down rather than a long row -->
+                        <StackPanel Style="{StaticResource FilterGroup}" Tag="{Binding IsAnalysisActive}"
+                                    ToolTip="Heuristic measurements and advisory AI. Run Analyze first.">
+                            <TextBlock Text="Analysis" Style="{StaticResource FilterGroupLabel}" />
+                            <ComboBox SelectedValue="{Binding Analysis}" MinWidth="150" AutomationProperties.Name="Analysis filter">
+                                <ComboBox.Style>
+                                    <Style TargetType="ComboBox" BasedOn="{StaticResource FilterCombo}">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsAnalysisActive}" Value="True">
+                                                <Setter Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ComboBox.Style>
+                                <ComboBoxItem Content="Any" Tag="{x:Static vm:AnalysisFilterChoice.Any}" AutomationProperties.Name="Any analysis" />
+                                <ComboBoxItem Content="Likely blurry" Tag="{x:Static vm:AnalysisFilterChoice.LikelyBlurry}" />
+                                <ComboBoxItem Content="Clipping" Tag="{x:Static vm:AnalysisFilterChoice.Clipping}" ToolTip="Highlights or shadows clipped" />
+                                <ComboBoxItem Content="Similar groups" Tag="{x:Static vm:AnalysisFilterChoice.InGroup}" ToolTip="In a group of similar photos; shown group by group" />
+                                <ComboBoxItem Content="Exact duplicates" Tag="{x:Static vm:AnalysisFilterChoice.ExactDuplicate}" ToolTip="Identical files" />
+                                <ComboBoxItem Content="AI pick" Tag="{x:Static vm:AnalysisFilterChoice.AiPick}" ToolTip="AI suggestions are advisory and not yet evaluated" AutomationProperties.Name="AI suggested picks" />
+                                <ComboBoxItem Content="AI: faces soft" Tag="{x:Static vm:AnalysisFilterChoice.AiFacesSoft}" ToolTip="All faces look soft (AI, advisory)" />
+                                <ComboBoxItem Content="Changed by Auto" Tag="{x:Static vm:AnalysisFilterChoice.AutoApplied}" ToolTip="Photos the last Auto run changed (cleared on restart)" />
+                            </ComboBox>
                         </StackPanel>
-                    </Border>
-                </StackPanel>
 
-                <StackPanel Style="{StaticResource FilterGroup}">
-                    <TextBlock Text="Sort by" Style="{StaticResource FilterGroupCaption}" />
-                    <Border Style="{StaticResource FilterGroupTrack}">
-                        <StackPanel Orientation="Horizontal">
-                            <RadioButton Style="{StaticResource Segment}" GroupName="Sort" Content="Folder" IsChecked="{Binding Sort, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static library:LibrarySort.FolderAndName}}" />
-                            <RadioButton Style="{StaticResource Segment}" GroupName="Sort" Content="Captured" IsChecked="{Binding Sort, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static library:LibrarySort.CaptureTime}}" />
-                            <RadioButton Style="{StaticResource Segment}" GroupName="Sort" Content="Name" IsChecked="{Binding Sort, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static library:LibrarySort.FileName}}" />
-                            <RadioButton Style="{StaticResource Segment}" GroupName="Sort" Content="Rating" AutomationProperties.Name="Sort by rating" IsChecked="{Binding Sort, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static library:LibrarySort.Rating}}" />
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
-
-                <StackPanel Style="{StaticResource FilterGroup}" Tag="{Binding IsAnalysisActive}" ToolTip="Heuristic measurements and advisory AI. Run Analyze first.">
-                    <TextBlock Text="Analysis" Style="{StaticResource FilterGroupCaption}" />
-                    <Border Style="{StaticResource FilterGroupTrack}">
-                        <StackPanel Orientation="Horizontal">
-                            <RadioButton Style="{StaticResource Segment}" GroupName="Analysis" Content="Any" AutomationProperties.Name="Any analysis" IsChecked="{Binding Analysis, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:AnalysisFilterChoice.Any}}" />
-                            <RadioButton Style="{StaticResource Segment}" GroupName="Analysis" Content="Blurry?" AutomationProperties.Name="Likely blurry" IsChecked="{Binding Analysis, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:AnalysisFilterChoice.LikelyBlurry}}" />
-                            <RadioButton Style="{StaticResource Segment}" GroupName="Analysis" Content="Clipping" IsChecked="{Binding Analysis, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:AnalysisFilterChoice.Clipping}}" />
-                            <RadioButton Style="{StaticResource Segment}" GroupName="Analysis" Content="Similar" AutomationProperties.Name="Similar groups" ToolTip="In a group of similar photos" IsChecked="{Binding Analysis, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:AnalysisFilterChoice.InGroup}}" />
-                            <RadioButton Style="{StaticResource Segment}" GroupName="Analysis" Content="Duplicates" AutomationProperties.Name="Exact duplicates" ToolTip="Identical files" IsChecked="{Binding Analysis, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:AnalysisFilterChoice.ExactDuplicate}}" />
-                            <RadioButton Style="{StaticResource Segment}" GroupName="Analysis" Content="AI pick" AutomationProperties.Name="AI suggested picks" ToolTip="AI suggestions are advisory and not yet evaluated" IsChecked="{Binding Analysis, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:AnalysisFilterChoice.AiPick}}" />
-                            <RadioButton Style="{StaticResource Segment}" GroupName="Analysis" Content="Faces soft" AutomationProperties.Name="AI faces soft" ToolTip="All faces look soft (AI, advisory)" IsChecked="{Binding Analysis, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:AnalysisFilterChoice.AiFacesSoft}}" />
-                            <RadioButton Style="{StaticResource Segment}" GroupName="Analysis" Content="Auto-applied" AutomationProperties.Name="Changed by the last Auto run" ToolTip="Photos the last Auto run changed (cleared on restart)" IsChecked="{Binding Analysis, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:AnalysisFilterChoice.AutoApplied}}" />
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
-
-                <!-- Appears only while something is filtered; resets every filter (not the sort) in one step. -->
-                <Button Content="Clear filters" VerticalAlignment="Bottom" Margin="0,0,0,6" MinWidth="0" Padding="10,3"
-                        Command="{Binding ClearFiltersCommand}" ToolTip="Set every filter back to All / Any"
-                        Visibility="{Binding IsFiltering, Converter={StaticResource BoolToVisibility}}" />
-            </WrapPanel>
-
-            <!-- Count (right) and status: glyph + text, so warnings are not conveyed by colour alone. -->
-            <DockPanel Grid.Row="2" Margin="0,0,0,10">
-            <TextBlock DockPanel.Dock="Right" VerticalAlignment="Top" Margin="16,0,0,0" Text="{Binding CountText}"
-                       Foreground="{StaticResource Brush.Text.Secondary}"
-                       AutomationProperties.AutomationId="LibraryCount" />
-            <TextBlock TextWrapping="Wrap" AutomationProperties.AutomationId="LibraryStatus">
-                <TextBlock.Style>
-                    <Style TargetType="TextBlock">
-                        <Setter Property="Foreground" Value="{StaticResource Brush.Text.Secondary}" />
-                        <Setter Property="Text" Value="{Binding StatusMessage}" />
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding StatusIsWarning}" Value="True">
-                                <Setter Property="Foreground" Value="{StaticResource Brush.Status.Error}" />
-                                <Setter Property="Text" Value="{Binding StatusMessage, StringFormat='⚠ {0}'}" />
-                            </DataTrigger>
-                            <DataTrigger Binding="{Binding StatusMessage}" Value="{x:Null}">
-                                <Setter Property="Visibility" Value="Collapsed" />
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </TextBlock.Style>
-            </TextBlock>
-            </DockPanel>
-
-            <!-- Empty states -->
-            <StackPanel Grid.Row="3" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="420"
-                        Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}">
-                <TextBlock Text="Your library is empty" Style="{StaticResource Text.PageTitle}" HorizontalAlignment="Center" />
-                <TextBlock Style="{StaticResource Text.Secondary}" TextAlignment="Center"
-                           Text="Import a folder of JPEG photos to start. Originals stay where they are and are never modified." />
-            </StackPanel>
-            <StackPanel Grid.Row="3" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="420"
-                        Visibility="{Binding IsFilteredEmpty, Converter={StaticResource BoolToVisibility}}">
-                <TextBlock Text="No photos match this filter" Style="{StaticResource Text.PageTitle}" HorizontalAlignment="Center" />
-                <TextBlock Style="{StaticResource Text.Secondary}" TextAlignment="Center" Text="Use “Clear filters” to see every photo." />
-            </StackPanel>
+                        <!-- Appears only while a refinement is on; the sidebar view and folder stay -->
+                        <Button Style="{StaticResource Button.Link}" Content="Clear refinements" Margin="0,0,0,8"
+                                Command="{Binding ClearRefinementsCommand}" ToolTip="Set rating, label and analysis back to Any"
+                                Visibility="{Binding IsRefining, Converter={StaticResource BoolToVisibility}}" />
+                    </WrapPanel>
+                </DockPanel>
+            </Border>
 
             <!-- Photo grid: virtualised and recycled. Extended selection: Shift/Ctrl+click, Shift+arrows. -->
-            <controls:PhotoGridListBox x:Name="PhotoGrid" Grid.Row="3"
+            <controls:PhotoGridListBox x:Name="PhotoGrid" Grid.Row="2" Padding="16,12,8,12"
                      ItemsSource="{Binding Photos}"
                      SelectedItem="{Binding SelectedPhoto}"
                      Background="Transparent" BorderThickness="0"
@@ -272,9 +275,51 @@
                      IsTextSearchEnabled="False"
                      KeyboardNavigation.DirectionalNavigation="Contained"
                      AutomationProperties.Name="Photos">
+                <ListBox.Template>
+                    <ControlTemplate TargetType="ListBox">
+                        <ScrollViewer Focusable="False" Padding="{TemplateBinding Padding}" CanContentScroll="True">
+                            <ItemsPresenter />
+                        </ScrollViewer>
+                    </ControlTemplate>
+                </ListBox.Template>
                 <ListBox.InputBindings>
                     <KeyBinding Key="Return" Command="{Binding OpenViewerCommand}" />
                 </ListBox.InputBindings>
+                <!-- Right-click a photo: the same actions as the keys, with the keys shown -->
+                <ListBox.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="Open" InputGestureText="Enter" Command="{Binding OpenViewerCommand}" />
+                        <MenuItem Header="Develop" InputGestureText="D" Command="{Binding RunShortcutCommand}" CommandParameter="{x:Static shortcuts:CullingAction.ToggleDevelop}" />
+                        <MenuItem Header="Compare selected" InputGestureText="C" Command="{Binding OpenCompareCommand}" />
+                        <Separator />
+                        <MenuItem Header="Keep" InputGestureText="P" Command="{Binding RunShortcutCommand}" CommandParameter="{x:Static shortcuts:CullingAction.Keep}" />
+                        <MenuItem Header="Review" InputGestureText="V" Command="{Binding RunShortcutCommand}" CommandParameter="{x:Static shortcuts:CullingAction.Review}" />
+                        <MenuItem Header="Reject" InputGestureText="X" Command="{Binding RunShortcutCommand}" CommandParameter="{x:Static shortcuts:CullingAction.Reject}" />
+                        <MenuItem Header="Clear decision" InputGestureText="U" Command="{Binding RunShortcutCommand}" CommandParameter="{x:Static shortcuts:CullingAction.Unset}" />
+                        <MenuItem Header="Rating">
+                            <MenuItem Header="★" InputGestureText="1" Command="{Binding RunShortcutCommand}" CommandParameter="{x:Static shortcuts:CullingAction.Rate1}" />
+                            <MenuItem Header="★★" InputGestureText="2" Command="{Binding RunShortcutCommand}" CommandParameter="{x:Static shortcuts:CullingAction.Rate2}" />
+                            <MenuItem Header="★★★" InputGestureText="3" Command="{Binding RunShortcutCommand}" CommandParameter="{x:Static shortcuts:CullingAction.Rate3}" />
+                            <MenuItem Header="★★★★" InputGestureText="4" Command="{Binding RunShortcutCommand}" CommandParameter="{x:Static shortcuts:CullingAction.Rate4}" />
+                            <MenuItem Header="★★★★★" InputGestureText="5" Command="{Binding RunShortcutCommand}" CommandParameter="{x:Static shortcuts:CullingAction.Rate5}" />
+                            <Separator />
+                            <MenuItem Header="No rating" InputGestureText="0" Command="{Binding RunShortcutCommand}" CommandParameter="{x:Static shortcuts:CullingAction.ClearRating}" />
+                        </MenuItem>
+                        <MenuItem Header="Label">
+                            <MenuItem Header="Red" InputGestureText="6" Command="{Binding RunShortcutCommand}" CommandParameter="{x:Static shortcuts:CullingAction.LabelRed}" />
+                            <MenuItem Header="Yellow" InputGestureText="7" Command="{Binding RunShortcutCommand}" CommandParameter="{x:Static shortcuts:CullingAction.LabelYellow}" />
+                            <MenuItem Header="Green" InputGestureText="8" Command="{Binding RunShortcutCommand}" CommandParameter="{x:Static shortcuts:CullingAction.LabelGreen}" />
+                            <MenuItem Header="Blue" InputGestureText="9" Command="{Binding RunShortcutCommand}" CommandParameter="{x:Static shortcuts:CullingAction.LabelBlue}" />
+                            <Separator />
+                            <MenuItem Header="No label" InputGestureText="Shift+0" Command="{Binding RunShortcutCommand}" CommandParameter="{x:Static shortcuts:CullingAction.ClearLabel}" />
+                        </MenuItem>
+                        <Separator />
+                        <MenuItem Header="Select similar group" InputGestureText="G" Command="{Binding RunShortcutCommand}" CommandParameter="{x:Static shortcuts:CullingAction.SelectGroup}" />
+                        <MenuItem Header="Analysis details" InputGestureText="I" Command="{Binding RunShortcutCommand}" CommandParameter="{x:Static shortcuts:CullingAction.ToggleDetails}" />
+                        <Separator />
+                        <MenuItem Header="Apply preset or Auto…" Command="{Binding OpenPresetsCommand}" />
+                    </ContextMenu>
+                </ListBox.ContextMenu>
                 <ListBox.ItemContainerStyle>
                     <Style TargetType="ListBoxItem" BasedOn="{StaticResource PhotoTileItem}">
                         <!-- Screen readers announce the file name, problem state and decision. -->
@@ -284,7 +329,8 @@
                 </ListBox.ItemContainerStyle>
                 <ListBox.ItemsPanel>
                     <ItemsPanelTemplate>
-                        <vwp:VirtualizingWrapPanel ItemSize="192,184" SpacingMode="Uniform" StretchItems="False" />
+                        <vwp:VirtualizingWrapPanel ItemSize="{Binding DataContext.TileSize, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                   SpacingMode="None" StretchItems="True" />
                     </ItemsPanelTemplate>
                 </ListBox.ItemsPanel>
                 <ListBox.ItemTemplate>
@@ -300,25 +346,49 @@
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
 
-                            <Border x:Name="ImageArea" Background="{StaticResource Brush.Surface.Sunken}" CornerRadius="2">
+                            <!-- The photo. Before its thumbnail arrives the area is a quiet placeholder of the same size. -->
+                            <Border x:Name="ImageArea" CornerRadius="2">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Background" Value="Transparent" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Thumbnail}" Value="{x:Null}">
+                                                <Setter Property="Background" Value="{StaticResource Brush.Control.Pressed}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
                                 <Grid>
-                                    <Image Source="{Binding Thumbnail}" Stretch="Uniform"
-                                           RenderOptions.BitmapScalingMode="HighQuality" />
-                                    <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"
-                                               Foreground="{StaticResource Brush.Status.Error}" TextAlignment="Center"
+                                    <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="{StaticResource FontSize.Meta}"
+                                               Foreground="{StaticResource Brush.Status.Error}" TextAlignment="Center" TextWrapping="Wrap" Margin="8,0"
                                                Text="{Binding StatusText, StringFormat='⚠&#x0a;{0}'}"
                                                Visibility="{Binding HasProblem, Converter={StaticResource BoolToVisibility}}" />
+                                <!-- Shrinks to the photo itself, so the marks sit on its corners rather than on the letterbox -->
+                                <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <Image x:Name="Thumb" Source="{Binding Thumbnail}" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" />
 
-                                    <!-- Heuristic analysis badges (glyph + word). Press I for the numbers behind them. -->
-                                    <WrapPanel HorizontalAlignment="Left" VerticalAlignment="Top" Margin="4,4,0,0" IsHitTestVisible="False"
+                                    <!-- Analysis indicators: short marks on a scrim, top-left. The tooltip names each; I shows the numbers. -->
+                                    <WrapPanel HorizontalAlignment="Left" VerticalAlignment="Top" Margin="4,4,28,0"
                                                Visibility="{Binding HasAnalysisBadges, Converter={StaticResource BoolToVisibility}}">
-                                        <Border Style="{StaticResource AnalysisBadge}" Visibility="{Binding ShowBlurBadge, Converter={StaticResource BoolToVisibility}}">
-                                            <TextBlock Style="{StaticResource Text.AnalysisBadge}" Text="≈ blurry?" Foreground="{StaticResource Brush.Decision.Review}" />
+                                        <Border Style="{StaticResource AnalysisBadge}" ToolTip="AI suggested pick in its group (advisory; your decision is unchanged)"
+                                                Visibility="{Binding ShowAiPickBadge, Converter={StaticResource BoolToVisibility}}">
+                                            <TextBlock Style="{StaticResource Text.AnalysisBadge}" Text="AI pick" Foreground="{StaticResource Brush.Decision.Keep}" />
                                         </Border>
-                                        <Border Style="{StaticResource AnalysisBadge}" Visibility="{Binding ShowClipBadge, Converter={StaticResource BoolToVisibility}}">
-                                            <TextBlock Style="{StaticResource Text.AnalysisBadge}" Text="◐ clip" />
+                                        <Border Style="{StaticResource AnalysisBadge}" ToolTip="Sharpest in its similar group"
+                                                Visibility="{Binding ShowSharpestBadge, Converter={StaticResource BoolToVisibility}}">
+                                            <TextBlock Style="{StaticResource Text.AnalysisBadge}" Text="◆" Foreground="{StaticResource Brush.Decision.Keep}" />
                                         </Border>
-                                        <Border>
+                                        <Border Style="{StaticResource AnalysisBadge}" ToolTip="Likely blurry (heuristic)"
+                                                Visibility="{Binding ShowBlurBadge, Converter={StaticResource BoolToVisibility}}">
+                                            <TextBlock Style="{StaticResource Text.AnalysisBadge}" Text="≈ blur" Foreground="{StaticResource Brush.Decision.Review}" />
+                                        </Border>
+                                        <!-- Informational marks (clipping, group size, faces) appear on hover or selection, so scanning stays quiet -->
+                                        <WrapPanel Style="{StaticResource RevealOnHover}">
+                                        <Border Style="{StaticResource AnalysisBadge}" ToolTip="Highlights or shadows clipped"
+                                                Visibility="{Binding ShowClipBadge, Converter={StaticResource BoolToVisibility}}">
+                                            <TextBlock Style="{StaticResource Text.AnalysisBadge}" Text="◐" />
+                                        </Border>
+                                        <Border ToolTip="In a group of similar photos (G selects the group)">
                                             <Border.Style>
                                                 <Style TargetType="Border" BasedOn="{StaticResource AnalysisBadge}">
                                                     <Style.Triggers>
@@ -330,12 +400,12 @@
                                             </Border.Style>
                                             <TextBlock Style="{StaticResource Text.AnalysisBadge}" Text="{Binding GroupBadgeText}" />
                                         </Border>
-                                        <Border Style="{StaticResource AnalysisBadge}" Visibility="{Binding ShowSharpestBadge, Converter={StaticResource BoolToVisibility}}">
-                                            <TextBlock Style="{StaticResource Text.AnalysisBadge}" Text="◆ sharpest" Foreground="{StaticResource Brush.Decision.Keep}" />
+                                        </WrapPanel>
+                                        <Border Style="{StaticResource AnalysisBadge}" ToolTip="Exact duplicate of another file"
+                                                Visibility="{Binding ShowExactBadge, Converter={StaticResource BoolToVisibility}}">
+                                            <TextBlock Style="{StaticResource Text.AnalysisBadge}" Text="= dup" />
                                         </Border>
-                                        <Border Style="{StaticResource AnalysisBadge}" Visibility="{Binding ShowExactBadge, Converter={StaticResource BoolToVisibility}}">
-                                            <TextBlock Style="{StaticResource Text.AnalysisBadge}" Text="= duplicate" />
-                                        </Border>
+                                        <WrapPanel Style="{StaticResource RevealOnHover}">
                                         <Border ToolTip="Faces found by AI (advisory)">
                                             <Border.Style>
                                                 <Style TargetType="Border" BasedOn="{StaticResource AnalysisBadge}">
@@ -348,32 +418,150 @@
                                             </Border.Style>
                                             <TextBlock Style="{StaticResource Text.AnalysisBadge}" Text="{Binding FaceBadgeText}" />
                                         </Border>
-                                        <Border Style="{StaticResource AnalysisBadge}" ToolTip="All faces look soft (AI, advisory)" Visibility="{Binding ShowFacesSoftBadge, Converter={StaticResource BoolToVisibility}}">
-                                            <TextBlock Style="{StaticResource Text.AnalysisBadge}" Text="AI faces soft" />
-                                        </Border>
-                                        <Border Style="{StaticResource AnalysisBadge}" ToolTip="AI suggested pick in its group (advisory; your decision is unchanged)" Visibility="{Binding ShowAiPickBadge, Converter={StaticResource BoolToVisibility}}">
-                                            <TextBlock Style="{StaticResource Text.AnalysisBadge}" Text="AI pick" Foreground="{StaticResource Brush.Decision.Keep}" />
+                                        </WrapPanel>
+                                        <Border Style="{StaticResource AnalysisBadge}" ToolTip="All faces look soft (AI, advisory)"
+                                                Visibility="{Binding ShowFacesSoftBadge, Converter={StaticResource BoolToVisibility}}">
+                                            <TextBlock Style="{StaticResource Text.AnalysisBadge}" Text="☺ soft" Foreground="{StaticResource Brush.Decision.Review}" />
                                         </Border>
                                     </WrapPanel>
+
+                                    <!-- Decision, top-right: the mark the cull is scanning for -->
+                                    <Border x:Name="StateChip" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,4,4,0" Width="20" Height="20"
+                                            CornerRadius="10" Background="{StaticResource Brush.Scrim}" Visibility="Collapsed">
+                                        <TextBlock x:Name="StateGlyph" Text="{Binding StateGlyph}" FontWeight="Bold" FontSize="12"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,1" />
+                                    </Border>
+                                </Grid>
                                 </Grid>
                             </Border>
 
-                            <DockPanel Grid.Row="1" Margin="2,6,2,0" LastChildFill="True">
-                                <ContentControl DockPanel.Dock="Right" Content="{Binding}" ContentTemplate="{StaticResource DecisionBadges}" Focusable="False" IsTabStop="False" />
-                                <TextBlock DockPanel.Dock="Left" Text="✎" Margin="0,0,4,0" FontSize="12" VerticalAlignment="Center" ToolTip="Edited (the original file is unchanged)"
-                                           Foreground="{StaticResource Brush.Accent}" Visibility="{Binding IsEdited, Converter={StaticResource BoolToVisibility}}" />
-                                <TextBlock Text="{Binding FileName}" TextTrimming="CharacterEllipsis" FontSize="12" VerticalAlignment="Center" />
+                            <!-- Caption: file name (hidden at the smallest size), stars and label -->
+                            <DockPanel Grid.Row="1" Margin="1,5,1,0" Height="16" LastChildFill="True">
+                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding RatingText}" Foreground="{StaticResource Brush.Rating}" FontSize="10" VerticalAlignment="Center" />
+                                    <Border x:Name="LabelSwatch" Margin="5,0,0,0" Width="14" Height="14" CornerRadius="3" VerticalAlignment="Center"
+                                            Background="{Binding Label, Converter={StaticResource LabelToBrush}}">
+                                        <TextBlock Text="{Binding LabelLetter}" Foreground="#FF121212" FontSize="9" FontWeight="Bold"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </Border>
+                                </StackPanel>
+                                <TextBlock DockPanel.Dock="Left" Text="✎" Margin="0,0,5,0" FontSize="{StaticResource FontSize.Caption}" VerticalAlignment="Center"
+                                           Foreground="{StaticResource Brush.Accent.Hover}" ToolTip="Edited (the original file is unchanged)"
+                                           Visibility="{Binding IsEdited, Converter={StaticResource BoolToVisibility}}" />
+                                <TextBlock x:Name="Name" Text="{Binding FileName}" TextTrimming="CharacterEllipsis" FontSize="{StaticResource FontSize.Caption}"
+                                           VerticalAlignment="Center" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}"
+                                           Visibility="{Binding DataContext.ShowFileNames, RelativeSource={RelativeSource AncestorType=ListBox}, Converter={StaticResource BoolToVisibility}}" />
                             </DockPanel>
                         </Grid>
                         <DataTemplate.Triggers>
-                            <!-- Rejected photos recede; the ✕ glyph carries the meaning, not the dimming. -->
+                            <!-- Rejected photos recede; the ✕ mark carries the meaning, not the dimming. -->
                             <DataTrigger Binding="{Binding IsRejected}" Value="True">
-                                <Setter TargetName="ImageArea" Property="Opacity" Value="0.4" />
+                                <Setter TargetName="Thumb" Property="Opacity" Value="0.35" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding Decision.State}" Value="{x:Static decisions:CullState.Keep}">
+                                <Setter TargetName="StateChip" Property="Visibility" Value="Visible" />
+                                <Setter TargetName="StateGlyph" Property="Foreground" Value="{StaticResource Brush.Decision.Keep}" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding Decision.State}" Value="{x:Static decisions:CullState.Review}">
+                                <Setter TargetName="StateChip" Property="Visibility" Value="Visible" />
+                                <Setter TargetName="StateGlyph" Property="Foreground" Value="{StaticResource Brush.Decision.Review}" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding Decision.State}" Value="{x:Static decisions:CullState.Reject}">
+                                <Setter TargetName="StateChip" Property="Visibility" Value="Visible" />
+                                <Setter TargetName="StateGlyph" Property="Foreground" Value="{StaticResource Brush.Decision.Reject}" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding LabelLetter}" Value="{x:Null}">
+                                <Setter TargetName="LabelSwatch" Property="Visibility" Value="Collapsed" />
                             </DataTrigger>
                         </DataTemplate.Triggers>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </controls:PhotoGridListBox>
+
+            <!-- Loading -->
+            <StackPanel Grid.Row="2" HorizontalAlignment="Center" VerticalAlignment="Center" Width="220"
+                        Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}">
+                <ProgressBar IsIndeterminate="True" AutomationProperties.Name="Loading the library" />
+                <TextBlock Margin="0,10,0,0" HorizontalAlignment="Center" Text="Loading the library…" Style="{StaticResource Text.Status}" />
+            </StackPanel>
+
+            <!-- Empty: the first thing a new user sees, so it says what to do and does it -->
+            <StackPanel Grid.Row="2" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="440"
+                        Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}">
+                <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE8B9;" FontSize="40" Foreground="{StaticResource Brush.Text.Disabled}" Margin="0,0,0,20" />
+                <TextBlock Text="Import a folder to start culling" Style="{StaticResource Text.PageTitle}" HorizontalAlignment="Center" Margin="0,0,0,8" />
+                <TextBlock Style="{StaticResource Text.Secondary}" TextAlignment="Center" LineHeight="19"
+                           Text="FrameForge reads JPEGs where they are. Originals are never moved or changed; only paths, metadata and your decisions are stored." />
+                <Button Style="{StaticResource Button.Primary}" HorizontalAlignment="Center" Margin="0,24,0,10" Command="{Binding ImportCommand}"
+                        Content="Import folder…" AutomationProperties.Name="Import folder" />
+                <TextBlock HorizontalAlignment="Center" Style="{StaticResource Text.Count}" Text="or drop a folder here  ·  Ctrl+I" />
+            </StackPanel>
+            <StackPanel Grid.Row="2" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="440"
+                        Visibility="{Binding IsFilteredEmpty, Converter={StaticResource BoolToVisibility}}">
+                <TextBlock Text="Nothing to show here" Style="{StaticResource Text.PageTitle}" HorizontalAlignment="Center" Margin="0,0,0,8" />
+                <TextBlock Style="{StaticResource Text.Secondary}" TextAlignment="Center"
+                           Text="No photo matches this view and its filters. Choose another view in the sidebar, or show every photo." />
+                <Button HorizontalAlignment="Center" Margin="0,20,0,0" Content="Show all photos" DataContext="{Binding Filter}"
+                        Command="{Binding ClearFiltersCommand}" ToolTip="Back to All photos, every folder, no filters" />
+            </StackPanel>
+
+            <!-- Drop target: shown only while a folder is dragged over the window -->
+            <Border x:Name="DropHint" Grid.Row="0" Grid.RowSpan="4" Margin="12" CornerRadius="8" Background="#E6121212"
+                    BorderBrush="{StaticResource Brush.Accent}" BorderThickness="2" Visibility="Collapsed" IsHitTestVisible="False">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE8B5;" FontSize="32" Foreground="{StaticResource Brush.Accent}" Margin="0,0,0,12" />
+                    <TextBlock x:Name="DropHintText" Text="Drop to import this folder" FontSize="{StaticResource FontSize.Panel}" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                    <TextBlock Text="Originals stay where they are" Style="{StaticResource Text.Count}" HorizontalAlignment="Center" Margin="0,4,0,0" />
+                </StackPanel>
+            </Border>
+
+            <!-- Footer: what is happening (import, analysis, last result) and the library's decision totals -->
+            <Border Grid.Row="3" Background="{StaticResource Brush.Chrome}" BorderBrush="{StaticResource Brush.Hairline}" BorderThickness="0,1,0,0"
+                    Padding="24,0,16,0" MinHeight="32">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Right" Margin="16,0,0,0" Text="{Binding DecisionSummaryText}" Style="{StaticResource Text.Count}"
+                               AutomationProperties.AutomationId="LibraryCount" ToolTip="{Binding CountText}" />
+
+                    <!-- Import progress -->
+                    <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Margin="0,0,20,0"
+                                Visibility="{Binding IsImporting, Converter={StaticResource BoolToVisibility}}">
+                        <ProgressBar Width="140" VerticalAlignment="Center" Minimum="0" Maximum="1"
+                                     Value="{Binding ImportProgressValue, Mode=OneWay}"
+                                     IsIndeterminate="{Binding IsImportProgressIndeterminate}"
+                                     AutomationProperties.Name="Import progress" />
+                        <TextBlock Margin="10,0" Text="{Binding ImportProgressText}" Style="{StaticResource Text.Status}" Typography.NumeralAlignment="Tabular"
+                                   AutomationProperties.AutomationId="ImportStatus" />
+                        <Button Style="{StaticResource Button.Link}" Content="Cancel" Command="{Binding CancelImportCommand}"
+                                ToolTip="Stop the import; photos read so far are kept" AutomationProperties.Name="Cancel import" />
+                    </StackPanel>
+
+                    <!-- Analysis progress -->
+                    <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Margin="0,0,20,0" DataContext="{Binding Analysis}"
+                                Visibility="{Binding IsAnalyzing, Converter={StaticResource BoolToVisibility}}">
+                        <ProgressBar Width="140" VerticalAlignment="Center" Minimum="0" Maximum="1"
+                                     Value="{Binding ProgressValue, Mode=OneWay}" AutomationProperties.Name="Analysis progress" />
+                        <TextBlock Margin="10,0" Text="{Binding ProgressText}" Style="{StaticResource Text.Status}" Typography.NumeralAlignment="Tabular"
+                                   AutomationProperties.AutomationId="AnalysisStatus" />
+                        <Button Style="{StaticResource Button.Link}" Content="Cancel" Command="{Binding AnalyzeCancelCommand}"
+                                ToolTip="Stop; results so far are kept" AutomationProperties.Name="Cancel analysis" />
+                    </StackPanel>
+
+                    <!-- Last result: glyph + text, so warnings are not conveyed by colour alone -->
+                    <TextBlock AutomationProperties.AutomationId="LibraryStatus" AutomationProperties.LiveSetting="Polite" ToolTip="{Binding StatusMessage}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Status}">
+                                <Setter Property="Text" Value="{Binding StatusMessage}" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding StatusIsWarning}" Value="True">
+                                        <Setter Property="Foreground" Value="{StaticResource Brush.Status.Error}" />
+                                        <Setter Property="Text" Value="{Binding StatusMessage, StringFormat='⚠ {0}'}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </DockPanel>
+            </Border>
         </Grid>
 
         <!-- ============================== Viewer / Compare (overlay the grid; scroll position is kept) -->
@@ -385,29 +573,30 @@
         </Grid>
 
         <!-- ============================== Side panels (non-modal) -->
-        <views:ExportPanel x:Name="ExportSide" Grid.Column="1" Margin="12,0,0,0" DataContext="{Binding Export}" HorizontalAlignment="Right"
+        <views:ExportPanel x:Name="ExportSide" Grid.Column="1" DataContext="{Binding Export}" HorizontalAlignment="Right"
                            Visibility="{Binding IsOpen, Converter={StaticResource BoolToVisibility}}" />
-        <views:PresetPanel x:Name="PresetsSide" Grid.Column="1" Margin="12,0,0,0" DataContext="{Binding Presets}" HorizontalAlignment="Right"
+        <views:PresetPanel x:Name="PresetsSide" Grid.Column="1" DataContext="{Binding Presets}" HorizontalAlignment="Right"
                            Visibility="{Binding IsOpen, Converter={StaticResource BoolToVisibility}}" />
 
-        <!-- Analysis details: the numbers, thresholds and method behind every badge. -->
-        <Border x:Name="DetailsSide" Grid.Column="1" Margin="12,0,0,0" Style="{StaticResource SidePanel}" DataContext="{Binding Analysis}"
+        <!-- Analysis details: the numbers, thresholds and method behind every indicator. -->
+        <Border x:Name="DetailsSide" Grid.Column="1" Style="{StaticResource SidePanel}" DataContext="{Binding Analysis}"
                 Visibility="{Binding IsDetailsOpen, Converter={StaticResource BoolToVisibility}}">
             <DockPanel>
-                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
-                    <Button DockPanel.Dock="Right" Content="Close" MinWidth="0"
+                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+                    <Button DockPanel.Dock="Right" Style="{StaticResource Button.Icon}" Content="&#xE711;" Margin="0,0,-8,0"
+                            ToolTip="Close (I)" AutomationProperties.Name="Close"
                             Command="{Binding DataContext.RunShortcutCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                             CommandParameter="{x:Static shortcuts:CullingAction.ToggleDetails}" />
-                    <TextBlock Text="Analysis details" Style="{StaticResource Text.SectionLabel}" FontSize="16" VerticalAlignment="Center" />
+                    <TextBlock Text="Analysis details" Style="{StaticResource Text.PanelTitle}" />
                 </DockPanel>
                 <TextBlock DockPanel.Dock="Top" Text="{Binding DetailsTitle}" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,0,0,4"
                            AutomationProperties.AutomationId="DetailsTitle" />
-                <TextBlock DockPanel.Dock="Top" Text="{Binding HeuristicNote}" Style="{StaticResource Text.Secondary}" FontSize="11" Margin="0,0,0,12" />
+                <TextBlock DockPanel.Dock="Top" Text="{Binding HeuristicNote}" Style="{StaticResource Text.Hint}" Margin="0,0,0,16" />
                 <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
                     <ItemsControl ItemsSource="{Binding Details}" Focusable="False" AutomationProperties.Name="Analysis findings">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <StackPanel Margin="0,0,0,14">
+                                <StackPanel Margin="0,0,0,16">
                                     <TextBlock FontWeight="SemiBold">
                                         <TextBlock.Style>
                                             <Style TargetType="TextBlock">
@@ -421,8 +610,8 @@
                                             </Style>
                                         </TextBlock.Style>
                                     </TextBlock>
-                                    <TextBlock Text="{Binding Value}" TextWrapping="Wrap" Margin="0,2,0,2" />
-                                    <TextBlock Text="{Binding Explanation}" TextWrapping="Wrap" Style="{StaticResource Text.Secondary}" FontSize="12" />
+                                    <TextBlock Text="{Binding Value}" TextWrapping="Wrap" Margin="0,3,0,3" Typography.NumeralAlignment="Tabular" />
+                                    <TextBlock Text="{Binding Explanation}" Style="{StaticResource Text.Hint}" />
                                 </StackPanel>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
@@ -431,30 +620,34 @@
             </DockPanel>
         </Border>
 
-        <Border x:Name="HelpSide" Grid.Column="1" Margin="12,0,0,0" Style="{StaticResource SidePanel}" AutomationProperties.Name="Keyboard shortcuts"
+        <Border x:Name="HelpSide" Grid.Column="1" Style="{StaticResource SidePanel}" AutomationProperties.Name="Keyboard shortcuts"
                 Visibility="{Binding IsHelpOpen, Converter={StaticResource BoolToVisibility}}">
             <DockPanel>
-                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
-                    <Button DockPanel.Dock="Right" Content="Close" MinWidth="0"
+                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,16">
+                    <Button DockPanel.Dock="Right" Style="{StaticResource Button.Icon}" Content="&#xE711;" Margin="0,0,-8,0"
+                            ToolTip="Close (F1)" AutomationProperties.Name="Close"
                             Command="{Binding RunShortcutCommand}" CommandParameter="{x:Static shortcuts:CullingAction.ToggleHelp}" />
-                    <TextBlock Text="Keyboard shortcuts" Style="{StaticResource Text.SectionLabel}" FontSize="16" VerticalAlignment="Center" />
+                    <TextBlock Text="Keyboard shortcuts" Style="{StaticResource Text.PanelTitle}" />
                 </DockPanel>
                 <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
                     <ItemsControl ItemsSource="{Binding ShortcutHelp}" Focusable="False">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type shortcuts:ShortcutHelpGroup}">
-                                <StackPanel Margin="0,0,0,16">
-                                    <TextBlock Text="{Binding Title}" Style="{StaticResource Text.Secondary}" FontSize="11" Margin="0,0,0,6" />
+                                <StackPanel Margin="0,0,0,20">
+                                    <TextBlock Text="{Binding Title}" Style="{StaticResource Text.Hint}" FontWeight="SemiBold" Margin="0,0,0,8" />
                                     <ItemsControl ItemsSource="{Binding Items}" Focusable="False">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate DataType="{x:Type shortcuts:ShortcutHelpItem}">
-                                                <Grid Margin="0,2">
+                                                <Grid Margin="0,3">
                                                     <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="130" />
+                                                        <ColumnDefinition Width="112" />
                                                         <ColumnDefinition Width="*" />
                                                     </Grid.ColumnDefinitions>
-                                                    <TextBlock Text="{Binding Keys}" FontWeight="SemiBold" />
-                                                    <TextBlock Grid.Column="1" Text="{Binding Description}" Style="{StaticResource Text.Secondary}" />
+                                                    <!-- Keys sit on a key-cap tone, so they scan as keys -->
+                                                    <Border HorizontalAlignment="Left" VerticalAlignment="Top" Background="{StaticResource Brush.Control}" CornerRadius="3" Padding="6,1" Margin="0,0,8,0">
+                                                        <TextBlock Text="{Binding Keys}" FontSize="{StaticResource FontSize.Meta}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                                    </Border>
+                                                    <TextBlock Grid.Column="1" Text="{Binding Description}" Style="{StaticResource Text.Secondary}" FontSize="{StaticResource FontSize.Meta}" />
                                                 </Grid>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>

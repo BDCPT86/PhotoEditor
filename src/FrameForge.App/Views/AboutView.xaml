@@ -7,7 +7,7 @@
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance Type=vm:AboutViewModel}">
     <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
-    <StackPanel MaxWidth="760" HorizontalAlignment="Left">
+    <StackPanel MaxWidth="760" HorizontalAlignment="Left" Margin="40,28,40,48">
         <TextBlock Text="{Binding Info.ProductName}" Style="{StaticResource Text.PageTitle}" />
 
         <Grid>
@@ -51,7 +51,7 @@
         <TextBlock Margin="0,16,0,0" Style="{StaticResource Text.Secondary}"
                    Text="Original photos are never modified. FrameForge stores only paths and metadata." />
 
-        <TextBlock Text="Third-party notices" Style="{StaticResource Text.SectionLabel}" Margin="0,24,0,8" />
+        <TextBlock Text="Third-party notices" Style="{StaticResource Text.SectionLabel}" FontSize="{StaticResource FontSize.Section}" Margin="0,36,0,8" />
         <TextBox Text="{Binding Notices, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap"
                  FontFamily="Consolas" FontSize="12" MaxHeight="420"
                  VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"

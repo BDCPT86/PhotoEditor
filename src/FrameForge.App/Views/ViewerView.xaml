@@ -31,15 +31,28 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- Header -->
-        <DockPanel Grid.Row="0" Margin="12,8">
-            <Button DockPanel.Dock="Left" Content="← Grid" ToolTip="Back to the grid (Esc)" Command="{Binding RequestCloseCommand}" />
-            <ToggleButton DockPanel.Dock="Right" Margin="16,0,0,0" Content="Develop (D)" IsChecked="{Binding Develop.IsOpen, Mode=OneWay}"
-                          Command="{Binding ToggleDevelopCommand}" ToolTip="Edit this photo (non-destructive)" AutomationProperties.Name="Develop" />
-            <TextBlock DockPanel.Dock="Right" Margin="16,0,0,0" VerticalAlignment="Center" Text="✎ edited" Foreground="{StaticResource Brush.Accent}"
-                       Visibility="{Binding Current.IsEdited, Converter={StaticResource BoolToVisibility}}" AutomationProperties.AutomationId="ViewerEdited" />
-            <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center" Foreground="{StaticResource Brush.Text.Secondary}"
-                       Text="{Binding ZoomText, ElementName=Zoom}" AutomationProperties.AutomationId="ZoomLevel"
+        <!-- Header: back, what this photo is and where it sits; its decision, zoom and Develop on the right -->
+        <DockPanel Grid.Row="0" Background="{StaticResource Brush.Chrome}" Height="48">
+            <Button DockPanel.Dock="Left" Style="{StaticResource Button.Quiet}" Margin="12,0,0,0" ToolTip="Back to the grid (Esc)"
+                    Command="{Binding RequestCloseCommand}" AutomationProperties.Name="Back to the grid">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE72B;" FontSize="12" Margin="0,0,8,0" />
+                    <TextBlock Text="Grid" />
+                </StackPanel>
+            </Button>
+            <ToggleButton DockPanel.Dock="Right" Margin="16,0,16,0" VerticalAlignment="Center" IsChecked="{Binding Develop.IsOpen, Mode=OneWay}"
+                          Command="{Binding ToggleDevelopCommand}" ToolTip="Edit this photo, non-destructively (D)" AutomationProperties.Name="Develop">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE790;" Margin="0,0,8,0" />
+                    <TextBlock Text="Develop" />
+                </StackPanel>
+            </ToggleButton>
+            <Border DockPanel.Dock="Right" Margin="16,0,0,0" VerticalAlignment="Center" Style="{StaticResource AnalysisBadge}" Background="{StaticResource Brush.Accent.Subtle}"
+                    Visibility="{Binding Current.IsEdited, Converter={StaticResource BoolToVisibility}}" ToolTip="Edited (the original file is unchanged)">
+                <TextBlock Text="✎ Edited" FontSize="{StaticResource FontSize.Meta}" Foreground="{StaticResource Brush.Accent.Hover}" AutomationProperties.AutomationId="ViewerEdited" />
+            </Border>
+            <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center" Style="{StaticResource Text.Count}" MinWidth="40" TextAlignment="Right"
+                       Text="{Binding ZoomText, ElementName=Zoom}" AutomationProperties.AutomationId="ZoomLevel" ToolTip="Zoom (Z: fit ↔ 100%)"
                        Visibility="{Binding Develop.IsCropMode, Converter={StaticResource InverseBoolToVisibility}}" />
             <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center" Margin="0,0,16,0" Foreground="{StaticResource Brush.Text.Secondary}"
                        Text="{Binding FaceStatus}" AutomationProperties.AutomationId="FaceStatus" AutomationProperties.LiveSetting="Polite">
@@ -53,14 +66,14 @@
                     </Style>
                 </TextBlock.Style>
             </TextBlock>
-            <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center" Margin="0,0,24,0" Foreground="{StaticResource Brush.Text.Secondary}"
-                       Text="{Binding PositionText}" AutomationProperties.AutomationId="Position" />
             <ContentControl DockPanel.Dock="Right" Margin="0,0,24,0" FontSize="15" Content="{Binding Current}"
                             ContentTemplate="{StaticResource DecisionBadges}" Focusable="False" IsTabStop="False"
                             AutomationProperties.AutomationId="ViewerDecision"
                             AutomationProperties.Name="{Binding Current.AccessibleStatus}" />
-            <TextBlock Margin="16,0" VerticalAlignment="Center" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
+            <TextBlock DockPanel.Dock="Left" Margin="16,0,0,0" VerticalAlignment="Center" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" MaxWidth="420"
                        Text="{Binding Current.FileName}" ToolTip="{Binding Current.FilePath}" AutomationProperties.AutomationId="FileName" />
+            <TextBlock Margin="12,0,0,0" VerticalAlignment="Center" Style="{StaticResource Text.Count}"
+                       Text="{Binding PositionText}" AutomationProperties.AutomationId="Position" />
         </DockPanel>
 
         <!-- Image area, with the Develop panel on the right while editing and the Auto tray below the photo -->
@@ -87,8 +100,8 @@
                                    Visibility="{Binding Develop.IsCropMode, Converter={StaticResource InverseBoolToVisibility}}" />
 
             <!-- Refine: what a click does, said on the photo where the clicking happens -->
-            <Border HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,8,0,0" Padding="10,4" CornerRadius="3"
-                    Background="{StaticResource Brush.Surface.Raised}" BorderBrush="{StaticResource Brush.Border}" BorderThickness="1"
+            <Border HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,8,0,0" Padding="12,6" CornerRadius="6"
+                    Background="{StaticResource Brush.Scrim}"
                     IsHitTestVisible="False" AutomationProperties.LiveSetting="Polite"
                     Visibility="{Binding Develop.Masks.IsRefining, Converter={StaticResource BoolToVisibility}}">
                 <TextBlock FontSize="12" Foreground="{StaticResource Brush.Text.Primary}">
@@ -105,8 +118,8 @@
                                   LockedRatio="{Binding Develop.LockedCropRatio}"
                                   Visibility="{Binding Develop.IsCropMode, Converter={StaticResource BoolToVisibility}}" />
 
-            <TextBlock HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,8,0,0" Padding="8,2"
-                       Background="{StaticResource Brush.Surface.Raised}" Text="Before (original)"
+            <TextBlock HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,8,0,0" Padding="10,4"
+                       Background="{StaticResource Brush.Scrim}" FontSize="{StaticResource FontSize.Meta}" Text="Before (original)"
                        Visibility="{Binding Develop.ShowOriginal, Converter={StaticResource BoolToVisibility}}" />
 
             <TextBlock HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,16"
@@ -115,12 +128,12 @@
 
             <!-- Auto suggestions, below the photo so they never hide it; focus previews, Enter applies, Esc dismisses -->
             <Border Grid.Row="1" DataContext="{Binding Develop}" HorizontalAlignment="Center" Margin="16,8,16,12" MaxWidth="760"
-                    Background="{StaticResource Brush.Surface.Raised}" BorderBrush="{StaticResource Brush.Border}" BorderThickness="1"
-                    CornerRadius="4" Padding="14,10,14,12" AutomationProperties.Name="Auto suggestions"
+                    Background="{StaticResource Brush.Panel}"
+                    CornerRadius="6" Padding="16,10,12,14" AutomationProperties.Name="Auto suggestions"
                     Visibility="{Binding IsSuggesting, Converter={StaticResource BoolToVisibility}}">
                 <StackPanel>
                     <DockPanel Margin="0,0,0,8">
-                        <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="✕" Command="{Binding DismissSuggestionsCommand}"
+                        <Button DockPanel.Dock="Right" Style="{StaticResource Button.Icon}" Content="&#xE711;" Command="{Binding DismissSuggestionsCommand}"
                                 ToolTip="Dismiss (Esc); nothing changes" AutomationProperties.Name="Dismiss suggestions" />
                         <TextBlock Text="{Binding SuggestionTitle}" FontWeight="SemiBold" VerticalAlignment="Center" />
                         <TextBlock Margin="12,0,0,0" VerticalAlignment="Center" FontSize="11" Foreground="{StaticResource Brush.Text.Secondary}"
@@ -176,10 +189,10 @@
                                             </StackPanel>
                                             <ControlTemplate.Triggers>
                                                 <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter TargetName="Frame" Property="BorderBrush" Value="{StaticResource Brush.Border}" />
+                                                    <Setter TargetName="Frame" Property="BorderBrush" Value="{StaticResource Brush.Stroke.Hover}" />
                                                 </Trigger>
                                                 <DataTrigger Binding="{Binding IsFocused}" Value="True">
-                                                    <Setter TargetName="Frame" Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
+                                                    <Setter TargetName="Frame" Property="BorderBrush" Value="{StaticResource Brush.Mat}" />
                                                     <Setter TargetName="Name" Property="Foreground" Value="{StaticResource Brush.Text.Primary}" />
                                                     <Setter TargetName="Name" Property="FontWeight" Value="SemiBold" />
                                                 </DataTrigger>
@@ -228,10 +241,10 @@
         </Grid>
 
         <!-- Footer: metadata and shortcuts -->
-        <DockPanel Grid.Row="2" Margin="16,8">
-            <TextBlock DockPanel.Dock="Right" Foreground="{StaticResource Brush.Text.Disabled}" FontSize="11" VerticalAlignment="Center"
+        <DockPanel Grid.Row="2" Background="{StaticResource Brush.Chrome}" Height="32">
+            <TextBlock DockPanel.Dock="Right" Style="{StaticResource Text.Count}" FontSize="{StaticResource FontSize.Caption}" Margin="16,0"
                        Text="← →  photo  ·  P X V U  decide  ·  1–5  rate  ·  D  develop  ·  F1  help  ·  Esc  grid" />
-            <TextBlock Foreground="{StaticResource Brush.Text.Secondary}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+            <TextBlock Margin="20,0,0,0" Style="{StaticResource Text.Status}" Typography.NumeralAlignment="Tabular"
                        Text="{Binding Current.DetailsText}" AutomationProperties.AutomationId="PhotoDetails" />
         </DockPanel>
     </Grid>

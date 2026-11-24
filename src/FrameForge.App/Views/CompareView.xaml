@@ -20,14 +20,20 @@
     </UserControl.InputBindings>
 
     <DockPanel>
-        <DockPanel DockPanel.Dock="Top" Margin="12,8">
-            <Button DockPanel.Dock="Left" Content="← Grid" ToolTip="Back to the grid (Esc)" Command="{Binding RequestCloseCommand}" />
-            <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center" Foreground="{StaticResource Brush.Text.Disabled}" FontSize="11"
+        <DockPanel DockPanel.Dock="Top" Background="{StaticResource Brush.Chrome}" Height="48">
+            <Button DockPanel.Dock="Left" Style="{StaticResource Button.Quiet}" Margin="12,0,0,0" ToolTip="Back to the grid (Esc)"
+                    Command="{Binding RequestCloseCommand}" AutomationProperties.Name="Back to the grid">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE72B;" FontSize="12" Margin="0,0,8,0" />
+                    <TextBlock Text="Grid" />
+                </StackPanel>
+            </Button>
+            <TextBlock DockPanel.Dock="Right" Margin="16,0" Style="{StaticResource Text.Count}" FontSize="{StaticResource FontSize.Caption}"
                        Text="← →  choose photo   ·   P X V U  decide   ·   1–5  rate   ·   Esc  grid" />
             <TextBlock Margin="16,0" VerticalAlignment="Center" FontWeight="SemiBold" Text="Compare" />
         </DockPanel>
 
-        <ItemsControl ItemsSource="{Binding Panels}" Margin="8,0,8,8" Focusable="False">
+        <ItemsControl ItemsSource="{Binding Panels}" Margin="8,8,8,8" Focusable="False">
             <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
                     <!-- One row, one column per photo -->
@@ -36,9 +42,9 @@
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
                 <DataTemplate DataType="{x:Type vm:ComparePanelViewModel}">
-                    <!-- Active panel: accent border + "ACTIVE" text, not colour alone. -->
-                    <Border x:Name="Frame" Margin="4" BorderThickness="2" BorderBrush="Transparent" CornerRadius="3"
-                            Background="{StaticResource Brush.Surface.Base}" Cursor="Hand"
+                    <!-- Active panel: the print mat (as for a selected tile) plus "Active" text, not colour alone. -->
+                    <Border x:Name="Frame" Margin="4" BorderThickness="2" BorderBrush="Transparent" CornerRadius="4" Padding="4"
+                            Background="{StaticResource Brush.Canvas}" Cursor="Hand"
                             AutomationProperties.Name="{Binding Tile.FileName}" AutomationProperties.ItemStatus="{Binding Tile.AccessibleStatus}">
                         <Border.InputBindings>
                             <MouseBinding Gesture="LeftClick"
@@ -48,8 +54,27 @@
                         <DockPanel>
                             <DockPanel DockPanel.Dock="Bottom" Margin="10,6">
                                 <ContentControl DockPanel.Dock="Right" Content="{Binding Tile}" ContentTemplate="{StaticResource DecisionBadges}" Focusable="False" IsTabStop="False" />
-                                <TextBlock x:Name="ActiveText" DockPanel.Dock="Left" Text="ACTIVE  " FontSize="10" FontWeight="Bold"
-                                           Foreground="{StaticResource Brush.Accent}" VerticalAlignment="Center" Visibility="Collapsed" />
+                                <!-- The judgements that decide between similar shots, beside the name -->
+                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="0,0,12,0" VerticalAlignment="Center">
+                                    <Border Style="{StaticResource AnalysisBadge}" Margin="0,0,4,0" Background="{StaticResource Brush.Control}" ToolTip="AI suggested pick in its group (advisory)"
+                                            Visibility="{Binding Tile.ShowAiPickBadge, Converter={StaticResource BoolToVisibility}}">
+                                        <TextBlock Style="{StaticResource Text.AnalysisBadge}" Text="AI pick" Foreground="{StaticResource Brush.Decision.Keep}" />
+                                    </Border>
+                                    <Border Style="{StaticResource AnalysisBadge}" Margin="0,0,4,0" Background="{StaticResource Brush.Control}" ToolTip="Sharpest in its similar group"
+                                            Visibility="{Binding Tile.ShowSharpestBadge, Converter={StaticResource BoolToVisibility}}">
+                                        <TextBlock Style="{StaticResource Text.AnalysisBadge}" Text="◆ sharpest" Foreground="{StaticResource Brush.Decision.Keep}" />
+                                    </Border>
+                                    <Border Style="{StaticResource AnalysisBadge}" Margin="0,0,4,0" Background="{StaticResource Brush.Control}" ToolTip="Likely blurry (heuristic)"
+                                            Visibility="{Binding Tile.ShowBlurBadge, Converter={StaticResource BoolToVisibility}}">
+                                        <TextBlock Style="{StaticResource Text.AnalysisBadge}" Text="≈ blurry?" Foreground="{StaticResource Brush.Decision.Review}" />
+                                    </Border>
+                                    <Border Style="{StaticResource AnalysisBadge}" Margin="0,0,4,0" Background="{StaticResource Brush.Control}" ToolTip="All faces look soft (AI, advisory)"
+                                            Visibility="{Binding Tile.ShowFacesSoftBadge, Converter={StaticResource BoolToVisibility}}">
+                                        <TextBlock Style="{StaticResource Text.AnalysisBadge}" Text="☺ faces soft" Foreground="{StaticResource Brush.Decision.Review}" />
+                                    </Border>
+                                </StackPanel>
+                                <TextBlock x:Name="ActiveText" DockPanel.Dock="Left" Text="Active  " FontSize="{StaticResource FontSize.Caption}" FontWeight="SemiBold"
+                                           Foreground="{StaticResource Brush.Text.Primary}" VerticalAlignment="Center" Visibility="Collapsed" />
                                 <TextBlock Text="{Binding Tile.FileName}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" ToolTip="{Binding Tile.FilePath}" />
                             </DockPanel>
                             <Grid>
@@ -73,7 +98,8 @@
                     </Border>
                     <DataTemplate.Triggers>
                         <DataTrigger Binding="{Binding IsActive}" Value="True">
-                            <Setter TargetName="Frame" Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
+                            <Setter TargetName="Frame" Property="BorderBrush" Value="{StaticResource Brush.Mat}" />
+                            <Setter TargetName="Frame" Property="Background" Value="{StaticResource Brush.Panel}" />
                             <Setter TargetName="ActiveText" Property="Visibility" Value="Visible" />
                         </DataTrigger>
                         <DataTrigger Binding="{Binding Tile.IsRejected}" Value="True">

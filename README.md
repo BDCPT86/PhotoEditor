@@ -13,23 +13,33 @@ add advisory badges and a suggested pick per group. They never change your decis
 **Develop** edits exposure, white balance, contrast, highlights/shadows, saturation and vibrance, plus crop and
 straighten, without ever changing the original file. Presets apply a look to many photos at once, and **Export** can
 save edited JPEGs. **Auto** suggests a few options for light, levelling and cropping to faces; you pick one, or none.
+The interface is a calm, neutral-grey workspace built around the photos; its rules are in
+[docs/ui-design-system.md](docs/ui-design-system.md).
 
 ## Using it
 
-1. **Library → Import folder…** (Ctrl+I) and choose a folder. "Include subfolders" is remembered.
+The window has a **sidebar** (library views with counts: All photos, Undecided, Kept, To review, Rejected, Last import,
+and Problems when there are any; then the folder tree; Settings and About at the bottom), a **header** with the current
+view and the main actions (Import, Analyze, Compare, Presets, Export), a second row to refine by rating, label and
+analysis finding and to choose the sort and thumbnail size, and a **footer** with progress and the library's totals.
+
+1. **Import** (Ctrl+I) and choose a folder, or drop a folder onto the window. "Include subfolders" (the arrow beside
+   Import) is remembered.
 2. Import reads file metadata only; thumbnails are created as tiles scroll into view. Cancel at any time, and run
    the same import again to continue where it stopped. Re-importing never creates duplicates.
 3. **Cull:** press **P** (keep), **X** (reject), **V** (review), **U** (unset), **1–5** (stars), **6–9** (labels).
    In the grid, keys apply to every selected photo (Shift/Ctrl+click, Shift+arrows). In the viewer (Enter), they apply
    to the current photo, and the next photo opens automatically after a Keep/Reject/Review/Unset (Settings → Culling).
-   **Ctrl+Z / Ctrl+Y** undo and redo. Press **F1** for all shortcuts.
-4. **Work through what's left:** choose **Show → Unset**. Each decided photo leaves the view, and selection moves on.
-   With more than one folder imported, **Folder** (first in the filter bar) shows one folder and its subfolders.
-5. **Compare:** select 2–4 photos and press **C**. ← / → choose the photo that decision keys apply to.
-6. **Export…:** copy every Keep photo (or the current view) to a folder, or save a CSV manifest of the selection.
+   **Ctrl+Z / Ctrl+Y** undo and redo. Right-click a photo for the same actions. Press **F1** for all shortcuts.
+4. **Work through what's left:** choose **Undecided** in the sidebar. Each decided photo leaves the view, and selection
+   moves on. A folder in the sidebar shows that folder and its subfolders, combined with the chosen view.
+5. **Compare:** select 2–4 photos and press **C**. ← / → choose the photo that decision keys apply to; each panel shows
+   its AI pick, sharpest and blur findings.
+6. **Export:** copy every Keep photo (or the current view) to a folder, or save a CSV manifest of the selection.
 7. **Analyze:** measures every photo once and remembers the results; later runs only analyse new or changed photos.
-   Tiles get badges: **≈ blurry?**, **◐ clip**, **▣ n** (in a group of n similar photos), **◆ sharpest** (the sharpest
-   in its group), and **= duplicate** (identical file). Use the **ANALYSIS** filter row to review them. Press **G** to
+   Tiles get marks: **≈ blur**, **◆** (the sharpest in its similar group) and **= dup** (identical file) always; **◐**
+   (clipping) and **▣ n** (in a group of n similar photos) when you point at or select a tile. Use the **Analysis**
+   filter to review them. Press **G** to
    select a photo's group (then **C** to compare), and **I** to see the exact numbers and why each badge was given.
    Thresholds are in **Settings → Analysis** and apply instantly. The defaults are starting points: tune them on your
    own photos. Analysis never changes decisions or deletes anything.
@@ -37,9 +47,9 @@ save edited JPEGs. **Auto** suggests a few options for light, levelling and crop
    - In **Settings → AI models**, choose **Download…** to see the model's size, source, licence and checksum, then
      confirm. If you already have the file, use **Import file…** instead.
    - Turn on *faces* and/or *scenes*, save, and run **Analyze**.
-   - Tiles get **☺ n** (faces found), **AI faces soft**, and **AI pick** (the suggested keep in its group). An AI
-     pick shows a Low/Medium/High confidence, and **I** shows the reason.
-   - The **AI pick** and **AI faces soft** chips filter by these badges.
+   - Tiles get **AI pick** (the suggested keep in its group), **☺ soft** (all faces look soft) and, on hover, **☺ n**
+     (faces found). An AI pick shows a Low/Medium/High confidence, and **I** shows the reason.
+   - **Analysis → AI pick** and **Analysis → AI: faces soft** filter by them.
 
    AI runs only on this computer. Its quality has not yet been evaluated on a human-reviewed set, so treat it as a
    hint.
@@ -51,12 +61,12 @@ save edited JPEGs. **Auto** suggests a few options for light, levelling and crop
      line it found; Crop frames the main faces at the ratio chosen under Crop, and needs face data from Analyze.
    - **R** opens crop: drag the frame or its corners, pick an aspect ratio, and use **Straighten** and ⟲ ⟳ to rotate.
    - Edits save automatically. Edited photos show **✎** in the grid, and their thumbnails show the edit.
-   - **Presets:** in Develop, name the current settings and tick which groups to include. In the grid, **Presets…**
+   - **Presets:** in Develop, name the current settings and tick which groups to include. In the grid, **Presets**
      applies one to the selected photos (with cancel and **Undo last apply**). Its **Auto** section runs Light, Level
-     and/or Crop over the selection, lists photos it couldn't help, and the **Auto-applied** chip shows what it changed.
+     and/or Crop over the selection, lists photos it couldn't help, and **Analysis → Changed by Auto** shows what it changed.
    - **Zoom to faces:** in the viewer, **F** / **Shift+F** step the 100% view through the detected faces (needs face
      data from Analyze).
-   - **Export… → Edited JPEGs** saves new JPEGs with the edits, at a quality and size you choose, keeping the camera
+   - **Export → Edited JPEGs** saves new JPEGs with the edits, at a quality and size you choose, keeping the camera
      metadata.
 
    Edits are stored separately and the original file is never written to. JPEGs are 8-bit, so highlights that are
@@ -128,6 +138,8 @@ Press **F1** (or **?**) on the Library page for the same list in the app.
 | Develop | Ctrl+Z / Ctrl+Y | Undo / redo an edit |
 | Library | F5 | Re-apply filter and sort |
 | Library | Ctrl+I | Import folder |
+| Grid | Ctrl+− / Ctrl+= | Smaller / larger thumbnails (three sizes) |
+| Grid | Right-click, Menu key | Actions for the selected photos |
 | Grid | ← / → | Previous / next photo (continues onto the next row) |
 | Grid | ↑ / ↓ | Move by row |
 | Grid | Shift+arrows, Shift/Ctrl+click | Select several |

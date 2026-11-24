@@ -23,6 +23,10 @@ public static class AppSettings
     public static readonly SettingDefinition<bool> ViewerAutoAdvance =
         new("viewer.autoAdvance", true);
 
+    /// <summary>Thumbnail size in the library grid.</summary>
+    public static readonly SettingDefinition<GridDensity> LibraryGridDensity =
+        new("library.gridDensity", GridDensity.Medium, density => Enum.IsDefined(density));
+
     // ---- Analysis: computation (changing it makes stored results stale) ----
 
     /// <summary>Longest side, in pixels, of the decoded image that metrics are computed on.</summary>
