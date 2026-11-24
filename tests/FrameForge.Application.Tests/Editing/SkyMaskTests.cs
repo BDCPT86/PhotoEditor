@@ -117,4 +117,55 @@ public sealed class SkyMaskTests
 
         Assert.Equal(new SkyMaskGenerator().Generate(image, [], Ct).Mask!.Alpha, new SkyMaskGenerator().Generate(image, [], Ct).Mask!.Alpha);
     }
+
+    /// <summary>A pale painted wall with a fine texture (concrete, graffiti): sky-coloured, but not smooth like sky.</summary>
+    private static (byte R, byte G, byte B) PaleWall(int x, int y)
+    {
+        var grain = (((x * 7) + (y * 13)) % 5 - 2) * 4;
+        return ((byte)(196 + grain), (byte)(202 + grain), (byte)(210 + grain));
+    }
+
+    [Fact]
+    public void APaleTexturedWallAtTheTop_IsNotSky()
+    {
+        // Rules v2 (B7): walls like this were taken as sky on the user's photos.
+        var image = AnalysisImage.Create(W, H, (x, y) => y < 30 ? PaleWall(x, y) : ((byte)60, (byte)130, (byte)50));
+
+        var result = new SkyMaskGenerator().Generate(image, [], Ct);
+
+        Assert.False(result.HasMask);
+    }
+
+    [Fact]
+    public void AShadedBluePanelAtTheTop_IsNotSky()
+    {
+        var image = AnalysisImage.Create(W, H, (_, y) => y < 30 ? ((byte)60, (byte)90, (byte)140) : ((byte)60, (byte)130, (byte)50));
+
+        var result = new SkyMaskGenerator().Generate(image, [], Ct);
+
+        Assert.False(result.HasMask);
+    }
+
+    [Fact]
+    public void SkyBesideAWall_KeepsTheSky_AndDropsTheWall()
+    {
+        // Sky on the left, a pale wall on the right, a dark pole between them.
+        var image = AnalysisImage.Create(W, H, (x, y) => y >= 40 ? ((byte)60, (byte)130, (byte)50) : x < 58 ? Landscape(x, y) : x < 62 ? ((byte)40, (byte)40, (byte)40) : PaleWall(x, y));
+
+        var result = new SkyMaskGenerator().Generate(image, [], Ct);
+
+        Assert.Equal(1.0, Share(result, (x, y) => y < 40 && x < 56));   // clear of the pole's edge
+        Assert.Equal(0.0, Share(result, (x, y) => y < 40 && x >= 62));
+    }
+
+    [Fact]
+    public void AnIncludeClick_KeepsAPartTheRulesWouldDrop()
+    {
+        var image = AnalysisImage.Create(W, H, (x, y) => y < 30 ? PaleWall(x, y) : ((byte)60, (byte)130, (byte)50));
+
+        var result = new SkyMaskGenerator().Generate(image, [new MaskPoint(0.5, 0.1, true)], Ct);
+
+        Assert.True(result.HasMask);
+        Assert.True(Share(result, (_, y) => y < 30) > 0.5);
+    }
 }

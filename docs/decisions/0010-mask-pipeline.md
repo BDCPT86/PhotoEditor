@@ -44,6 +44,9 @@ asked for padded boxes and click-to-select. Sky starts without a model.
     the sky but do not grow it further.
   - **Clean-up:** enclosed holes up to 2 % of the photo (birds, wires) are filled. An Exclude click removes the
     connected part of the sky it lands on.
+  - **Sky-like parts only (rules version 2, B7):** before the holes are filled, each connected part is dropped if it
+    is textured (median local texture above 0.006) or dark (mean brightness below 0.5), unless it contains an
+    Include click. This removes pale walls and blue panels touching the top edge; see ADR 0014.
   - Less than 0.5 % sky is reported as "No sky found", with a hint to click.
 - **Models:** YOLOX-s and the two MobileSAM files are catalogue entries with the pinned sources, sizes, SHA-256 hashes
   and licences recorded in ADR 0008. They are optional and installed only with consent; Select subject needs all
@@ -80,9 +83,11 @@ asked for padded boxes and click-to-select. Sky starts without a model.
 - A reference made by an older source is recomputed with the current one; `MaskOutcome.Source` says which one made
   it, so Develop can update the reference (B5).
 - Known sky limits: orange or red sunsets, sky that does not reach the top edge, and bright smooth walls touching
-  the top edge. Clicks fix most of these; a corner pixel where two edges meet can be left out until B4 feathers the
-  edge.
-- Speed is unchanged from round 2 (about 4.6 s per subject mask on this laptop). It is measured again in B7.
+  the top edge (rules version 2 removes textured or darker walls, not smooth bright ones). Since version 2, a very
+  small or hazy patch of real sky can be dropped too. Clicks fix most of these; a corner pixel where two edges meet
+  can be left out until B4 feathers the edge.
+- Speed is unchanged from round 2 (about 4.6 s per subject mask on this laptop). B7 measured it properly: 0.52 s on
+  a quiet machine at 4 threads (ADR 0014).
 
 ## Round 3: padded against unpadded boxes (2026-11-18)
 - **Sample:** 30 fresh photos (seed 3), none of them from rounds 1–2, all with people.

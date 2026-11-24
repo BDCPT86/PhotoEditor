@@ -10,11 +10,14 @@ namespace FrameForge.Application.Editing.Masks;
 /// </summary>
 public static class MaskBatch
 {
-    /// <summary>Seconds per photo for a subject mask on a laptop CPU (ADR 0008 and the B5 check), for the estimate.</summary>
-    public static readonly (double Low, double High) SubjectSeconds = (2, 5);
+    /// <summary>
+    /// Seconds per photo for a subject mask on a laptop CPU, for the estimate: about 0.5 s when the machine is quiet and
+    /// about 3 s when it is busy (B7 benchmark, 4 threads, ADR 0014).
+    /// </summary>
+    public static readonly (double Low, double High) SubjectSeconds = (0.6, 3);
 
-    /// <summary>Seconds per photo for a sky mask (rules only, plus decoding the photo).</summary>
-    public static readonly (double Low, double High) SkySeconds = (0.3, 1);
+    /// <summary>Seconds per photo for a sky mask (rules only, plus decoding the photo at 1024 px; B7 benchmark).</summary>
+    public static readonly (double Low, double High) SkySeconds = (0.2, 0.6);
 
     /// <summary>True when the preset brings masks, so applying it means working them out photo by photo.</summary>
     public static bool HasMasks(EditPreset preset)

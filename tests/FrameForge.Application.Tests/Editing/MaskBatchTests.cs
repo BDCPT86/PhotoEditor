@@ -42,8 +42,8 @@ public sealed class MaskBatchTests
 
         var (low, high) = MaskBatch.Estimate(preset, 100)!.Value;
 
-        Assert.Equal(TimeSpan.FromSeconds(230), low);   // 100 × (2 + 0.3)
-        Assert.Equal(TimeSpan.FromSeconds(600), high);  // 100 × (5 + 1)
+        Assert.Equal(TimeSpan.FromSeconds(80), low);    // 100 × (0.6 + 0.2)
+        Assert.Equal(TimeSpan.FromSeconds(360), high);  // 100 × (3 + 0.6)
         Assert.Null(MaskBatch.Estimate(Preset(PresetGroups.Exposure), 100));
     }
 

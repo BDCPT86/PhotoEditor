@@ -22,16 +22,19 @@ using Microsoft.Extensions.Logging.Abstractions;
 //   crop-sheet  --models <dir> --photos <dir> --sheet <new dir> [--count 30] [--seed 1]  (page where you crop photos with faces)
 //   mask-sheet  --models <dir> --photos <dir> --sheet <new dir> [--count 30] [--seed 1] [--round 1|2|3] [--exclude <sheet dir>[;<sheet dir>…]]  (subject masks; round 1 = MobileSAM vs MODNet from faces, round 2 = people → MobileSAM, round 3 = padded vs unpadded boxes)
 //   score-sheet --sheet <dir> --answers <saved csv> [--out report.md]                  (compares your answers with Auto)
+//   mask-benchmark --models <dir> --photos <dir> [--count 20] [--seed 1] [--threads 2,4,6]  (time per mask stage and memory on real photos; thread counts interleaved per photo)
+//   sky-sheet --photos <dir> --sheet <new dir> [--count 30] [--seed 1] [--exclude <sheet dir>[;<sheet dir>…]]  (grades the sky rules; about two thirds with sky found)
+//   draw-sheet --models <dir> --photos <dir> --sheet <new dir> [--count 12] [--seed 1] [--exclude <sheet dir>[;…]]  (you outline subject and sky; scored as IoU against the app's masks)
 // <dir> holds the catalogued model files (verified by SHA-256 before use). Photos are opened read-only.
 var culture = CultureInfo.InvariantCulture;
-if (args.Length == 0 || args[0] is not ("benchmark" or "evaluate" or "annotate" or "review" or "light-sheet" or "crop-sheet" or "mask-sheet" or "score-sheet"))
+if (args.Length == 0 || args[0] is not ("benchmark" or "evaluate" or "annotate" or "review" or "light-sheet" or "crop-sheet" or "mask-sheet" or "score-sheet" or "mask-benchmark" or "sky-sheet" or "draw-sheet" or "sky-debug"))
 {
     Console.Error.WriteLine("Usage:\n  benchmark --models <dir> [--count 100] [--out report.md]\n  evaluate --models <dir> --photos <dir> --labels <labels.csv> [--out report.md]\n  annotate --models <dir> --photos <dir> --annotations <dir>\n  review --photos <dir> --sheets <dir> [--count 6]\n  light-sheet --photos <dir> --sheet <new dir> [--count 30] [--seed 1]\n  crop-sheet --models <dir> --photos <dir> --sheet <new dir> [--count 30] [--seed 1]\n  mask-sheet --models <dir> --photos <dir> --sheet <new dir> [--count 30] [--seed 1] [--round 1|2|3] [--exclude <dir>[;<dir>]]\n  score-sheet --sheet <dir> --answers <saved csv> [--out report.md]");
     return 2;
 }
 
 var options = ParseOptions(args.Skip(1).ToArray());
-var needsModels = args[0] is not ("review" or "light-sheet" or "score-sheet");
+var needsModels = args[0] is not ("review" or "light-sheet" or "score-sheet" or "mask-benchmark" or "sky-sheet" or "draw-sheet" or "sky-debug");
 if (!options.TryGetValue("models", out var modelsDir) && needsModels)
 {
     Console.Error.WriteLine("--models <dir> is required.");
@@ -52,7 +55,7 @@ var report = new StringBuilder();
 report.AppendLine(culture, $"# FrameForge AI {args[0]} — {DateTime.Now:yyyy-MM-dd HH:mm}");
 report.AppendLine();
 report.AppendLine(culture, $"- Machine: {Environment.ProcessorCount} logical CPUs · {Environment.OSVersion} · {System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture}");
-report.AppendLine(culture, $"- Runtime: ONNX Runtime CPU, {OnnxAiRuntime.IntraOpThreads} intra-op threads per session, one photo at a time");
+report.AppendLine(culture, $"- Runtime: ONNX Runtime CPU, {(args[0] == "mask-benchmark" ? "thread counts as below" : OnnxAiRuntime.IntraOpThreads + " intra-op threads per session")}, one photo at a time");
 report.AppendLine(culture, $"- Face detector: {detector?.VersionTag ?? "not installed"}");
 report.AppendLine(culture, $"- Scene embedder: {embedder?.VersionTag ?? "not installed"}");
 report.AppendLine();
@@ -62,8 +65,10 @@ var exit = args[0] switch
     "benchmark" => Benchmark(int.Parse(options.GetValueOrDefault("count", "100"), culture)),
     "annotate" => Annotate(options),
     "review" => Review(options),
-    "light-sheet" or "crop-sheet" or "mask-sheet" => BuildSheet(args[0], options),
+    "light-sheet" or "crop-sheet" or "mask-sheet" or "sky-sheet" or "draw-sheet" => BuildSheet(args[0], options),
     "score-sheet" => ScoreSheet(options),
+    "mask-benchmark" => MaskBenchmarkCommand(options),
+    "sky-debug" => SkyDebugCommand(options),
     _ => Evaluate(options),
 };
 
@@ -400,7 +405,37 @@ int BuildSheet(string kind, Dictionary<string, string> opts)
     var count = int.Parse(opts.GetValueOrDefault("count", "30"), culture);
     var seed = int.Parse(opts.GetValueOrDefault("seed", "1"), culture);
     Directory.CreateDirectory(sheetDir);
-    if (kind == "mask-sheet")
+    if (kind == "draw-sheet")
+    {
+        if (modelsDir is null)
+        {
+            Console.Error.WriteLine("draw-sheet needs --models <dir>.");
+            return 2;
+        }
+
+        HashSet<string> drawExclude = new(StringComparer.OrdinalIgnoreCase);
+        foreach (var excludeSheet in opts.GetValueOrDefault("exclude", string.Empty).Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            drawExclude.UnionWith((FrameForge.Evaluation.Sheets.JudgingSheets.ReadSheet(excludeSheet).Draw ?? []).Select(m => m.File));
+        }
+
+        var drawn = FrameForge.Evaluation.Sheets.DrawSheet.Build(modelsDir, photosDir, sheetDir, int.Parse(opts.GetValueOrDefault("count", "12"), culture), seed, drawExclude, report);
+        if (drawn != 0)
+        {
+            return drawn;
+        }
+    }
+    else if (kind == "sky-sheet")
+    {
+        HashSet<string> skyExclude = new(StringComparer.OrdinalIgnoreCase);
+        foreach (var excludeSheet in opts.GetValueOrDefault("exclude", string.Empty).Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            skyExclude.UnionWith((FrameForge.Evaluation.Sheets.JudgingSheets.ReadSheet(excludeSheet).Sky ?? []).Select(m => m.File));
+        }
+
+        FrameForge.Evaluation.Sheets.SkySheet.Build(photosDir, sheetDir, count, seed, skyExclude, report);
+    }
+    else if (kind == "mask-sheet")
     {
         // Round 2 (default): people found by YOLOX-s prompt MobileSAM. Round 1: faces prompt MobileSAM, against MODNet.
         // Round 3: the app's subject mask with padded boxes against unpadded ones. --exclude takes sheets separated by ';'.
@@ -436,6 +471,41 @@ int BuildSheet(string kind, Dictionary<string, string> opts)
     report.AppendLine();
     report.AppendLine(culture, $"Open {Path.GetFullPath(Path.Combine(sheetDir, "index.html"))} in a browser, answer every item, press Save answers, then run score-sheet with the saved CSV.");
     return 0;
+}
+
+int SkyDebugCommand(Dictionary<string, string> opts)
+{
+    // Developer use: sky-debug --photo <file> --picture <out.jpg>
+    if (opts.TryGetValue("picture", out var picture))
+    {
+        FrameForge.Evaluation.Sheets.SkyDebug.Write(opts["photo"], picture);
+    }
+
+    if (opts.TryGetValue("overlays", out var overlays))
+    {
+        FrameForge.Evaluation.Sheets.SkyOverlays.Write(opts["photo"].Split(';', StringSplitOptions.RemoveEmptyEntries), overlays);
+        return 0;
+    }
+
+    foreach (var photo in opts["photo"].Split(';', StringSplitOptions.RemoveEmptyEntries))
+    {
+        FrameForge.Evaluation.Sheets.SkyStats.Write(photo, report);
+    }
+
+    return 0;
+}
+
+int MaskBenchmarkCommand(Dictionary<string, string> opts)
+{
+    if (modelsDir is null || !opts.TryGetValue("photos", out var photosDir))
+    {
+        Console.Error.WriteLine("mask-benchmark needs --models <dir> and --photos <dir>.");
+        return 2;
+    }
+
+    return FrameForge.Evaluation.Masks.MaskBenchmark.Run(
+        modelsDir, photosDir, int.Parse(opts.GetValueOrDefault("count", "20"), culture), int.Parse(opts.GetValueOrDefault("seed", "1"), culture),
+        opts.GetValueOrDefault("threads", "2,4,6").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList(), report);
 }
 
 int ScoreSheet(Dictionary<string, string> opts)

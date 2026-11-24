@@ -134,6 +134,8 @@ Before the subject mask counts as done, the following are required:
 - **Speed:** 4.6 s per photo on this laptop in sustained runs is over the brief's goal of under 1 s. Masks are
   computed on demand and cached, so Develop pays this once per photo with progress shown; batch runs are slow. It
   is measured again in B7 in a quiet state, and a GPU provider remains deferred (ADR 0005).
+  - **B7 update ([ADR 0014](0014-mask-speed-and-evaluation.md)):** with 4 threads, a subject mask takes 0.52 s
+    median on a quiet machine, which meets the goal. It takes about 2.5 s when the laptop is busy.
 
 ## Consequences (whichever model is chosen)
 - The model is optional and downloaded only with consent, as in M05. Subject masks need it, and Develop says so when

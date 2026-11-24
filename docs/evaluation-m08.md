@@ -119,3 +119,68 @@ in the same test. While building the light sheet, Auto left 24 of the 54 photos 
 - **Whether to crop at all**: where the judge kept the whole frame, Auto still offered a crop on 19 of 22. Many of
   those crops were mild (IoU with the whole frame 0.8–0.9). This is now the main disagreement. Auto crop proposes a
   framing; it does not decide whether a photo needs cropping.
+
+## Masks: sky grading and hand-drawn outlines (phase B, B7)
+
+Two more sessions, built the same way and kept outside the repository. Subject masks were graded blind in phase B's
+rounds 1–3 (see [ADR 0008](decisions/0008-subject-mask-model.md) and [ADR 0010](decisions/0010-mask-pipeline.md)).
+
+### Sky sheet
+```bash
+dotnet run --project tools/FrameForge.Evaluation -c Release -- sky-sheet --photos "D:\Photos\Match" --sheet "D:\Judging\sky-1" --count 30
+```
+- It samples photos at random and keeps about two thirds where the sky rules found sky and one third where they
+  didn't, so both false sky and missed sky turn up.
+- **Sky found:** the sky is lit and the rest dark. Press **1** Good, **2** Usable (a click or two fixes it), **3** Bad,
+  or **4** No real sky (the photo has none, or the mask is only on things that aren't sky, such as a blue roof).
+- **No sky found:** you see the photo. Press **1** Right (no sky worth editing) or **3** Missed visible sky.
+- A second round after any tuning uses fresh photos: add `--seed 2 --exclude "D:\Judging\sky-1"`.
+
+### Drawing sheet
+```bash
+dotnet run --project tools/FrameForge.Evaluation -c Release -- draw-sheet --models "D:\Models" --photos "D:\Photos\Match" --sheet "D:\Judging\draw" --count 12
+```
+- It picks photos with people and saves the app's subject and sky masks next to the sheet, **without showing them**,
+  so your outlines are your own.
+- **Draw:** outline the subject (the main people, with bats and other things they hold): click to place points, and
+  click the first point or press **Enter** to close the shape. Several shapes are fine.
+  - **Cut** (C) shapes remove an area, such as the gap between an arm and the body; **Add** (A) goes back.
+  - **K** switches to the sky; outline it the same way, or press **N** if the photo has no sky. **S** goes back to the
+    subject.
+  - The mouse wheel zooms, **Space**+drag pans, **F** fits, **Backspace** removes the last point or shape.
+  - **→** / **←** move between photos; **Skip photo** leaves one out.
+- About 2–3 minutes a photo. **Save answers** saves `draw-answers-….json`; score it with `score-sheet` as usual.
+- **The report gives:**
+  - **Overlap (IoU):** for the subject and for the sky. 1 means identical, 0.9 close, and 0.5 half wrong.
+  - **Edge agreement:** how many edge pixels lie within 3 px (at 1024 px) of the other mask's edge.
+  - **Sky:** how often the rules found sky you didn't draw, and the reverse.
+- The app's masks are compared as computed, before the edge refinement the renderer adds.
+
+### Speed and memory
+```bash
+dotnet run --project tools/FrameForge.Evaluation -c Release -- mask-benchmark --models "D:\Models" --photos "D:\Photos\Match" --count 20 --threads 2,4
+```
+- It times each stage of a mask on real photos: decode, find people, encoder, decoder, sky, and the full-size decode
+  and render with a mask. It also reports memory.
+- **Each photo runs at every thread count, in rotating order.** On a laptop, the machine's load alone changed
+  back-to-back runs by up to 3×. Interleaving keeps the comparison fair, but not the absolute times.
+
+### Results (B7)
+Full figures and method in [ADR 0014](decisions/0014-mask-speed-and-evaluation.md).
+
+| Sky sheet | Rules | Found: good / usable / bad | Good or usable (95 % interval) | Not found: right / missed |
+|---|---|---|---|---|
+| Round 1 (seed 1) | v1 | 3 / 7 / 10 | 50 % (30–70 %) | 10 / 0 |
+| **Round 2** (seed 2, fresh photos) | **v2** | 15 / 5 / 0 | **100 % (84–100 %)** | 10 / 0 |
+
+- **Round 1's bad masks** were mostly pale or blue walls and panels touching the top edge. Version 2 drops any part
+  of the sky that is textured (median texture above 0.006) or dark (mean brightness below 0.5), unless you clicked it.
+- **Hand-drawn outlines:** 3 of the 12 photos were usable; one drawn only in Cut mode was left out.
+  - 96–100 % of the app's subject mask was inside the outline, and the app chose the same people.
+  - IoU was 0.58–0.78, because the outlines were loose.
+  - This is a spot check, not a measurement.
+- **Speed (4 threads):**
+  - A subject mask takes 0.52 s median on a quiet machine, and about 2.5 s when it is busy.
+  - A click takes 0.08–0.4 s, and a sky mask 25–110 ms.
+- **Memory:** peak 474 MB with masks, and 1.3 GB after full-size exports.
+- One grader, one set of cricket photos.

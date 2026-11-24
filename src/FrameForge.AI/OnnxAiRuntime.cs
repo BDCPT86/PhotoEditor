@@ -14,6 +14,13 @@ public sealed partial class OnnxAiRuntime(IModelStore store, ILogger<OnnxAiRunti
     /// <summary>Threads per inference call; with 2 concurrent photos this caps AI at about 4 cores.</summary>
     public const int IntraOpThreads = 2;
 
+    /// <summary>
+    /// Threads for the mask models (YOLOX-s, MobileSAM). One mask runs at a time and the user is waiting for it, so
+    /// they get more: 4 threads made a subject mask about 1.8× faster than 2 on a 14-core laptop, and 6 was slower
+    /// than 4 (B7 benchmark, ADR 0014).
+    /// </summary>
+    public const int MaskIntraOpThreads = 4;
+
     private readonly Lock _gate = new();
     private YuNetFaceDetector? _faces;
     private DinoV2Embedder? _embedder;
@@ -58,7 +65,7 @@ public sealed partial class OnnxAiRuntime(IModelStore store, ILogger<OnnxAiRunti
         {
             if (_people is null && !_peopleFailed)
             {
-                _people = Load(AiModelCatalog.PersonDetector, s => new YoloxPersonDetector(s, AiModelCatalog.PersonDetector), ref _peopleFailed);
+                _people = Load(AiModelCatalog.PersonDetector, s => new YoloxPersonDetector(s, AiModelCatalog.PersonDetector), ref _peopleFailed, MaskIntraOpThreads);
             }
 
             return _people;
@@ -75,8 +82,8 @@ public sealed partial class OnnxAiRuntime(IModelStore store, ILogger<OnnxAiRunti
                 && store.GetStatus(AiModelCatalog.SubjectMaskDecoder).State == ModelState.Installed)
             {
                 // Both halves are needed; if the decoder is missing or fails, the encoder is released again.
-                var encoder = Load(AiModelCatalog.SubjectMaskEncoder, s => s, ref _segmenterFailed);
-                var decoder = encoder is null ? null : Load(AiModelCatalog.SubjectMaskDecoder, s => s, ref _segmenterFailed);
+                var encoder = Load(AiModelCatalog.SubjectMaskEncoder, s => s, ref _segmenterFailed, MaskIntraOpThreads);
+                var decoder = encoder is null ? null : Load(AiModelCatalog.SubjectMaskDecoder, s => s, ref _segmenterFailed, MaskIntraOpThreads);
                 if (encoder is not null && decoder is not null)
                 {
                     _segmenter = new MobileSamSegmenter(encoder, decoder, AiModelCatalog.SubjectMaskEncoder, AiModelCatalog.SubjectMaskDecoder);
@@ -113,7 +120,7 @@ public sealed partial class OnnxAiRuntime(IModelStore store, ILogger<OnnxAiRunti
 
     public void Dispose() => Reset();
 
-    private T? Load<T>(ModelDescriptor model, Func<InferenceSession, T> create, ref bool failed)
+    private T? Load<T>(ModelDescriptor model, Func<InferenceSession, T> create, ref bool failed, int threads = IntraOpThreads)
         where T : class
     {
         var status = store.GetStatus(model);
@@ -126,12 +133,12 @@ public sealed partial class OnnxAiRuntime(IModelStore store, ILogger<OnnxAiRunti
         {
             var options = new SessionOptions
             {
-                IntraOpNumThreads = IntraOpThreads,
+                IntraOpNumThreads = threads,
                 InterOpNumThreads = 1,
                 GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL,
             };
             var session = new InferenceSession(status.FilePath, options);
-            LogLoaded(model.VersionTag);
+            LogLoaded(model.VersionTag, threads);
             return create(session);
         }
         catch (Exception ex) when (ex is OnnxRuntimeException or IOException or InvalidOperationException or ArgumentException)
@@ -144,7 +151,7 @@ public sealed partial class OnnxAiRuntime(IModelStore store, ILogger<OnnxAiRunti
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Model loaded: {Model} (CPU, {Threads} threads)")]
-    private partial void LogLoaded(string model, int threads = IntraOpThreads);
+    private partial void LogLoaded(string model, int threads);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Model failed to load: {Model}; the capability is disabled for this session")]
     private partial void LogLoadFailed(Exception exception, string model);

@@ -89,8 +89,8 @@ public sealed class BatchMaskTests
     {
         using var f = await OpenPresetsAsync(LiftSubjectCoolSky());
 
-        // 3 photos × (2–5 s subject + 0.3–1 s sky) = 6.9–18 s: under a minute either way.
-        Assert.Equal("Has masks: about 1 min for 3 photo(s), because each photo's subject is found (2–5 s each). You can cancel and keep what's done.", f.PresetPanel.EstimateText);
+        // 3 photos × (0.6–3 s subject + 0.2–0.6 s sky) = 2.4–10.8 s: under a minute either way.
+        Assert.Equal("Has masks: about 1 min for 3 photo(s), because each photo's subject is found (0.6–3 s each). You can cancel and keep what's done.", f.PresetPanel.EstimateText);
     }
 
     [Theory]

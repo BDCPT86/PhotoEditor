@@ -30,10 +30,15 @@
 > rules pick up bluish roofs touching the top edge, left for B7. B6 is implemented: presets with masks work them out
 > photo by photo (progress, estimate, countdown, cancel, Undo last apply), leave out a mask that can't be made and list
 > the photo, and are refused up front without the subject models; edited exports list masks they left out. See
-> [ADR 0013](../decisions/0013-batch-masks.md). Checked in the app by the user, with the folder filter. Next: B7, evaluation and speed.
+> [ADR 0013](../decisions/0013-batch-masks.md). Checked in the app by the user, with the folder filter. B7 is done:
+> mask models run at 4 threads (a subject mask in 0.52 s on a quiet machine), sky rules version 2 drops textured or
+> dark parts, and the sky went from 50 % to 100 % good or usable on fresh photos; see
+> [ADR 0014](../decisions/0014-mask-speed-and-evaluation.md).
+>
+> **Milestone 08 complete (2026-11-24).** The acceptance check and the known limits are at the end of this brief.
 
-> Draft brief. Its number follows M07 (RAW and professional workflow), but it depends only on M05 (model handling) and
-> M06 (the edit recipe and renderer), so it can be scheduled before M07 if preferred.
+Its number follows M07 (RAW and professional workflow), but it depends only on M05 (model handling) and M06 (the edit
+recipe and renderer), so it was done before M07.
 
 ## Goal
 Use local models to *suggest* and *speed up* edits, so a user gets a good starting point in one click and can
@@ -152,3 +157,33 @@ licences). Start with the parts that need no new model: Auto settings, auto-stra
 and zoom to faces. Then do the recipe v2 schema, then one mask type end to end before the others. Keep model code behind interfaces, never download silently, keep AI output as user-applied, undoable
 suggestions, and never write to originals. Build, test, benchmark, evaluate on a human-reviewed set, and document
 the limitations.
+
+## Acceptance check (2026-11-24)
+| Criterion | Result | Evidence |
+|---|---|---|
+| Works with no editing model; Auto needs none | Met | ADR 0007, ADR 0010; mask rows explain a missing model |
+| Suggestions applied only by a user action, one undo step each | Met | ADR 0007, ADR 0012; Develop and batch tests |
+| Model and mask failures don't break Develop | Met | ADR 0010 (unavailable outcome with the reason), ADR 0012 |
+| Masks cancellable, bounded concurrency, cached by model version, photo and parameters | Met | `MaskService` gate (one at a time), `DiskMaskCache`; ADR 0010 |
+| Preview matches export with masks | Met | One render path (`render-v2`), ADR 0011; rendering tests |
+| Recipe v1 → v2 migration tested; v2 round-trips | Met | `RecipeJsonTests`, ADR 0009 |
+| Golden-pixel tests for mask blending; visual review on the user's photos | Met | `LocalAdjustmentTests`, `GoldenTests`; visual-review-m08.md |
+| Each model's source, version, licence, checksum; quality on a human-reviewed set | Met | ADR 0008 (catalogue), blind rounds in ADR 0008/0010, sky in ADR 0014 |
+| Auto-straighten tested on synthetic tilts; no change without a confident line | Met | `AutoToolsTests` (`AutoLevel_NoLines_OffersNothing`) |
+| Auto-crop: faces inside, exact aspect, minimum size; compared with the user's crops | Met | `AutoToolsTests`; evaluation-m08.md crop rounds 1–2 |
+| Batch reframing lists skipped photos and why | Met | ADR 0007 (`AutoBatch`), ADR 0013 for masks |
+| Latency and memory on the target machine (goal under 1 s) | Met on a quiet machine | ADR 0014: 0.52 s quiet, about 2.5 s busy; 474 MB with masks |
+| Mask IoU against hand-drawn masks (deliverable) | Partly met | ADR 0014: 3 photos only, a spot check |
+| Optional scope 7 (learned enhance, noise reduction, upscaling) | Not done | Optional; no licence-clean model was evaluated. Left out |
+
+## Known limits
+- **Speed depends on the machine's state:** a subject mask takes about 0.5 s on a quiet laptop and up to about 3 s
+  when it is busy or throttled. There is no GPU provider.
+- **Sky (rules, no model):** orange or red sunsets, sky that does not reach the top edge, and smooth bright walls can
+  still be wrong. Version 2 can drop a very small or hazy patch of real sky. Clicks fix these.
+- **Subject masks** can still cut off bats, hands or feet, or include a neighbouring person; clicks fix them.
+- **Evaluation size:** every quality figure comes from one grader and one set of cricket photos, mostly 30 photos a
+  round; the hand-drawn check covers only 3 photos.
+- **Memory:** the evaluation run peaked at 1.3 GB after full-size exports; worth a look before RAW (M07) brings
+  larger images.
+- **JPEG only** until M07.

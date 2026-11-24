@@ -71,7 +71,7 @@ public sealed partial class PresetPanelViewModel(EditController edits, ILogger<P
     public string? EstimateText =>
         SelectedPreset is { } preset && MaskBatch.Estimate(preset, TargetCount) is { } range
             ? MaskBatch.KindsNeeded(preset).Contains(MaskKind.Subject)
-                ? string.Create(CultureInfo.CurrentCulture, $"Has masks: about {FormatRange(range)} for {TargetCount:N0} photo(s), because each photo's subject is found (2–5 s each). You can cancel and keep what's done.")
+                ? string.Create(CultureInfo.CurrentCulture, $"Has masks: about {FormatRange(range)} for {TargetCount:N0} photo(s), because each photo's subject is found ({MaskBatch.SubjectSeconds.Low:0.#}–{MaskBatch.SubjectSeconds.High:0.#} s each). You can cancel and keep what's done.")
                 : string.Create(CultureInfo.CurrentCulture, $"Has masks: about {FormatRange(range)} for {TargetCount:N0} photo(s), because each photo's mask is worked out.")
             : null;
 

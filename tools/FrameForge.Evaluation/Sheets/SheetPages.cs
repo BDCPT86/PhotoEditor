@@ -9,7 +9,7 @@ internal static class SheetPages
     /// <summary>Fills a page template with its data; "&lt;/" is escaped so the JSON cannot end the script early.</summary>
     public static string Fill(string template, string json) => template.Replace("__DATA__", json.Replace("</", "<\\/", StringComparison.Ordinal), StringComparison.Ordinal);
 
-    private const string Style = """
+    internal const string Style = """
         <style>
         :root{--bg:#1C1E22;--sunken:#15171A;--raised:#25282D;--hover:#2E3238;--border:#363A41;--text:#E4E6E9;--muted:#9EA3AB;--accent:#5B9BD5;--error:#E0645C}
         *{box-sizing:border-box}

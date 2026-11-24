@@ -10,7 +10,7 @@ using FrameForge.Application.Editing.Masks;
 using FrameForge.Application.Photos;
 using FrameForge.Imaging;
 using FrameForge.Rendering;
-using Microsoft.ML.OnnxRuntime;
+using FolderMaskRuntime = FrameForge.Evaluation.Masks.FolderMaskRuntime;
 using MaskCandidates = FrameForge.Evaluation.Masks.MaskCandidates;
 using MaskMath = FrameForge.Evaluation.Masks.MaskMath;
 
@@ -48,7 +48,7 @@ internal static class PaddingSheet
             return 2;
         }
 
-        using var runtime = new FolderRuntime(paths[0]!, paths[1]!, paths[2]!);
+        using var runtime = new FolderMaskRuntime(paths[0]!, paths[1]!, paths[2]!);
         var padded = new SubjectMaskGenerator(runtime, SubjectMaskOptions.Padded);
         var unpadded = new SubjectMaskGenerator(runtime, SubjectMaskOptions.Unpadded);
         var loader = new WicAnalysisImageLoader();
@@ -220,40 +220,5 @@ internal static class PaddingSheet
     {
         using var stream = File.Create(path);
         encoder.Write(image, null, stream, 90);
-    }
-
-    /// <summary>The app's model classes, loaded from verified files in a folder instead of the model store.</summary>
-    private sealed class FolderRuntime : IAiRuntime, IDisposable
-    {
-        private readonly AI.YoloxPersonDetector _detector;
-        private readonly MobileSamSegmenter _segmenter;
-
-        public FolderRuntime(string detectorPath, string encoderPath, string decoderPath)
-        {
-            _detector = new AI.YoloxPersonDetector(Open(detectorPath), AiModelCatalog.PersonDetector);
-            _segmenter = new MobileSamSegmenter(Open(encoderPath), Open(decoderPath), AiModelCatalog.SubjectMaskEncoder, AiModelCatalog.SubjectMaskDecoder);
-        }
-
-        public string? LastError => null;
-
-        public IFaceDetector? GetFaceDetector() => null;
-
-        public IImageEmbedder? GetImageEmbedder() => null;
-
-        public IPersonDetector? GetPersonDetector() => _detector;
-
-        public IPromptSegmenter? GetPromptSegmenter() => _segmenter;
-
-        public void Reset()
-        {
-        }
-
-        public void Dispose()
-        {
-            _detector.Dispose();
-            _segmenter.Dispose();
-        }
-
-        private static InferenceSession Open(string path) => new(path, MaskCandidates.Options());
     }
 }

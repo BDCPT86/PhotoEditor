@@ -5,7 +5,7 @@ A Windows-first, local-first photography application focused on photo culling an
 **New here? Read the [user guide](docs/user-guide.md)**: importing, culling, analysis, optional AI, Develop, masks,
 presets and export, in plain steps.
 
-**Status:** Milestone 08 phase B (masks for local adjustments: Subject, Sky, Background, refined with clicks), after phase A (Auto editing tools) and Milestone 06 (non-destructive editing). Import folders of JPEGs, cull them with the keyboard
+**Status:** Milestone 08 (AI-assisted editing: Auto tools, and masks for local adjustments — Subject, Sky, Background, refined with clicks) is complete, after Milestone 06 (non-destructive editing). Milestone 07 (RAW) is not started. Import folders of JPEGs, cull them with the keyboard
 (keep/reject/review, ratings, colour labels), filter and sort, compare photos side by side, and export the selection.
 **Analyze** measures sharpness and exposure and finds exact and near-duplicates. These are explainable heuristics,
 not AI. Optional local AI models (face detection and scene similarity, off by default, installed only with your consent)
@@ -198,5 +198,5 @@ See [docs/architecture.md](docs/architecture.md) for boundaries and [docs/roadma
 - `docs/ai-models.md` — AI model strategy, selected models, how to run an evaluation
 - `docs/visual-review-m06.md` — how edits were checked by eye, and how to repeat it
 - `docs/visual-review-m08.md` — what was checked by eye for the Auto tools, and what wasn't
-- `docs/evaluation-m08.md` — how to judge Auto light (blind A/B) and Auto crop (your own crops) and score the results
+- `docs/evaluation-m08.md` — how to judge Auto light (blind A/B), Auto crop (your own crops) and masks (sky grading, hand-drawn outlines, speed) and score the results
 - `THIRD-PARTY-NOTICES.md` — licences and attributions (also shown on the About page)

@@ -51,7 +51,17 @@ internal static class MaskCandidates
         return null;
     }
 
-    internal static SessionOptions Options() => new() { IntraOpNumThreads = OnnxAiRuntime.IntraOpThreads };
+    internal static SessionOptions Options(int threads = OnnxAiRuntime.IntraOpThreads, bool spin = true)
+    {
+        var options = new SessionOptions { IntraOpNumThreads = threads, InterOpNumThreads = 1, GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL };
+        if (!spin)
+        {
+            // Idle threads sleep instead of spinning after a run, so they don't take CPU from other sessions.
+            options.AddSessionConfigEntry("session.intra_op.allow_spinning", "0");
+        }
+
+        return options;
+    }
 }
 
 /// <summary>A subject mask at the size of the image it was computed on (alpha 0–1), with how long each part took.</summary>

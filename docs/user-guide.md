@@ -151,13 +151,14 @@ in too.
   outline.
 - Clicks show as **⊕** and **⊖** on the photo. **Clear clicks** removes them all, **Esc** stops refining.
 - You can zoom and pan while refining: a drag pans, only a click without a drag places a point.
-- After the first time, each click takes about a second, because only the last part of the model runs again.
+- After the first time, each click takes well under a second, because only the last part of the model runs again.
 
 **Good to know:**
-- The first Subject mask on a photo takes a few seconds on a laptop CPU; it is remembered, so opening the photo again
-  is quick.
-- Sky works best on blue or evenly grey sky. Pale blue roofs or walls touching the top edge can be picked up as sky:
-  Alt+click them, or delete the mask.
+- The first Subject mask on a photo takes about half a second on a quiet laptop, and a few seconds when the computer
+  is busy. It is remembered, so opening the photo again is quick.
+- Sky works best on blue or evenly grey sky. It leaves out textured or darker areas at the top, such as walls and
+  panels. A very small or hazy patch of sky can be missed: click it to add it. If a smooth, bright wall is picked up,
+  Alt+click it.
 - Grid thumbnails show masks once they have been worked out in Develop.
 
 ## 10. Presets: one look for many photos
@@ -168,7 +169,7 @@ in too.
   progress and cancel, and **Undo last apply** puts every photo back.
 - A preset changes only the settings it was saved with.
 - **Presets with masks** work out each photo's own masks as they go (clicks are never copied between photos), so they
-  take longer: the panel says roughly how long before you start (a subject takes 2–5 s per photo) and counts down while
+  take longer: the panel says roughly how long before you start (a subject takes 0.6–3 s per photo) and counts down while
   it runs. If a mask can't be made for a photo (no people, no sky), that photo gets the rest of the preset without the
   mask and is listed with the reason. A preset with a subject mask needs the subject models (section 7); without them it
   says so and doesn't start.
@@ -226,6 +227,7 @@ Deleting the whole `FrameForge` folder resets the app; your photos are not touch
 
 ## 14. Limits worth knowing
 - JPEG only for now (RAW is planned).
-- AI runs on the CPU. A subject mask takes a few seconds the first time on a laptop.
+- AI runs on the CPU. A subject mask takes from half a second to a few seconds the first time, depending on how busy
+  the computer is.
 - The quality of analysis, AI picks and masks has only been measured on small sets the developer reviewed. Use them
   as hints, and check before you rely on them.
