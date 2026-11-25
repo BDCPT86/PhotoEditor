@@ -1,12 +1,27 @@
 # Milestone 07 — RAW and Professional Workflow
 
-> **Status (2026-11-24):** In progress, in phases, each approved on its own. Milestone 08 was done first, because it
+> **Status (2026-11-25):** In progress, in phases, each approved on its own. Milestone 08 was done first, because it
 > depends only on M05 and M06.
 >
-> - **Phase A (RAW), paused.** The A1 spike tool is built: `raw-spike` in `tools/FrameForge.Evaluation`, using LibRaw
->   0.22.3, the first version that lists the Canon EOS R50. It has not run, because no CR3 files are available yet.
->   Sdcb.LibRaw was dropped: its native package is LibRaw 0.21.1, with no R50 support and from before the 0.22.1 security
->   fixes.
+> - **Phase A (RAW): the A1 spike has run; integration has not started.**
+>   - The spike tool is `raw-spike` in `tools/FrameForge.Evaluation`, using LibRaw 0.22.3, the first version that lists
+>     the Canon EOS R50. Sdcb.LibRaw was dropped: its native package is LibRaw 0.21.1, with no R50 support and from
+>     before the 0.22.1 security fixes.
+>   - On 12 R50 CR3 files with their camera JPEGs, all decoded and no damaged copy crashed LibRaw. The embedded full-size
+>     preview matches the camera JPEG. A full develop takes about 2.5 s and up to about 880 MB, and looks darker and
+>     flatter than the camera's. See the [compatibility report](../benchmarks/m07-raw-spike.md).
+> - **Phase B (export naming, metadata, profiles), implemented.** File-name patterns; a metadata choice for edited JPEGs
+>   (all, all except location, none) with the rating and label written in; saved export profiles and the last export's
+>   settings. It also fixed edited exports of photos with an embedded colour profile, which were labelled with the wrong
+>   profile. See [ADR 0017](../decisions/0017-export-naming-and-metadata.md).
+>
+>   Checked in the app on 2026-11-25, on copies of six R50 JPEGs with GPS, in an isolated data folder:
+>   - The Web profile plus a `{date}_{seq}_{name}` pattern, saved as a profile of its own, exported 3 kept photos as
+>     `2026-11-14_001_IMG_0603.jpg` and so on.
+>   - The exports were 2048 × 1365, without GPS, keeping the camera model and capture time, and without a rating.
+>   - After a restart the panel reopened on the saved profile and pattern.
+>   - The check found that drop-downs bound to objects showed the object's raw text when closed. The shared ComboBox
+>     template now honours `DisplayMemberPath`.
 > - **Phase C (moved folders, offline drives), implemented.**
 >   - Photos on a drive or folder that can't be reached show as Offline, with the reason, without a database change.
 >   - An import that finds nothing never marks a folder Missing.
@@ -15,11 +30,10 @@
 >
 >   See [ADR 0016](../decisions/0016-moved-folders-and-offline-drives.md).
 > - **Order planned for the rest:**
->   - B: export profiles and naming
 >   - D: performance and memory
 >   - F: licence audit
 >   - E: installer and crash-report design
->   - A: RAW, once CR3 samples exist
+>   - A: RAW integration (A2 onwards), each step planned from the spike's findings
 
 ## Goal
 Evaluate and integrate RAW decoding and harden the app for professional use.

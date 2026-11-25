@@ -1,6 +1,7 @@
 using FrameForge.Application.Editing;
 using FrameForge.Application.Export;
 using FrameForge.Application.Photos;
+using FrameForge.Core.Decisions;
 using FrameForge.Infrastructure.Export;
 using Microsoft.Extensions.Logging;
 
@@ -51,7 +52,8 @@ public sealed partial class FileSystemEditedExportService(
 
         // Output is always JPEG: name it .jpg even if the source used another extension.
         var existing = Directory.EnumerateFileSystemEntries(destination).Select(e => Path.GetFileName(e)).ToList();
-        var plan = ExportNamePlanner.Plan(items.Select(i => Path.ChangeExtension(i.Photo.FileName, ".jpg")), existing);
+        var wanted = items.Select((item, i) => options.Naming.FileNameFor(new ExportNameContext(item.Photo, item.Decision ?? PhotoDecision.Unset, i + 1), ".jpg"));
+        var plan = ExportNamePlanner.Plan(wanted, existing);
         var taken = new HashSet<string>(existing.Concat(plan.Select(p => p.TargetFileName)), StringComparer.OrdinalIgnoreCase);
 
         var failures = new List<ExportFailure>();
@@ -83,7 +85,7 @@ public sealed partial class FileSystemEditedExportService(
                     exported++;
                     bytes += size;
                     renamed += plan[i].WasRenamed || !string.Equals(name, plan[i].TargetFileName, StringComparison.Ordinal) ? 1 : 0;
-                    withoutMetadata += options.KeepMetadata && !metadataKept ? 1 : 0;
+                    withoutMetadata += options.Metadata != ExportMetadata.None && !metadataKept ? 1 : 0;
                 }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or PhotoReadException)
                 {
@@ -129,7 +131,7 @@ public sealed partial class FileSystemEditedExportService(
             bool metadataKept;
             using (var output = new FileStream(temp, FileMode.CreateNew, FileAccess.Write, FileShare.None, 1024 * 1024))
             {
-                metadataKept = encoder.Write(image, options.KeepMetadata ? item.Photo.FilePath : null, output, options.Quality);
+                metadataKept = encoder.Write(image, options.MetadataFor(item.Photo, item.Decision), output, options.Quality);
             }
 
             cancellationToken.ThrowIfCancellationRequested();

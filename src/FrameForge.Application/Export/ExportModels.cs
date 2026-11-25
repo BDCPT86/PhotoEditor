@@ -22,7 +22,7 @@ public sealed record ExportSummary
 
     public int Exported { get; init; }
 
-    /// <summary>Exported under a different name because the original name was taken.</summary>
+    /// <summary>Exported with " (n)" added because the planned name was taken.</summary>
     public int Renamed { get; init; }
 
     public IReadOnlyList<ExportFailure> Failures { get; init; } = [];
@@ -38,13 +38,15 @@ public sealed record ExportSummary
 public interface IExportService
 {
     /// <summary>
-    /// Copies photos into <paramref name="destinationFolder"/>. Sources are only read. Existing files are never
-    /// overwritten: clashing names get a " (n)" suffix. Cancellation stops after removing any partial file.
+    /// Copies photos into <paramref name="destinationFolder"/>, named by <paramref name="naming"/> (each keeps its own
+    /// extension). Sources are only read. Existing files are never overwritten: clashing names get a " (n)" suffix.
+    /// Cancellation stops after removing any partial file.
     /// </summary>
     /// <exception cref="DirectoryNotFoundException">The destination does not exist.</exception>
     Task<ExportSummary> CopyAsync(
         IReadOnlyList<ExportItem> items,
         string destinationFolder,
+        ExportNameTemplate naming,
         IProgress<ExportProgress>? progress,
         CancellationToken cancellationToken);
 

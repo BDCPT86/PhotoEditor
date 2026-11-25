@@ -13,7 +13,7 @@ internal static class TestJpeg
     public static readonly Color Left = Color.FromRgb(220, 30, 30);
     public static readonly Color Right = Color.FromRgb(30, 30, 220);
 
-    public static void Write(string path, int width, int height, Action<BitmapMetadata>? writeMetadata = null)
+    public static void Write(string path, int width, int height, Action<BitmapMetadata>? writeMetadata = null, string? iccProfilePath = null)
     {
         const int bytesPerPixel = 3;
         var stride = width * bytesPerPixel;
@@ -39,9 +39,22 @@ internal static class TestJpeg
         }
 
         var encoder = new JpegBitmapEncoder { QualityLevel = 95 };
-        encoder.Frames.Add(BitmapFrame.Create(source, null, metadata, null));
+        var profiles = iccProfilePath is null ? null : new System.Collections.ObjectModel.ReadOnlyCollection<ColorContext>([new ColorContext(new Uri(iccProfilePath))]);
+        encoder.Frames.Add(BitmapFrame.Create(source, null, metadata, profiles));
         using var stream = File.Create(path);
         encoder.Save(stream);
+    }
+
+    /// <summary>
+    /// Splices an APP2 ICC profile segment in right after SOI. WIC will not write a profile and an EXIF colour space tag
+    /// together, but other software does, so this builds such a file by hand.
+    /// </summary>
+    public static void InsertIccProfile(string path, byte[] profile)
+    {
+        var jpeg = File.ReadAllBytes(path);
+        var length = 2 + 12 + 2 + profile.Length; // length bytes + "ICC_PROFILE\0" + chunk number/count + profile
+        byte[] segment = [0xFF, 0xE2, (byte)(length >> 8), (byte)length, .. "ICC_PROFILE\0"u8, 1, 1, .. profile];
+        File.WriteAllBytes(path, [.. jpeg[..2], .. segment, .. jpeg[2..]]);
     }
 
     /// <summary>Packs an EXIF RATIONAL the way WIC expects: numerator low 32 bits, denominator high 32 bits.</summary>

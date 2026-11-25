@@ -22,6 +22,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IFolderRelocationService, FolderRelocationService>();
         services.AddSingleton<FolderAvailabilityChecker>();
         services.AddSingleton<IDecisionService, DecisionService>();
+        services.AddSingleton<Export.IExportProfileService, Export.ExportProfileService>();
 
         services.TryAddSingleton(new PhotoAnalysisOptions());
         services.AddSingleton<IPhotoAnalysisService, PhotoAnalysisService>();

@@ -46,7 +46,7 @@ public sealed class FileSystemExportServiceTests : IDisposable
     {
         var items = new[] { Source("a.jpg", seed: 1), Source("b.jpg", seed: 2) };
 
-        var summary = await _service.CopyAsync(items, _destination.Path, null, Ct);
+        var summary = await _service.CopyAsync(items, _destination.Path, ExportNameTemplate.Original, null, Ct);
 
         Assert.Equal(2, summary.Exported);
         Assert.Empty(summary.Failures);
@@ -63,7 +63,7 @@ public sealed class FileSystemExportServiceTests : IDisposable
         var items = new[] { Source("a.jpg"), Source(@"sub\b.jpg", seed: 3) };
         var before = items.Select(i => Fingerprint(i.Photo.FilePath)).ToList();
 
-        await _service.CopyAsync(items, _destination.Path, null, Ct);
+        await _service.CopyAsync(items, _destination.Path, ExportNameTemplate.Original, null, Ct);
         await _service.WriteManifestAsync(items, Path.Combine(_destination.Path, "m.csv"), Ct);
 
         Assert.Equal(before, items.Select(i => Fingerprint(i.Photo.FilePath)));
@@ -76,7 +76,7 @@ public sealed class FileSystemExportServiceTests : IDisposable
         var existing = Path.Combine(_destination.Path, "img_0001.JPG");
         File.WriteAllText(existing, "someone else's file");
 
-        var summary = await _service.CopyAsync([item], _destination.Path, null, Ct);
+        var summary = await _service.CopyAsync([item], _destination.Path, ExportNameTemplate.Original, null, Ct);
 
         Assert.Equal("someone else's file", File.ReadAllText(existing));
         Assert.Equal(1, summary.Renamed);
@@ -85,11 +85,27 @@ public sealed class FileSystemExportServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task NamePattern_RenamesCopies_KeepsExtensions_AndCountsOnlyClashesAsRenamed()
+    {
+        var items = new[] { Source(@"Day1\IMG_1.jpg", seed: 1), Source(@"Day2\IMG_1.JPEG", seed: 2), Source(@"Day2\IMG_2.jpg", seed: 3) };
+        Assert.True(ExportNameTemplate.TryParse("{folder}-{name}", out var naming, out _));
+        File.WriteAllText(Path.Combine(_destination.Path, "Day2-IMG_2.jpg"), "existing");
+
+        var summary = await _service.CopyAsync(items, _destination.Path, naming, null, Ct);
+
+        Assert.Equal(3, summary.Exported);
+        Assert.Equal(1, summary.Renamed);
+        Assert.Equal(["Day1-IMG_1.jpg", "Day2-IMG_1.JPEG", "Day2-IMG_2 (2).jpg", "Day2-IMG_2.jpg"], DestinationNames());
+        Assert.Equal("existing", File.ReadAllText(Path.Combine(_destination.Path, "Day2-IMG_2.jpg")));
+        Assert.Equal(Fingerprint(items[1].Photo.FilePath), Fingerprint(Path.Combine(_destination.Path, "Day2-IMG_1.JPEG")));
+    }
+
+    [Fact]
     public async Task SameFileNameFromDifferentFolders_GetsUniqueNames()
     {
         var items = new[] { Source(@"Day1\IMG_1.jpg", seed: 1), Source(@"Day2\IMG_1.jpg", seed: 2), Source(@"Day3\IMG_1.jpg", seed: 3) };
 
-        var summary = await _service.CopyAsync(items, _destination.Path, null, Ct);
+        var summary = await _service.CopyAsync(items, _destination.Path, ExportNameTemplate.Original, null, Ct);
 
         Assert.Equal(3, summary.Exported);
         Assert.Equal(2, summary.Renamed);
@@ -103,7 +119,7 @@ public sealed class FileSystemExportServiceTests : IDisposable
         var item = Source("a.jpg");
         var before = Fingerprint(item.Photo.FilePath);
 
-        var summary = await _service.CopyAsync([item], _sources.Path, null, Ct);
+        var summary = await _service.CopyAsync([item], _sources.Path, ExportNameTemplate.Original, null, Ct);
 
         Assert.Equal(before, Fingerprint(item.Photo.FilePath));
         Assert.Equal(1, summary.Renamed);
@@ -117,7 +133,7 @@ public sealed class FileSystemExportServiceTests : IDisposable
         var gone = Source("gone.jpg");
         File.Delete(gone.Photo.FilePath);
 
-        var summary = await _service.CopyAsync([gone, good], _destination.Path, null, Ct);
+        var summary = await _service.CopyAsync([gone, good], _destination.Path, ExportNameTemplate.Original, null, Ct);
 
         Assert.Equal(1, summary.Exported);
         var failure = Assert.Single(summary.Failures);
@@ -138,7 +154,7 @@ public sealed class FileSystemExportServiceTests : IDisposable
             }
         });
 
-        var summary = await _service.CopyAsync(items, _destination.Path, progress, cts.Token);
+        var summary = await _service.CopyAsync(items, _destination.Path, ExportNameTemplate.Original, progress, cts.Token);
 
         Assert.True(summary.WasCancelled);
         Assert.InRange(summary.Exported, 3, 19);
@@ -157,7 +173,7 @@ public sealed class FileSystemExportServiceTests : IDisposable
         var items = new[] { Source("a.jpg"), Source("b.jpg"), Source("c.jpg") };
         var reports = new List<ExportProgress>();
 
-        await _service.CopyAsync(items, _destination.Path, new SyncProgress(reports.Add), Ct);
+        await _service.CopyAsync(items, _destination.Path, ExportNameTemplate.Original, new SyncProgress(reports.Add), Ct);
 
         Assert.Equal([0, 1, 2, 3], reports.Select(r => r.Completed));
         Assert.Equal(3 * 2048, reports[^1].BytesCopied);
@@ -166,7 +182,7 @@ public sealed class FileSystemExportServiceTests : IDisposable
     [Fact]
     public async Task MissingDestination_Throws() =>
         await Assert.ThrowsAsync<DirectoryNotFoundException>(() =>
-            _service.CopyAsync([Source("a.jpg")], Path.Combine(_destination.Path, "nope"), null, Ct));
+            _service.CopyAsync([Source("a.jpg")], Path.Combine(_destination.Path, "nope"), ExportNameTemplate.Original, null, Ct));
 
     [Fact]
     public async Task Manifest_IsWritten_AndReplacesAnEarlierManifest()

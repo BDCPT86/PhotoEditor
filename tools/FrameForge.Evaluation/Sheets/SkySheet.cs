@@ -176,7 +176,7 @@ internal static class SkySheet
     private static void Save(WicJpegEncoder encoder, AnalysisImage image, string path)
     {
         using var stream = File.Create(path);
-        encoder.Write(image, null, stream, 90);
+        encoder.Write(image, FrameForge.Application.Editing.JpegMetadata.Nothing, stream, 90);
     }
 
     private const string Page = """
@@ -273,7 +273,7 @@ internal static class SkyDebug
             return !candidate[i] ? ((byte)0, (byte)0, (byte)0) : smooth[i] ? ((byte)110, (byte)110, (byte)110) : ((byte)120, (byte)20, (byte)20);
         });
         using var stream = File.Create(outPath);
-        new WicJpegEncoder().Write(view, null, stream, 90);
+        new WicJpegEncoder().Write(view, FrameForge.Application.Editing.JpegMetadata.Nothing, stream, 90);
         Console.WriteLine(result.Summary);
     }
 }
@@ -358,7 +358,7 @@ internal static class SkyOverlays
             var result = sky.Generate(image, [], CancellationToken.None);
             var view = result.Mask is { } m ? MaskMath.Overlay(image, m.Alpha.Select(a => a / 255f).ToArray()) : image;
             using var stream = File.Create(Path.Combine(outDir, Path.GetFileNameWithoutExtension(photo) + ".jpg"));
-            encoder.Write(view, null, stream, 85);
+            encoder.Write(view, FrameForge.Application.Editing.JpegMetadata.Nothing, stream, 85);
             Console.WriteLine(Path.GetFileName(photo) + ": " + result.Summary);
         }
     }

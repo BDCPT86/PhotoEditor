@@ -85,6 +85,46 @@ public sealed class EditedExportTests : IDisposable
     }
 
     [Fact]
+    public async Task Export_UsesTheNamePattern_WithDecisions_AndAJpgExtension()
+    {
+        var a = PhotoFile("a.png");
+        var b = PhotoFile("b.jpg");
+        await File.WriteAllTextAsync(Path.Combine(_destination, "02_b_5.jpg"), "existing", Ct);
+        Assert.True(ExportNameTemplate.TryParse("{seq:2}_{name}_{rating}", out var naming, out _));
+
+        var (summary, _) = await ExportAsync(
+            [new(a, EditRecipe.Neutral), new(b, EditRecipe.Neutral, new FrameForge.Core.Decisions.PhotoDecision(rating: 5))],
+            EditedExportOptions.Default with { Naming = naming });
+
+        Assert.Equal(2, summary.Exported);
+        Assert.True(File.Exists(Path.Combine(_destination, "01_a.jpg")));
+        Assert.True(File.Exists(Path.Combine(_destination, "02_b_5 (2).jpg")));
+        Assert.Equal("existing", await File.ReadAllTextAsync(Path.Combine(_destination, "02_b_5.jpg"), Ct));
+        Assert.Equal(1, summary.Renamed);
+    }
+
+    [Fact]
+    public async Task Export_PassesEachPhotosMetadataChoiceAndDecision_ToTheEncoder()
+    {
+        var a = PhotoFile("a.jpg");
+        var b = PhotoFile("b.jpg");
+        await using var services = TestServices.Build(new AppDataPaths(Path.Combine(_temp.Path, "data")));
+        var encoder = (StubJpegEncoder)services.GetRequiredService<IJpegEncoder>();
+
+        await services.GetRequiredService<IEditedExportService>().ExportAsync(
+            [new(a, EditRecipe.Neutral, new FrameForge.Core.Decisions.PhotoDecision(rating: 2)), new(b, EditRecipe.Neutral)],
+            _destination,
+            EditedExportOptions.Default with { Metadata = ExportMetadata.AllButLocation },
+            null,
+            Ct);
+
+        var written = encoder.Metadata.ToList();
+        Assert.Equal([a.FilePath, b.FilePath], written.Select(m => m.SourcePath));
+        Assert.All(written, m => Assert.True(m.RemoveLocation));
+        Assert.Equal([2, null], written.Select(m => m.Decision!.Rating));
+    }
+
+    [Fact]
     public async Task MissingSource_IsReported_OthersContinue()
     {
         var gone = PhotoFile("gone.jpg");

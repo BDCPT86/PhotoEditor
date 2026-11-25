@@ -1098,7 +1098,9 @@
                         <ContentPresenter x:Name="Shown" IsHitTestVisible="False" Margin="10,0,28,0"
                                           VerticalAlignment="Center" HorizontalAlignment="Left"
                                           Content="{TemplateBinding SelectionBoxItem}"
-                                          ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}" />
+                                          ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                          ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
+                                          ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}" />
                         <Border x:Name="Focus" CornerRadius="{StaticResource Radius.Control}" BorderBrush="{StaticResource Brush.Accent}" BorderThickness="1"
                                 Visibility="Collapsed" IsHitTestVisible="False" />
                         <Popup x:Name="PART_Popup" Placement="Bottom" AllowsTransparency="True" Focusable="False" PopupAnimation="Fade"

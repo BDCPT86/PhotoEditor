@@ -5,6 +5,8 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:FrameForge.App.ViewModels"
              xmlns:conv="clr-namespace:FrameForge.App.Converters"
+             xmlns:app="clr-namespace:FrameForge.Application.Editing;assembly=FrameForge.Application"
+             xmlns:exp="clr-namespace:FrameForge.Application.Export;assembly=FrameForge.Application"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance Type=vm:ExportViewModel}"
              AutomationProperties.Name="Export">
@@ -12,6 +14,19 @@
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
         <conv:EnumEqualsConverter x:Key="EnumEquals" />
         <conv:InverseBooleanConverter x:Key="InverseBool" />
+        <FontFamily x:Key="Font.Pattern">Cascadia Mono, Consolas</FontFamily>
+
+        <!-- A group: heading, controls; space between groups is larger than inside them -->
+        <Style x:Key="Group" TargetType="StackPanel">
+            <Setter Property="Margin" Value="0,0,0,24" />
+        </Style>
+        <!-- An inline error under a field; hidden while there is none -->
+        <Style x:Key="FieldError" TargetType="TextBlock">
+            <Setter Property="Margin" Value="0,6,0,0" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="FontSize" Value="{StaticResource FontSize.Meta}" />
+            <Setter Property="Foreground" Value="{StaticResource Brush.Status.Error}" />
+        </Style>
     </UserControl.Resources>
 
     <UserControl.InputBindings>
@@ -19,112 +34,243 @@
     </UserControl.InputBindings>
 
     <Border Style="{StaticResource SidePanel}">
-        <StackPanel>
-            <DockPanel Margin="0,0,0,16">
+        <DockPanel>
+            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,16">
                 <Button DockPanel.Dock="Right" Style="{StaticResource Button.Icon}" Content="&#xE711;" Margin="0,0,-8,0" ToolTip="Close (Esc)" AutomationProperties.Name="Close" Command="{Binding CloseCommand}"
                         IsEnabled="{Binding IsExporting, Converter={StaticResource InverseBool}}" />
                 <TextBlock Text="Export" Style="{StaticResource Text.PanelTitle}" />
             </DockPanel>
 
-            <StackPanel IsEnabled="{Binding IsExporting, Converter={StaticResource InverseBool}}">
-                <TextBlock Text="Photos" Style="{StaticResource Text.SectionLabel}" />
-                <RadioButton GroupName="ExportScope" Content="All photos marked Keep"
-                             IsChecked="{Binding Scope, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:ExportScope.Keep}}" />
-                <RadioButton GroupName="ExportScope" Content="Photos shown in the grid (current filter)" Margin="0,0,0,4"
-                             IsChecked="{Binding Scope, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:ExportScope.CurrentView}}" />
-                <TextBlock Text="{Binding CountText}" Style="{StaticResource Text.Hint}" Margin="24,0,0,20" AutomationProperties.AutomationId="ExportCount" />
+            <!-- Footer: the action and what it did, always in view -->
+            <StackPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
+                <TextBlock Style="{StaticResource Text.Hint}" Margin="0,0,0,12"
+                           Text="Originals are only read. Existing files are never replaced: a clashing name is saved as “name (2).jpg”." />
+                <Button Style="{StaticResource Button.Primary}" Content="Choose destination and export…" HorizontalAlignment="Left" Command="{Binding StartCommand}" />
 
-                <TextBlock Text="Export as" Style="{StaticResource Text.SectionLabel}" />
-                <RadioButton GroupName="ExportMode" Content="Copy files to a folder"
-                             IsChecked="{Binding Mode, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:ExportMode.CopyFiles}}" />
-                <RadioButton GroupName="ExportMode" Content="Edited JPEGs (applies each photo's edits)"
-                             IsChecked="{Binding Mode, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:ExportMode.EditedJpegs}}" />
-                <RadioButton GroupName="ExportMode" Content="Selection manifest (CSV)" Margin="0,0,0,12"
-                             IsChecked="{Binding Mode, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:ExportMode.Manifest}}" />
+                <!-- Confirmation when the destination is inside (or contains) an imported folder -->
+                <Border Margin="0,16,0,0" Style="{StaticResource Surface.Callout}"
+                        Visibility="{Binding HasPendingDestination, Converter={StaticResource BoolToVisibility}}"
+                        AutomationProperties.AutomationId="ExportConfirm">
+                    <StackPanel>
+                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Brush.Decision.Review}"
+                                   Text="⚠ This folder is part of your library. The copies will appear as new photos the next time it is imported." />
+                        <TextBlock TextWrapping="Wrap" Style="{StaticResource Text.Secondary}" Margin="0,6,0,10" Text="{Binding PendingDestination}" />
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="Export anyway" Command="{Binding ConfirmPendingCommand}" Margin="0,0,8,0" />
+                            <Button Content="Choose another" Command="{Binding DiscardPendingCommand}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
 
-                <!-- Edited JPEG options -->
-                <Grid Margin="24,0,0,12">
-                    <Grid.Style>
-                        <Style TargetType="Grid">
-                            <Setter Property="Visibility" Value="Collapsed" />
+                <!-- Progress -->
+                <StackPanel Margin="0,16,0,0" Visibility="{Binding IsExporting, Converter={StaticResource BoolToVisibility}}">
+                    <ProgressBar Minimum="0" Maximum="1" Value="{Binding ProgressValue, Mode=OneWay}" AutomationProperties.Name="Export progress" />
+                    <DockPanel Margin="0,8,0,0">
+                        <Button DockPanel.Dock="Right" Content="Cancel" Command="{Binding CancelCommand}" />
+                        <TextBlock Text="{Binding ProgressText}" Style="{StaticResource Text.Secondary}" VerticalAlignment="Center"
+                                   AutomationProperties.AutomationId="ExportProgressText" />
+                    </DockPanel>
+                </StackPanel>
+
+                <!-- Result: glyph + text -->
+                <TextBlock Margin="0,16,0,0" TextWrapping="Wrap" AutomationProperties.AutomationId="ExportResult">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="{StaticResource Brush.Status.Success}" />
+                            <Setter Property="Text" Value="{Binding ResultText, StringFormat='✓ {0}'}" />
                             <Style.Triggers>
-                                <DataTrigger Binding="{Binding Mode}" Value="{x:Static vm:ExportMode.EditedJpegs}">
-                                    <Setter Property="Visibility" Value="Visible" />
+                                <DataTrigger Binding="{Binding ResultIsWarning}" Value="True">
+                                    <Setter Property="Foreground" Value="{StaticResource Brush.Status.Error}" />
+                                    <Setter Property="Text" Value="{Binding ResultText, StringFormat='⚠ {0}'}" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding ResultText}" Value="{x:Null}">
+                                    <Setter Property="Visibility" Value="Collapsed" />
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style>
-                    </Grid.Style>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-                    <TextBlock Grid.Row="0" Text="Quality" VerticalAlignment="Center" Margin="0,0,12,6" />
-                    <DockPanel Grid.Row="0" Grid.Column="1" Margin="0,0,0,6">
-                        <TextBlock DockPanel.Dock="Right" Width="32" TextAlignment="Right" VerticalAlignment="Center" Text="{Binding Quality}" />
-                        <Slider Minimum="50" Maximum="100" SmallChange="1" LargeChange="5" IsSnapToTickEnabled="True" TickFrequency="1"
-                                Value="{Binding Quality}" AutomationProperties.Name="JPEG quality" />
-                    </DockPanel>
-                    <TextBlock Grid.Row="1" Text="Longest side (px)" VerticalAlignment="Center" Margin="0,0,12,6" />
-                    <TextBox Grid.Row="1" Grid.Column="1" Width="96" HorizontalAlignment="Left" Margin="0,0,0,6"
-                             Text="{Binding MaxLongSideText, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Longest side in pixels, empty for full size"
-                             ToolTip="Leave empty for full size. Never upscales." />
-                    <CheckBox Grid.Row="2" Grid.ColumnSpan="2" Content="Keep camera metadata (EXIF)" IsChecked="{Binding KeepMetadata}" />
-                </Grid>
-
-                <TextBlock Style="{StaticResource Text.Hint}" Margin="0,4,0,20"
-                           Text="Originals are only read. Existing files are never replaced: name clashes are saved as “name (2).jpg”." />
-
-                <Button Style="{StaticResource Button.Primary}" Content="Choose destination and export…" HorizontalAlignment="Left" Command="{Binding StartCommand}" />
+                    </TextBlock.Style>
+                </TextBlock>
             </StackPanel>
 
-            <!-- Confirmation when the destination is inside (or contains) an imported folder -->
-            <Border Margin="0,16,0,0" Style="{StaticResource Surface.Callout}"
-                    Visibility="{Binding HasPendingDestination, Converter={StaticResource BoolToVisibility}}"
-                    AutomationProperties.AutomationId="ExportConfirm">
-                <StackPanel>
-                    <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Brush.Decision.Review}"
-                               Text="⚠ This folder is part of your library. The copies will appear as new photos the next time it is imported." />
-                    <TextBlock TextWrapping="Wrap" Style="{StaticResource Text.Secondary}" Margin="0,6,0,10" Text="{Binding PendingDestination}" />
-                    <StackPanel Orientation="Horizontal">
-                        <Button Content="Export anyway" Command="{Binding ConfirmPendingCommand}" Margin="0,0,8,0" />
-                        <Button Content="Choose another" Command="{Binding DiscardPendingCommand}" />
+            <!-- Settings: scroll when the window is short -->
+            <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False" Margin="0,0,-12,0" Padding="0,0,12,0">
+                <StackPanel IsEnabled="{Binding IsExporting, Converter={StaticResource InverseBool}}">
+
+                    <!-- Profile: choosing one fills in everything below; the destination is chosen each time -->
+                    <StackPanel Style="{StaticResource Group}">
+                        <TextBlock Text="Profile" Style="{StaticResource Text.SectionLabel}" />
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Style="{StaticResource Button.Icon}" Content="&#xE74D;" Margin="4,0,-8,0"
+                                    ToolTip="Remove this profile (built-in profiles can't be removed)" AutomationProperties.Name="Remove profile"
+                                    Command="{Binding DeleteProfileCommand}" />
+                            <ComboBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}" DisplayMemberPath="Name"
+                                      AutomationProperties.Name="Export profile" AutomationProperties.AutomationId="ExportProfile"
+                                      ToolTip="Fills in the settings below. The destination folder is chosen for each export." />
+                        </DockPanel>
+
+                        <!-- Status line and the way in to saving -->
+                        <DockPanel Margin="0,6,0,0">
+                            <DockPanel.Style>
+                                <Style TargetType="DockPanel">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsNamingProfile}" Value="True">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </DockPanel.Style>
+                            <Button DockPanel.Dock="Right" Style="{StaticResource Button.Link}" Content="Save as profile…"
+                                    Command="{Binding BeginNamingProfileCommand}" AutomationProperties.AutomationId="ExportProfileSaveAs" />
+                            <TextBlock Style="{StaticResource Text.Hint}" VerticalAlignment="Center" Text="Changed from this profile"
+                                       Visibility="{Binding ProfileIsChanged, Converter={StaticResource BoolToVisibility}}"
+                                       AutomationProperties.AutomationId="ExportProfileChanged" />
+                        </DockPanel>
+
+                        <!-- Naming a new profile -->
+                        <StackPanel Margin="0,8,0,0" Visibility="{Binding IsNamingProfile, Converter={StaticResource BoolToVisibility}}">
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Style="{StaticResource Button.Link}" Content="Cancel" Margin="8,0,0,0" VerticalAlignment="Center"
+                                        Command="{Binding CancelNamingProfileCommand}" />
+                                <Button DockPanel.Dock="Right" Content="Save" Margin="8,0,0,0" Command="{Binding SaveProfileCommand}"
+                                        ToolTip="Saves the settings below under this name. A profile of yours with the same name is replaced." />
+                                <TextBox x:Name="ProfileNameBox" Text="{Binding NewProfileName, UpdateSourceTrigger=PropertyChanged}" MaxLength="60"
+                                         AutomationProperties.Name="Profile name" AutomationProperties.AutomationId="ExportProfileName"
+                                         IsVisibleChanged="ProfileNameBox_IsVisibleChanged">
+                                    <TextBox.InputBindings>
+                                        <KeyBinding Key="Enter" Command="{Binding SaveProfileCommand}" />
+                                        <KeyBinding Key="Escape" Command="{Binding CancelNamingProfileCommand}" />
+                                    </TextBox.InputBindings>
+                                </TextBox>
+                            </DockPanel>
+                        </StackPanel>
+                        <TextBlock Text="{Binding ProfileMessage, StringFormat='⚠ {0}'}" AutomationProperties.AutomationId="ExportProfileMessage">
+                                   <TextBlock.Style>
+                                       <Style TargetType="TextBlock" BasedOn="{StaticResource FieldError}">
+                                           <Style.Triggers>
+                                               <DataTrigger Binding="{Binding ProfileMessage}" Value="{x:Null}">
+                                                   <Setter Property="Visibility" Value="Collapsed" />
+                                               </DataTrigger>
+                                           </Style.Triggers>
+                                       </Style>
+                                   </TextBlock.Style>
+                                   </TextBlock>
+                    </StackPanel>
+
+                    <StackPanel Style="{StaticResource Group}">
+                        <TextBlock Text="Photos" Style="{StaticResource Text.SectionLabel}" />
+                        <RadioButton GroupName="ExportScope" Content="All photos marked Keep"
+                                     IsChecked="{Binding Scope, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:ExportScope.Keep}}" />
+                        <RadioButton GroupName="ExportScope" Content="Photos shown in the grid (current filter)" Margin="0,0,0,4"
+                                     IsChecked="{Binding Scope, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static vm:ExportScope.CurrentView}}" />
+                        <TextBlock Text="{Binding CountText}" Style="{StaticResource Text.Hint}" Margin="24,0,0,0" AutomationProperties.AutomationId="ExportCount" />
+                    </StackPanel>
+
+                    <StackPanel Style="{StaticResource Group}">
+                        <TextBlock Text="Export as" Style="{StaticResource Text.SectionLabel}" />
+                        <RadioButton GroupName="ExportMode" Content="Copy files to a folder"
+                                     IsChecked="{Binding Mode, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static exp:ExportMode.CopyFiles}}" />
+                        <RadioButton GroupName="ExportMode" Content="Edited JPEGs (applies each photo's edits)"
+                                     IsChecked="{Binding Mode, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static exp:ExportMode.EditedJpegs}}" />
+                        <RadioButton GroupName="ExportMode" Content="Selection manifest (CSV)"
+                                     IsChecked="{Binding Mode, Converter={StaticResource EnumEquals}, ConverterParameter={x:Static exp:ExportMode.Manifest}}" />
+
+                        <!-- Edited JPEG options, under their choice -->
+                        <Grid Margin="24,10,0,0">
+                            <Grid.Style>
+                                <Style TargetType="Grid">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Mode}" Value="{x:Static exp:ExportMode.EditedJpegs}">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Grid.Style>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Text="Quality" VerticalAlignment="Center" Margin="0,0,12,8" />
+                            <DockPanel Grid.Row="0" Grid.Column="1" Margin="0,0,0,8">
+                                <TextBlock DockPanel.Dock="Right" Width="32" TextAlignment="Right" VerticalAlignment="Center" Text="{Binding Quality}" />
+                                <Slider Minimum="50" Maximum="100" SmallChange="1" LargeChange="5" IsSnapToTickEnabled="True" TickFrequency="1"
+                                        Value="{Binding Quality}" AutomationProperties.Name="JPEG quality" />
+                            </DockPanel>
+                            <TextBlock Grid.Row="1" Text="Longest side" VerticalAlignment="Center" Margin="0,0,12,8" />
+                            <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,8">
+                                <TextBox Width="80" Text="{Binding MaxLongSideText, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Longest side in pixels, empty for full size"
+                                         ToolTip="Leave empty for full size. Never upscales." />
+                                <TextBlock Style="{StaticResource Text.Hint}" VerticalAlignment="Center" Margin="8,0,0,0" Text="px, empty = full size" />
+                            </StackPanel>
+                            <TextBlock Grid.Row="2" Text="Metadata" VerticalAlignment="Center" Margin="0,0,12,8" />
+                            <ComboBox Grid.Row="2" Grid.Column="1" Margin="0,0,0,8"
+                                      SelectedValue="{Binding Metadata}" SelectedValuePath="Tag" AutomationProperties.Name="Metadata to keep"
+                                      ToolTip="Camera details, captions and keywords from the original. Copied files always keep everything.">
+                                <ComboBoxItem Content="All" Tag="{x:Static app:ExportMetadata.All}" />
+                                <ComboBoxItem Content="All except location" Tag="{x:Static app:ExportMetadata.AllButLocation}" />
+                                <ComboBoxItem Content="None" Tag="{x:Static app:ExportMetadata.None}" />
+                            </ComboBox>
+                            <CheckBox Grid.Row="3" Grid.ColumnSpan="2" Content="Include my star rating and colour label" IsChecked="{Binding WriteRatingAndLabel}"
+                                      IsEnabled="{Binding CanWriteRatingAndLabel}" ToolTip="Shown by Windows, Lightroom and Bridge. Replaces any rating in the original." />
+                        </Grid>
+                    </StackPanel>
+
+                    <!-- File names (copies and edited JPEGs; the manifest lists the sources) -->
+                    <StackPanel>
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel" BasedOn="{StaticResource Group}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Mode}" Value="{x:Static exp:ExportMode.Manifest}">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
+                        <TextBlock Text="File names" Style="{StaticResource Text.SectionLabel}" />
+                        <TextBox Text="{Binding NameTemplateText, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource Font.Pattern}"
+                                 AutomationProperties.Name="File name pattern, empty keeps the original names" AutomationProperties.AutomationId="ExportNamePattern"
+                                 ToolTip="Example: {date}_{name} or {date:yyyyMMdd}-{seq:4}. Leave empty to keep the original names." />
+                        <!-- The first photo's name under the pattern: the answer to "what will I get?" -->
+                        <DockPanel Margin="0,8,0,0">
+                            <DockPanel.Style>
+                                <Style TargetType="DockPanel">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding NamePreview}" Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </DockPanel.Style>
+                            <TextBlock Style="{StaticResource Text.Hint}" Text="First file" Margin="0,0,8,0" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding NamePreview}" FontFamily="{StaticResource Font.Pattern}" AutomationProperties.AutomationId="ExportNamePreview" Foreground="{StaticResource Brush.Text.Primary}"
+                                       TextTrimming="CharacterEllipsis" ToolTip="{Binding NamePreview}" VerticalAlignment="Center" />
+                        </DockPanel>
+                        <TextBlock Text="{Binding NameError, StringFormat='⚠ {0}'}" AutomationProperties.AutomationId="ExportNameError">
+                                   <TextBlock.Style>
+                                       <Style TargetType="TextBlock" BasedOn="{StaticResource FieldError}">
+                                           <Style.Triggers>
+                                               <DataTrigger Binding="{Binding NameError}" Value="{x:Null}">
+                                                   <Setter Property="Visibility" Value="Collapsed" />
+                                               </DataTrigger>
+                                           </Style.Triggers>
+                                       </Style>
+                                   </TextBlock.Style>
+                                   </TextBlock>
+                        <TextBlock Style="{StaticResource Text.Hint}" Margin="0,8,0,0">
+                            <Run Text="Empty keeps the original names. Tokens:" />
+                            <Run FontFamily="{StaticResource Font.Pattern}" Text="{}{name} {date} {time} {seq} {folder} {camera} {rating} {decision} {label}" />
+                            <Run Text=". Formats such as" />
+                            <Run FontFamily="{StaticResource Font.Pattern}" Text="{}{date:yyyyMMdd} {seq:4}" /><Run Text="." />
+                        </TextBlock>
                     </StackPanel>
                 </StackPanel>
-            </Border>
-
-            <!-- Progress -->
-            <StackPanel Margin="0,16,0,0" Visibility="{Binding IsExporting, Converter={StaticResource BoolToVisibility}}">
-                <ProgressBar Minimum="0" Maximum="1" Value="{Binding ProgressValue, Mode=OneWay}" AutomationProperties.Name="Export progress" />
-                <DockPanel Margin="0,8,0,0">
-                    <Button DockPanel.Dock="Right" Content="Cancel" Command="{Binding CancelCommand}" />
-                    <TextBlock Text="{Binding ProgressText}" Style="{StaticResource Text.Secondary}" VerticalAlignment="Center"
-                               AutomationProperties.AutomationId="ExportProgressText" />
-                </DockPanel>
-            </StackPanel>
-
-            <!-- Result: glyph + text -->
-            <TextBlock Margin="0,16,0,0" TextWrapping="Wrap" AutomationProperties.AutomationId="ExportResult">
-                <TextBlock.Style>
-                    <Style TargetType="TextBlock">
-                        <Setter Property="Foreground" Value="{StaticResource Brush.Status.Success}" />
-                        <Setter Property="Text" Value="{Binding ResultText, StringFormat='✓ {0}'}" />
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding ResultIsWarning}" Value="True">
-                                <Setter Property="Foreground" Value="{StaticResource Brush.Status.Error}" />
-                                <Setter Property="Text" Value="{Binding ResultText, StringFormat='⚠ {0}'}" />
-                            </DataTrigger>
-                            <DataTrigger Binding="{Binding ResultText}" Value="{x:Null}">
-                                <Setter Property="Visibility" Value="Collapsed" />
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </TextBlock.Style>
-            </TextBlock>
-        </StackPanel>
+            </ScrollViewer>
+        </DockPanel>
     </Border>
 </UserControl>

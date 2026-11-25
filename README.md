@@ -5,7 +5,7 @@ A Windows-first, local-first photography application focused on photo culling an
 **New here? Read the [user guide](docs/user-guide.md)**: importing, culling, analysis, optional AI, Develop, masks,
 presets and export, in plain steps.
 
-**Status:** Milestone 08 (AI-assisted editing: Auto tools, and masks for local adjustments — Subject, Sky, Background, refined with clicks) is complete, after Milestone 06 (non-destructive editing). Milestone 07 is in progress: photos on an unplugged drive show as Offline, and **Locate folder…** reconnects a folder you moved; RAW support is not started. Import folders of JPEGs, cull them with the keyboard
+**Status:** Milestone 08 (AI-assisted editing: Auto tools, and masks for local adjustments — Subject, Sky, Background, refined with clicks) is complete, after Milestone 06 (non-destructive editing). Milestone 07 is in progress: photos on an unplugged drive show as Offline, and **Locate folder…** reconnects a folder you moved; exports take file-name patterns, a metadata choice and saved profiles; RAW support has been tested on Canon EOS R50 samples but is not in the app yet. Import folders of JPEGs, cull them with the keyboard
 (keep/reject/review, ratings, colour labels), filter and sort, compare photos side by side, and export the selection.
 **Analyze** measures sharpness and exposure and finds exact and near-duplicates. These are explainable heuristics,
 not AI. Optional local AI models (face detection and scene similarity, off by default, installed only with your consent)
@@ -35,7 +35,9 @@ analysis finding and to choose the sort and thumbnail size, and a **footer** wit
    moves on. A folder in the sidebar shows that folder and its subfolders, combined with the chosen view.
 5. **Compare:** select 2–4 photos and press **C**. ← / → choose the photo that decision keys apply to; each panel shows
    its AI pick, sharpest and blur findings.
-6. **Export:** copy every Keep photo (or the current view) to a folder, or save a CSV manifest of the selection.
+6. **Export:** copy every Keep photo (or the current view) to a folder, or save a CSV manifest of the selection. Name
+   the files with a pattern such as `{date}_{name}`, and save the settings as a profile (three are built in: Full-size
+   JPEG, Web and Originals). The panel remembers your last export.
 7. **Analyze:** measures every photo once and remembers the results; later runs only analyse new or changed photos.
    Tiles get marks: **≈ blur**, **◆** (the sharpest in its similar group) and **= dup** (identical file) always; **◐**
    (clipping) and **▣ n** (in a group of n similar photos) when you point at or select a tile. Use the **Analysis**
@@ -66,8 +68,8 @@ analysis finding and to choose the sort and thumbnail size, and a **footer** wit
      and/or Crop over the selection, lists photos it couldn't help, and **Analysis → Changed by Auto** shows what it changed.
    - **Zoom to faces:** in the viewer, **F** / **Shift+F** step the 100% view through the detected faces (needs face
      data from Analyze).
-   - **Export → Edited JPEGs** saves new JPEGs with the edits, at a quality and size you choose, keeping the camera
-     metadata.
+   - **Export → Edited JPEGs** saves new JPEGs with the edits, at a quality and size you choose. Choose which camera
+     metadata to keep (all, all except location, or none); your star rating and colour label are written in.
 
    Edits are stored separately and the original file is never written to. JPEGs are 8-bit, so highlights that are
    already blown cannot be recovered.

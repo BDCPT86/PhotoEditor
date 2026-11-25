@@ -204,6 +204,6 @@ public sealed class JudgingSheetTests : IDisposable
     private static void WriteJpeg(string path, AnalysisImage image)
     {
         using var stream = File.Create(path);
-        new WicJpegEncoder().Write(image, null, stream, 92);
+        new WicJpegEncoder().Write(image, FrameForge.Application.Editing.JpegMetadata.Nothing, stream, 92);
     }
 }

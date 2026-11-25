@@ -217,7 +217,7 @@ internal static class JudgingSheets
     private static void Save(WicJpegEncoder encoder, AnalysisImage image, string path)
     {
         using var stream = File.Create(path);
-        encoder.Write(image, null, stream, 90);
+        encoder.Write(image, FrameForge.Application.Editing.JpegMetadata.Nothing, stream, 90);
     }
 
     // ------------------------------------------------------------------ scoring

@@ -19,23 +19,65 @@ public enum ExportScope
     CurrentView,
 }
 
-public enum ExportMode
-{
-    CopyFiles,
-    Manifest,
-
-    /// <summary>Render each photo's edit into a new JPEG.</summary>
-    EditedJpegs,
-}
-
 /// <summary>Non-modal export panel: choose scope and mode, then a destination; shows progress and a summary.</summary>
 public sealed partial class ExportViewModel(
     IExportService exporter,
     IEditedExportService editedExporter,
     IFolderPicker folderPicker,
     IFileSavePicker savePicker,
+    IExportProfileService profileStore,
     ILogger<ExportViewModel> logger) : ObservableObject
 {
+    private Task? _profilesLoading;
+    private bool _applyingProfile;
+
+    /// <summary>Built-in profiles first, then the user's own.</summary>
+    public System.Collections.ObjectModel.ObservableCollection<ExportProfile> Profiles { get; } = [.. ExportProfiles.BuiltIn];
+
+    /// <summary>The profile last chosen or saved; choosing one applies its settings.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ProfileIsChanged), nameof(CanDeleteProfile))]
+    [NotifyCanExecuteChangedFor(nameof(DeleteProfileCommand))]
+    private ExportProfile? _selectedProfile;
+
+    /// <summary>Name for "Save as profile".</summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SaveProfileCommand))]
+    private string _newProfileName = string.Empty;
+
+    /// <summary>The name field for "Save as profile" is showing.</summary>
+    [ObservableProperty]
+    private bool _isNamingProfile;
+
+    [RelayCommand]
+    private void BeginNamingProfile()
+    {
+        ProfileMessage = null;
+        NewProfileName = SelectedProfile is { } p && !ExportProfiles.IsBuiltInName(p.Name) ? p.Name : string.Empty;
+        IsNamingProfile = true;
+    }
+
+    [RelayCommand]
+    private void CancelNamingProfile()
+    {
+        IsNamingProfile = false;
+        NewProfileName = string.Empty;
+        ProfileMessage = null;
+    }
+
+    /// <summary>Why a profile couldn't be saved or removed, or null.</summary>
+    [ObservableProperty]
+    private string? _profileMessage;
+
+    /// <summary>The settings no longer match the selected profile.</summary>
+    public bool ProfileIsChanged => SelectedProfile is { } p && (CurrentSettings(p.Name) is not { } current || !current.HasSameSettings(p));
+
+    /// <summary>Only the user's own profiles can be removed.</summary>
+    public bool CanDeleteProfile => SelectedProfile is { } p && !ExportProfiles.IsBuiltInName(p.Name);
+
+    /// <summary>Completes when the stored profiles and last-used settings have been loaded (started by the first Open).</summary>
+    internal Task ProfilesLoaded => _profilesLoading ?? Task.CompletedTask;
+
     /// <summary>JPEG quality for edited exports.</summary>
     [ObservableProperty]
     private int _quality = EditedExportOptions.Default.Quality;
@@ -44,10 +86,32 @@ public sealed partial class ExportViewModel(
     [ObservableProperty]
     private string _maxLongSideText = string.Empty;
 
+    /// <summary>Which of the original's metadata edited JPEGs carry.</summary>
     [ObservableProperty]
-    private bool _keepMetadata = true;
+    [NotifyPropertyChangedFor(nameof(CanWriteRatingAndLabel))]
+    private ExportMetadata _metadata = EditedExportOptions.Default.Metadata;
+
+    /// <summary>Write the FrameForge rating and colour label into edited JPEGs.</summary>
+    [ObservableProperty]
+    private bool _writeRatingAndLabel = EditedExportOptions.Default.WriteRatingAndLabel;
+
+    /// <summary>The rating switch only applies when some metadata is written.</summary>
+    public bool CanWriteRatingAndLabel => Metadata != ExportMetadata.None;
+
+    /// <summary>File-name pattern for copies and edited JPEGs, such as "{date}_{name}"; empty keeps the original names.</summary>
+    [ObservableProperty]
+    private string _nameTemplateText = string.Empty;
+
+    /// <summary>The first photo's export name under the current pattern, or null when there is nothing to show.</summary>
+    [ObservableProperty]
+    private string? _namePreview;
+
+    /// <summary>Why the pattern can't be used, or null.</summary>
+    [ObservableProperty]
+    private string? _nameError;
 
     private Func<ExportScope, IReadOnlyList<ExportItem>> _source = _ => [];
+    private ExportItem? _previewItem;
     private IReadOnlyCollection<string> _libraryFolders = [];
     private CancellationTokenSource? _cts;
 
@@ -104,12 +168,252 @@ public sealed partial class ExportViewModel(
         PendingDestination = null;
         ResultText = null;
         IsOpen = true;
+        _profilesLoading ??= LoadProfilesAsync();
+    }
+
+    /// <summary>Loads the user's profiles and restores the last export's settings.</summary>
+    private async Task LoadProfilesAsync()
+    {
+        ExportProfileSet stored;
+        try
+        {
+            stored = await profileStore.LoadAsync().ConfigureAwait(true);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            LogProfilesLoadFailed(ex);
+            SelectMatchingProfile();
+            return;
+        }
+
+        ShowProfiles(stored);
+        if (stored.LastUsed is { } last)
+        {
+            Apply(last);
+        }
+
+        SelectMatchingProfile();
+    }
+
+    private void ShowProfiles(ExportProfileSet stored)
+    {
+        _applyingProfile = true;
+        try
+        {
+            Profiles.Clear();
+            foreach (var profile in ExportProfiles.BuiltIn.Concat(stored.Profiles))
+            {
+                Profiles.Add(profile);
+            }
+        }
+        finally
+        {
+            _applyingProfile = false;
+        }
+    }
+
+    /// <summary>Selects the first profile holding exactly the current settings, without changing them.</summary>
+    private void SelectMatchingProfile(string? preferredName = null)
+    {
+        var current = CurrentSettings(string.Empty);
+        var match = Profiles.FirstOrDefault(p => preferredName is not null && string.Equals(p.Name, preferredName, StringComparison.OrdinalIgnoreCase))
+            ?? (current is null ? null : Profiles.FirstOrDefault(p => current.HasSameSettings(p)));
+        _applyingProfile = true;
+        try
+        {
+            SelectedProfile = match;
+        }
+        finally
+        {
+            _applyingProfile = false;
+        }
+    }
+
+    partial void OnSelectedProfileChanged(ExportProfile? value)
+    {
+        ProfileMessage = null;
+        if (!_applyingProfile && value is not null)
+        {
+            Apply(value);
+        }
+    }
+
+    private void Apply(ExportProfile profile)
+    {
+        _applyingProfile = true;
+        try
+        {
+            Mode = profile.Mode;
+            NameTemplateText = profile.NamePattern;
+            Quality = profile.Quality;
+            MaxLongSideText = profile.MaxLongSide?.ToString(CultureInfo.CurrentCulture) ?? string.Empty;
+            Metadata = profile.Metadata;
+            WriteRatingAndLabel = profile.WriteRatingAndLabel;
+        }
+        finally
+        {
+            _applyingProfile = false;
+        }
+
+        OnPropertyChanged(nameof(ProfileIsChanged));
+    }
+
+    /// <summary>The panel's settings as a profile, or null while the longest side isn't a number.</summary>
+    internal ExportProfile? CurrentSettings(string name)
+    {
+        int? maxSide = null;
+        if (!string.IsNullOrWhiteSpace(MaxLongSideText))
+        {
+            if (!int.TryParse(MaxLongSideText, NumberStyles.Integer, CultureInfo.CurrentCulture, out var parsed))
+            {
+                return null;
+            }
+
+            maxSide = parsed;
+        }
+
+        return new ExportProfile
+        {
+            Name = name,
+            Mode = Mode,
+            NamePattern = NameTemplateText,
+            Quality = Quality,
+            MaxLongSide = maxSide,
+            Metadata = Metadata,
+            WriteRatingAndLabel = WriteRatingAndLabel,
+        };
+    }
+
+    private void SettingChanged()
+    {
+        if (!_applyingProfile)
+        {
+            OnPropertyChanged(nameof(ProfileIsChanged));
+        }
+    }
+
+    partial void OnQualityChanged(int value) => SettingChanged();
+
+    partial void OnMaxLongSideTextChanged(string value) => SettingChanged();
+
+    partial void OnMetadataChanged(ExportMetadata value) => SettingChanged();
+
+    partial void OnWriteRatingAndLabelChanged(bool value) => SettingChanged();
+
+    private bool CanSaveProfile() => !string.IsNullOrWhiteSpace(NewProfileName);
+
+    [RelayCommand(CanExecute = nameof(CanSaveProfile))]
+    private async Task SaveProfileAsync()
+    {
+        var name = NewProfileName.Trim();
+        if (CurrentSettings(name) is not { } profile)
+        {
+            ProfileMessage = "The longest side must be a whole number of pixels, or empty for full size.";
+            return;
+        }
+
+        if (profile.Validate() is { Count: > 0 } errors)
+        {
+            ProfileMessage = errors[0];
+            return;
+        }
+
+        try
+        {
+            var stored = await profileStore.SaveProfileAsync(profile).ConfigureAwait(true);
+            ShowProfiles(stored);
+            SelectMatchingProfile(name);
+            NewProfileName = string.Empty;
+            IsNamingProfile = false;
+        }
+        catch (ArgumentException ex)
+        {
+            ProfileMessage = ex.Message;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            LogProfileSaveFailed(ex);
+            ProfileMessage = "The profile couldn't be saved (see the log).";
+        }
+    }
+
+    [RelayCommand(CanExecute = nameof(CanDeleteProfile))]
+    private async Task DeleteProfileAsync()
+    {
+        if (SelectedProfile is not { } profile || ExportProfiles.IsBuiltInName(profile.Name))
+        {
+            return;
+        }
+
+        try
+        {
+            var stored = await profileStore.DeleteProfileAsync(profile.Name).ConfigureAwait(true);
+            ShowProfiles(stored);
+            SelectMatchingProfile();
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            LogProfileSaveFailed(ex);
+            ProfileMessage = "The profile couldn't be removed (see the log).";
+        }
+    }
+
+    /// <summary>Remembers the settings of an export that is starting; a failure is logged and doesn't stop the export.</summary>
+    private async Task RememberSettingsAsync()
+    {
+        if (CurrentSettings("Last used") is not { } settings || settings.Validate().Count > 0)
+        {
+            return;
+        }
+
+        try
+        {
+            await profileStore.SaveLastUsedAsync(settings).ConfigureAwait(true);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            LogProfileSaveFailed(ex);
+        }
     }
 
     public void RefreshCounts()
     {
-        KeepCount = _source(ExportScope.Keep).Count;
-        ViewCount = _source(ExportScope.CurrentView).Count;
+        var keep = _source(ExportScope.Keep);
+        var view = _source(ExportScope.CurrentView);
+        KeepCount = keep.Count;
+        ViewCount = view.Count;
+        var shown = Scope == ExportScope.Keep ? keep : view;
+        _previewItem = shown.Count > 0 ? shown[0] : null;
+        UpdateNamePreview();
+    }
+
+    partial void OnScopeChanged(ExportScope value) => RefreshCounts();
+
+    partial void OnModeChanged(ExportMode value)
+    {
+        UpdateNamePreview();
+        SettingChanged();
+    }
+
+    partial void OnNameTemplateTextChanged(string value)
+    {
+        UpdateNamePreview();
+        SettingChanged();
+    }
+
+    private void UpdateNamePreview()
+    {
+        if (!ExportNameTemplate.TryParse(NameTemplateText, out var template, out var errors))
+        {
+            NameError = errors[0];
+            NamePreview = null;
+            return;
+        }
+
+        NameError = null;
+        NamePreview = _previewItem is { } item
+            ? template.FileNameFor(new ExportNameContext(item.Photo, item.Decision, 1), Mode == ExportMode.EditedJpegs ? ".jpg" : null)
+            : null;
     }
 
     [RelayCommand]
@@ -147,6 +451,12 @@ public sealed partial class ExportViewModel(
                 await RunAsync(items, path, manifest: true).ConfigureAwait(true);
             }
 
+            return;
+        }
+
+        if (!ExportNameTemplate.TryParse(NameTemplateText, out _, out var nameErrors))
+        {
+            SetResult($"The file-name pattern can't be used: {nameErrors[0]}", warning: true);
             return;
         }
 
@@ -195,6 +505,7 @@ public sealed partial class ExportViewModel(
         ResultText = null;
         ProgressValue = 0;
         ProgressText = manifest ? "Writing manifest…" : "Starting…";
+        await RememberSettingsAsync().ConfigureAwait(true);
 
         try
         {
@@ -206,12 +517,12 @@ public sealed partial class ExportViewModel(
             }
             else if (Mode == ExportMode.EditedJpegs && EditedOptions() is { } options)
             {
-                var edited = items.Select(i => new EditedExportItem(i.Photo, i.Recipe ?? Core.Editing.EditRecipe.Neutral)).ToList();
+                var edited = items.Select(i => new EditedExportItem(i.Photo, i.Recipe ?? Core.Editing.EditRecipe.Neutral, i.Decision)).ToList();
                 summary = await editedExporter.ExportAsync(edited, destination, options, progress, cts.Token).ConfigureAwait(true);
             }
             else
             {
-                summary = await exporter.CopyAsync(items, destination, progress, cts.Token).ConfigureAwait(true);
+                summary = await exporter.CopyAsync(items, destination, Naming(), progress, cts.Token).ConfigureAwait(true);
             }
 
             SetResult(Describe(summary, manifest, Mode == ExportMode.EditedJpegs), warning: summary.Failures.Count > 0 || summary.Notes.Count > 0 || summary.WasCancelled);
@@ -259,10 +570,16 @@ public sealed partial class ExportViewModel(
         {
             Quality = Math.Clamp(Quality, EditedExportOptions.MinQuality, EditedExportOptions.MaxQuality),
             MaxLongSide = maxSide,
-            KeepMetadata = KeepMetadata,
+            Metadata = Metadata,
+            WriteRatingAndLabel = WriteRatingAndLabel,
+            Naming = Naming(),
         };
         return options.Validate().Count == 0 ? options : null;
     }
+
+    /// <summary>The parsed pattern; checked in <see cref="StartAsync"/> before any export runs.</summary>
+    private ExportNameTemplate Naming() =>
+        ExportNameTemplate.TryParse(NameTemplateText, out var template, out _) ? template : ExportNameTemplate.Original;
 
     internal static string Describe(ExportSummary summary, bool manifest, bool edited = false)
     {
@@ -310,4 +627,10 @@ public sealed partial class ExportViewModel(
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Export to {Destination} failed.")]
     private partial void LogExportFailed(Exception exception, string destination);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Loading export profiles failed; showing the built-in ones.")]
+    private partial void LogProfilesLoadFailed(Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Saving export profiles failed.")]
+    private partial void LogProfileSaveFailed(Exception exception);
 }

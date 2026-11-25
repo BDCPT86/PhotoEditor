@@ -20,7 +20,7 @@ internal static class RawSpike
     private static readonly string[] RawExtensions = [".cr3", ".cr2", ".dng", ".nef", ".arw", ".raf", ".orf", ".rw2"];
     private static readonly string[] JpegExtensions = [".JPG", ".jpg", ".jpeg", ".JPEG"];
 
-    public static int Run(string rawDir, string dllPath, string outDir, int count, StringBuilder report)
+    public static int Run(string rawDir, string? jpegDir, string dllPath, string outDir, int count, StringBuilder report)
     {
         LibRawNative.Load(dllPath);
         Directory.CreateDirectory(outDir);
@@ -46,12 +46,13 @@ internal static class RawSpike
             return 1;
         }
 
+        var pairs = PairWithJpegs(files, jpegDir, report);
         using var memory = new MemorySampler();
         var rows = new List<Row>();
         foreach (var file in files)
         {
             Console.Error.WriteLine("RAW " + Path.GetFileName(file));
-            rows.Add(Measure(file, compareDir, memory));
+            rows.Add(Measure(file, pairs.GetValueOrDefault(file), compareDir, memory));
         }
 
         WriteResults(rows, report);
@@ -91,10 +92,92 @@ internal static class RawSpike
     /// <summary>How far one image's colours are from the camera JPEG's (CIE76 ΔE in Lab, at 200 px).</summary>
     private sealed record Colour(double GlobalDeltaE, double MeanDeltaE, double Lightness);
 
-    private static Row Measure(string file, string compareDir, MemorySampler memory)
+    /// <summary>
+    /// The camera JPEG for each RAW file: one with the same name next to it, otherwise (with <paramref name="jpegDir"/>)
+    /// the one in that folder taken in the same second. Two JPEGs in the same second are ambiguous and not used.
+    /// </summary>
+    private static Dictionary<string, string> PairWithJpegs(List<string> files, string? jpegDir, StringBuilder report)
+    {
+        var pairs = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        ILookup<DateTime, string>? byTime = null;
+        if (jpegDir is not null)
+        {
+            var reader = new WicPhotoMetadataReader();
+            byTime = Directory.EnumerateFiles(jpegDir)
+                .Where(f => JpegExtensions.Contains(Path.GetExtension(f)))
+                .Select(f => (File: f, Taken: TryTaken(reader, f)))
+                .Where(x => x.Taken is not null)
+                .ToLookup(x => x.Taken!.Value, x => x.File);
+        }
+
+        var ambiguous = 0;
+        foreach (var file in files)
+        {
+            if (JpegExtensions.Select(e => Path.ChangeExtension(file, e)).FirstOrDefault(File.Exists) is { } sibling)
+            {
+                pairs[file] = sibling;
+                continue;
+            }
+
+            if (byTime is null)
+            {
+                continue;
+            }
+
+            DateTime? taken;
+            try
+            {
+                using var raw = RawFile.Open(file);
+                taken = raw.Info().Taken?.LocalDateTime; // LibRaw turned the EXIF local time into Unix time with this PC's zone
+            }
+            catch (RawDecodeException)
+            {
+                continue;
+            }
+
+            if (taken is { } t)
+            {
+                var matches = byTime[new DateTime(t.Year, t.Month, t.Day, t.Hour, t.Minute, t.Second, DateTimeKind.Unspecified)].ToList();
+                if (matches.Count == 1)
+                {
+                    pairs[file] = matches[0];
+                }
+                else if (matches.Count > 1)
+                {
+                    ambiguous++;
+                }
+            }
+        }
+
+        if (jpegDir is not null)
+        {
+            report.AppendLine(C, $"- Camera JPEGs from `{Path.GetFileName(jpegDir.TrimEnd('\\', '/'))}`, paired by capture time: {pairs.Count} of {files.Count} RAW files{(ambiguous > 0 ? $" ({ambiguous} skipped: several JPEGs in the same second)" : string.Empty)}");
+            foreach (var (raw, jpeg) in pairs.OrderBy(p => p.Key, StringComparer.OrdinalIgnoreCase))
+            {
+                report.AppendLine(C, $"  - {Path.GetFileName(raw)} ↔ {Path.GetFileName(jpeg)}");
+            }
+
+            report.AppendLine();
+        }
+
+        return pairs;
+    }
+
+    private static DateTime? TryTaken(WicPhotoMetadataReader reader, string path)
+    {
+        try
+        {
+            return reader.Read(path).CaptureLocalTime;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException or FileFormatException or ArgumentException or InvalidOperationException)
+        {
+            return null;
+        }
+    }
+
+    private static Row Measure(string file, string? jpegPath, string compareDir, MemorySampler memory)
     {
         var name = Path.GetFileName(file);
-        var jpegPath = JpegExtensions.Select(e => Path.ChangeExtension(file, e)).FirstOrDefault(File.Exists);
         var cameraJpeg = jpegPath is null ? null : new WicAnalysisImageLoader().Load(jpegPath, 480);
         try
         {
@@ -141,7 +224,7 @@ internal static class RawSpike
 
             return new Row(
                 name, $"{info.Make} {info.Model}".Trim(), $"{info.RawWidth}×{info.RawHeight}", info.Flip, openMs,
-                preview is null ? "none" : $"{preview.Format} {preview.Width}×{preview.Height}", previewMs, decodeMs, thumbMs,
+                preview is null ? "none" : previewImage is not null ? $"{preview.Format} {previewImage.Width}×{previewImage.Height}" : $"{preview.Format} {preview.Width}×{preview.Height}", previewMs, decodeMs, thumbMs,
                 $"{developed.Width}×{developed.Height}", developMs, flatMs, peak,
                 Compare(previewImage, cameraJpeg), Compare(developedImage, cameraJpeg), Compare(flatImage, cameraJpeg), null);
         }
@@ -488,7 +571,7 @@ internal static class RawSpike
         }
 
         using var file = File.Create(path);
-        new WicJpegEncoder().Write(new AnalysisImage(width, height, bgra), null, file, 88);
+        new WicJpegEncoder().Write(new AnalysisImage(width, height, bgra), FrameForge.Application.Editing.JpegMetadata.Nothing, file, 88);
     }
 
     private static string Sha256(string path)

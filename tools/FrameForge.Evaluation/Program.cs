@@ -25,7 +25,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 //   mask-benchmark --models <dir> --photos <dir> [--count 20] [--seed 1] [--threads 2,4,6]  (time per mask stage and memory on real photos; thread counts interleaved per photo)
 //   sky-sheet --photos <dir> --sheet <new dir> [--count 30] [--seed 1] [--exclude <sheet dir>[;<sheet dir>…]]  (grades the sky rules; about two thirds with sky found)
 //   draw-sheet --models <dir> --photos <dir> --sheet <new dir> [--count 12] [--seed 1] [--exclude <sheet dir>[;…]]  (you outline subject and sky; scored as IoU against the app's masks)
-//   raw-spike --raw <dir> --libraw <libraw.dll> --out-dir <new dir> [--count 20] [--out report.md]  (M07 A1: LibRaw on your RAW files: speed, memory, colour against the camera JPEG, damaged copies)
+//   raw-spike --raw <dir> [--jpeg <dir>] --libraw <libraw.dll> --out-dir <new dir> [--count 20] [--out report.md]  (M07 A1: LibRaw on your RAW files: speed, memory, colour against the camera JPEG, damaged copies)
 // <dir> holds the catalogued model files (verified by SHA-256 before use). Photos are opened read-only.
 var culture = CultureInfo.InvariantCulture;
 if (args.Length == 0 || args[0] is not ("benchmark" or "evaluate" or "annotate" or "review" or "light-sheet" or "crop-sheet" or "mask-sheet" or "score-sheet" or "mask-benchmark" or "sky-sheet" or "draw-sheet" or "sky-debug" or "raw-spike" or "raw-decode-one"))
@@ -293,7 +293,7 @@ int Review(Dictionary<string, string> opts)
 
         var sheet = ContactSheet(rendered, tile, columns: 5);
         using var stream = File.Create(Path.Combine(outDir, Path.GetFileNameWithoutExtension(file) + "_sheet.jpg"));
-        encoder.Write(sheet, null, stream, 88);
+        encoder.Write(sheet, FrameForge.Application.Editing.JpegMetadata.Nothing, stream, 88);
         report.AppendLine(culture, $"- {Path.GetFileName(file)}: {full.Width}×{full.Height}");
     }
 
@@ -489,7 +489,7 @@ int RawSpikeCommand(Dictionary<string, string> opts)
         return 2;
     }
 
-    return FrameForge.Evaluation.Raw.RawSpike.Run(rawDir, dll, outDir, int.Parse(opts.GetValueOrDefault("count", "20"), culture), report);
+    return FrameForge.Evaluation.Raw.RawSpike.Run(rawDir, opts.GetValueOrDefault("jpeg"), dll, outDir, int.Parse(opts.GetValueOrDefault("count", "20"), culture), report);
 }
 
 int SkyDebugCommand(Dictionary<string, string> opts)

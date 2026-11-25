@@ -30,7 +30,7 @@ internal sealed class CullingFixture : IDisposable
         Controller = new DecisionController(DecisionService, NullLogger<DecisionController>.Instance);
         Viewer = new ViewerViewModel(Loader, Edit.Renderer, Edit.Develop, Edit.Faces, NullLogger<ViewerViewModel>.Instance);
         Compare = new CompareViewModel(Loader, NullLogger<CompareViewModel>.Instance);
-        Export = new ExportViewModel(Exporter, EditedExporter, FolderPicker, new NullSavePicker(), NullLogger<ExportViewModel>.Instance);
+        Export = new ExportViewModel(Exporter, EditedExporter, FolderPicker, new NullSavePicker(), new ExportProfileService(Settings), NullLogger<ExportViewModel>.Instance);
         PresetPanel = new PresetPanelViewModel(Edit.Controller, NullLogger<PresetPanelViewModel>.Instance);
         AnalysisController = new AnalysisController(AnalysisService, AiService, AiRuntime, Settings);
         AnalysisPanel = new LibraryAnalysisViewModel(AnalysisController, NullLogger<LibraryAnalysisViewModel>.Instance);
@@ -315,9 +315,12 @@ internal sealed class RecordingExporter : IExportService
 {
     public List<IReadOnlyList<ExportItem>> Calls { get; } = [];
 
-    public Task<ExportSummary> CopyAsync(IReadOnlyList<ExportItem> items, string destinationFolder, IProgress<ExportProgress>? progress, CancellationToken cancellationToken)
+    public List<ExportNameTemplate> Namings { get; } = [];
+
+    public Task<ExportSummary> CopyAsync(IReadOnlyList<ExportItem> items, string destinationFolder, ExportNameTemplate naming, IProgress<ExportProgress>? progress, CancellationToken cancellationToken)
     {
         Calls.Add(items);
+        Namings.Add(naming);
         return Task.FromResult(new ExportSummary { Destination = destinationFolder, Requested = items.Count, Exported = items.Count });
     }
 

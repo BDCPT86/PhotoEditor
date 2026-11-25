@@ -68,8 +68,11 @@ internal sealed class StubAnalysisImageLoader : Application.Analysis.IAnalysisIm
 /// <summary>Writes the raw BGRA bytes after a marker (real JPEG encoding is tested in FrameForge.Imaging.Tests).</summary>
 internal sealed class StubJpegEncoder : Application.Editing.IJpegEncoder
 {
-    public bool Write(FrameForge.Analysis.AnalysisImage image, string? metadataSourcePath, Stream destination, int quality)
+    public System.Collections.Concurrent.ConcurrentQueue<Application.Editing.JpegMetadata> Metadata { get; } = new();
+
+    public bool Write(FrameForge.Analysis.AnalysisImage image, Application.Editing.JpegMetadata metadata, Stream destination, int quality)
     {
+        Metadata.Enqueue(metadata);
         destination.Write("STUBJPEG"u8);
         destination.Write(image.Bgra);
         return true;

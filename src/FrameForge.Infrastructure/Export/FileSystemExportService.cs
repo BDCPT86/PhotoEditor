@@ -20,13 +20,15 @@ public sealed partial class FileSystemExportService(ILogger<FileSystemExportServ
     public Task<ExportSummary> CopyAsync(
         IReadOnlyList<ExportItem> items,
         string destinationFolder,
+        ExportNameTemplate naming,
         IProgress<ExportProgress>? progress,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(items);
         ArgumentException.ThrowIfNullOrWhiteSpace(destinationFolder);
+        ArgumentNullException.ThrowIfNull(naming);
 
-        return Task.Run(() => CopyCoreAsync(items, Path.GetFullPath(destinationFolder), progress, cancellationToken), CancellationToken.None);
+        return Task.Run(() => CopyCoreAsync(items, Path.GetFullPath(destinationFolder), naming, progress, cancellationToken), CancellationToken.None);
     }
 
     public Task<ExportSummary> WriteManifestAsync(IReadOnlyList<ExportItem> items, string manifestPath, CancellationToken cancellationToken)
@@ -83,6 +85,7 @@ public sealed partial class FileSystemExportService(ILogger<FileSystemExportServ
     private async Task<ExportSummary> CopyCoreAsync(
         IReadOnlyList<ExportItem> items,
         string destination,
+        ExportNameTemplate naming,
         IProgress<ExportProgress>? progress,
         CancellationToken cancellationToken)
     {
@@ -92,7 +95,8 @@ public sealed partial class FileSystemExportService(ILogger<FileSystemExportServ
         }
 
         var existing = Directory.EnumerateFileSystemEntries(destination).Select(e => Path.GetFileName(e)).ToList();
-        var plan = ExportNamePlanner.Plan(items.Select(i => i.Photo.FilePath), existing);
+        var wanted = items.Select((item, i) => naming.FileNameFor(new ExportNameContext(item.Photo, item.Decision, i + 1)));
+        var plan = ExportNamePlanner.Plan(wanted, existing);
         var taken = new HashSet<string>(existing.Concat(plan.Select(p => p.TargetFileName)), StringComparer.OrdinalIgnoreCase);
 
         var failures = new List<ExportFailure>();
@@ -104,27 +108,28 @@ public sealed partial class FileSystemExportService(ILogger<FileSystemExportServ
 
         try
         {
-            foreach (var file in plan)
+            for (var i = 0; i < plan.Count; i++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                var (source, file) = (items[i].Photo.FilePath, plan[i]);
                 try
                 {
-                    var (finalName, size) = await CopyOneAsync(file.SourcePath, destination, file.TargetFileName, taken, cancellationToken).ConfigureAwait(false);
+                    var (finalName, size) = await CopyOneAsync(source, destination, file.TargetFileName, taken, cancellationToken).ConfigureAwait(false);
                     exported++;
                     bytes += size;
-                    if (!string.Equals(finalName, Path.GetFileName(file.SourcePath), StringComparison.Ordinal))
+                    if (file.WasRenamed || !string.Equals(finalName, file.TargetFileName, StringComparison.Ordinal))
                     {
                         renamed++;
                     }
                 }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
                 {
-                    failures.Add(new ExportFailure(file.SourcePath, ex.Message));
-                    LogCopyFailed(ex, file.SourcePath);
+                    failures.Add(new ExportFailure(source, ex.Message));
+                    LogCopyFailed(ex, source);
                 }
 
                 completed++;
-                progress?.Report(new ExportProgress(plan.Count, completed, failures.Count, bytes, Path.GetFileName(file.SourcePath)));
+                progress?.Report(new ExportProgress(plan.Count, completed, failures.Count, bytes, Path.GetFileName(source)));
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -187,7 +192,7 @@ public sealed partial class FileSystemExportService(ILogger<FileSystemExportServ
                 catch (IOException) when (attempt < MaxRenameAttempts && (File.Exists(final) || Directory.Exists(final)))
                 {
                     taken.Add(name);
-                    name = ExportNamePlanner.NextAvailable(Path.GetFileName(sourcePath), taken);
+                    name = ExportNamePlanner.NextAvailable(targetName, taken);
                     taken.Add(name);
                 }
             }

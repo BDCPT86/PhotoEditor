@@ -224,14 +224,47 @@ in too.
   changed.
 
 ## 11. Export
-Choose **Export** in the header, pick which **Photos** (all marked Keep, or those shown in the grid), and what to
-**Export as**, then **Choose destination and export…**. To export only one folder's keepers, choose **Kept** and that
-folder in the sidebar, then **Photos shown in the grid**.
-- **Copy files to a folder:** the originals, copied unchanged.
-- **Edited JPEGs:** new JPEGs with each photo's edits, masks included, at the **Quality** and **Longest side** you
-  choose, optionally keeping the camera metadata (EXIF). Masks not worked out yet are worked out during the export. If
-  one can't be made, the JPEG is still saved with the rest of the edit, and the result says which photo and why.
+Choose **Export** in the header. Pick a **Profile** (or set things up yourself), which **Photos** (all marked Keep, or
+those shown in the grid) and what to **Export as**, then **Choose destination and export…**. To export only one
+folder's keepers, choose **Kept** and that folder in the sidebar, then **Photos shown in the grid**.
+- **Copy files to a folder:** the originals, copied unchanged (all their metadata included).
+- **Edited JPEGs:** new JPEGs with each photo's edits, masks included. Masks not worked out yet are worked out during
+  the export. If one can't be made, the JPEG is still saved with the rest of the edit, and the result says which photo
+  and why. You choose:
+  - **Quality** and **Longest side** (in pixels; empty keeps full size, and photos are never enlarged).
+  - **Metadata:** **All** keeps the camera details, captions and keywords. **All except location** also removes GPS
+    and place names (city, region, country). **None** writes no metadata at all.
+  - **Include my star rating and colour label:** writes your rating and label into the JPEG, replacing any in the
+    original, so Windows, Lightroom and Bridge show them.
 - **Selection manifest (CSV):** a list of the photos and your decisions, with no image files.
+
+### File names
+Leave **File names** empty to keep the original names, or type a pattern. **First file** shows what the first photo
+will be called.
+
+| Token | Gives |
+|---|---|
+| `{name}` | the original name, without its extension |
+| `{date}` `{time}` | when the photo was taken (or the file's date): `2026-05-01`, `093015` |
+| `{seq}` | 001, 002, … in export order |
+| `{folder}` | the name of the photo's folder |
+| `{camera}` | the camera model |
+| `{rating}` `{decision}` `{label}` | `3`, `Keep`, `Red` |
+
+Formats: `{date:yyyyMMdd}`, `{time:HH-mm}`, `{seq:4}` (four digits). For example `{date}_{name}` gives
+`2026-05-01_IMG_0042.jpg`. A token with nothing to show (no rating, say) is left out together with one `-`, `_`, space
+or `.` beside it. Subfolders (`/`) and characters Windows doesn't allow are not accepted; the panel says why.
+
+### Profiles
+A profile remembers everything in the panel except the destination folder and which photos are exported. Three are
+built in:
+- **Full-size JPEG:** edited JPEGs at quality 92, full size, all metadata, with your rating and label.
+- **Web (2048 px, no location):** quality 85, 2,048 px on the longest side, no location, no rating or label.
+- **Originals:** copies with their original names.
+
+Change any setting and the panel says **Changed from this profile**. Choose **Save as profile…** to keep the settings
+under a name of your own; saving with that name again updates it. The bin button removes one of your profiles. The
+panel also remembers your last export's settings and opens with them next time.
 
 Existing files are never replaced: a name clash is saved as `name (2).jpg`. If you export into a folder that is part of
 your library, FrameForge warns you that the copies will appear as new photos at the next import.
@@ -275,7 +308,7 @@ The **About** page shows the data folder, the logs folder and the database. Dele
 Deleting the whole `FrameForge` folder resets the app; your photos are not touched.
 
 ## 14. Limits worth knowing
-- JPEG only for now (RAW is planned).
+- JPEG only for now. RAW support is planned: Canon EOS R50 RAW files have been tested, but the app can't open them yet.
 - At the largest thumbnail size on a high-DPI screen (150 % and up), thumbnails can look slightly soft: they are made at
   320 px.
 - There are no collections yet; the sidebar shows views and folders only.

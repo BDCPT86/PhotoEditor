@@ -1,5 +1,7 @@
 using FrameForge.App.Shortcuts;
 using FrameForge.App.ViewModels;
+using FrameForge.Application.Editing;
+using FrameForge.Application.Export;
 using FrameForge.Core.Decisions;
 using FrameForge.Core.Editing;
 
@@ -138,6 +140,8 @@ public sealed class EditWorkflowTests
         f.Export.Mode = ExportMode.EditedJpegs;
         f.Export.Quality = 85;
         f.Export.MaxLongSideText = "2000";
+        f.Export.Metadata = ExportMetadata.AllButLocation;
+        f.Export.WriteRatingAndLabel = false;
         f.FolderPicker.Next = @"D:\Out";
         await f.Export.StartCommand.ExecuteAsync(null);
 
@@ -146,6 +150,7 @@ public sealed class EditWorkflowTests
         Assert.Equal(20, items.Single(i => i.Photo.Id == f.Photos[0].Id).Recipe.Saturation);
         Assert.True(items.Single(i => i.Photo.Id == f.Photos[1].Id).Recipe.IsNeutral);
         Assert.Equal((85, 2000), (options.Quality, options.MaxLongSide!.Value));
+        Assert.Equal((ExportMetadata.AllButLocation, false), (options.Metadata, options.WriteRatingAndLabel));
         Assert.Contains("edited JPEG", f.Export.ResultText, StringComparison.Ordinal);
         Assert.Empty(f.Exporter.Calls); // the plain copier was not used
     }

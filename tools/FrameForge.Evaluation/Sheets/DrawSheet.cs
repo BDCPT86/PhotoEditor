@@ -223,7 +223,7 @@ internal static class DrawSheet
             };
         });
         using var stream = File.Create(outPath);
-        new WicJpegEncoder().Write(view, null, stream, 85);
+        new WicJpegEncoder().Write(view, FrameForge.Application.Editing.JpegMetadata.Nothing, stream, 85);
     }
 
     // ------------------------------------------------------------------ pure measures (unit-tested)
@@ -417,7 +417,7 @@ internal static class DrawSheet
     private static void Save(WicJpegEncoder encoder, AnalysisImage image, string path)
     {
         using var stream = File.Create(path);
-        encoder.Write(image, null, stream, 90);
+        encoder.Write(image, FrameForge.Application.Editing.JpegMetadata.Nothing, stream, 90);
     }
 
     private const string Page = """

@@ -284,6 +284,72 @@ public sealed class CullingWorkflowTests
     // ------------------------------------------------------------------ export
 
     [Fact]
+    public async Task Export_NamePattern_PreviewsTheFirstPhoto_AndIsPassedToTheCopier()
+    {
+        using var f = new CullingFixture();
+        await f.LoadAsync();
+        f.Select(2);
+        f.Library.TryHandle(CullingAction.Keep);
+        await f.StoredAsync(2, d => d.State == CullState.Keep);
+        f.Library.OpenExportCommand.Execute(null);
+
+        Assert.Equal("IMG_02.jpg", f.Export.NamePreview); // empty pattern: the original name
+
+        f.Export.NameTemplateText = "{seq:3}-{name}_{decision}";
+        Assert.Equal("001-IMG_02_Keep.jpg", f.Export.NamePreview);
+        Assert.Null(f.Export.NameError);
+
+        f.FolderPicker.Next = @"D:\Out";
+        await f.Export.StartCommand.ExecuteAsync(null);
+
+        Assert.Equal("{seq:3}-{name}_{decision}", Assert.Single(f.Exporter.Namings).Text);
+    }
+
+    [Fact]
+    public async Task Export_BadNamePattern_ShowsWhy_AndDoesNotExport()
+    {
+        using var f = new CullingFixture();
+        await f.LoadAsync();
+        f.Select(0);
+        f.Library.TryHandle(CullingAction.Keep);
+        await f.StoredAsync(0, d => d.State == CullState.Keep);
+        f.Library.OpenExportCommand.Execute(null);
+
+        f.Export.NameTemplateText = "{date}_{stars}";
+
+        Assert.Null(f.Export.NamePreview);
+        Assert.Contains("{stars} isn't a known token", f.Export.NameError, StringComparison.Ordinal);
+
+        f.FolderPicker.Next = @"D:\Out";
+        await f.Export.StartCommand.ExecuteAsync(null);
+
+        Assert.Empty(f.Exporter.Calls);
+        Assert.True(f.Export.ResultIsWarning);
+        Assert.Contains("file-name pattern", f.Export.ResultText, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Export_EditedMode_PreviewsAJpgName_AndPassesThePatternAndDecisions()
+    {
+        using var f = new CullingFixture();
+        await f.LoadAsync();
+        f.Select(1);
+        f.Library.TryHandle(CullingAction.Keep);
+        await f.StoredAsync(1, d => d.State == CullState.Keep);
+        f.Library.OpenExportCommand.Execute(null);
+        f.Export.NameTemplateText = "{name}-{decision}";
+
+        f.Export.Mode = ExportMode.EditedJpegs;
+        f.FolderPicker.Next = @"D:\Out";
+        await f.Export.StartCommand.ExecuteAsync(null);
+
+        Assert.Equal("IMG_01-Keep.jpg", f.Export.NamePreview);
+        var (items, options) = Assert.Single(f.EditedExporter.Calls);
+        Assert.Equal("{name}-{decision}", options.Naming.Text);
+        Assert.Equal(CullState.Keep, Assert.Single(items).Decision!.State);
+    }
+
+    [Fact]
     public async Task Export_KeepScope_IgnoresTheCurrentFilter()
     {
         using var f = new CullingFixture();
