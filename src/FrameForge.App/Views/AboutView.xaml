@@ -8,7 +8,14 @@
              d:DataContext="{d:DesignInstance Type=vm:AboutViewModel}">
     <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
     <StackPanel MaxWidth="760" HorizontalAlignment="Left" Margin="40,28,40,48">
-        <TextBlock Text="{Binding Info.ProductName}" Style="{StaticResource Text.PageTitle}" />
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
+            <Image Source="{StaticResource Brand.Mark}" Width="56" Height="56" Margin="0,0,16,0" VerticalAlignment="Center"
+                   RenderOptions.BitmapScalingMode="HighQuality" AutomationProperties.Name="FrameForge logo" />
+            <StackPanel VerticalAlignment="Center">
+                <TextBlock Text="{Binding Info.ProductName}" Style="{StaticResource Text.PageTitle}" Margin="0" />
+                <TextBlock Text="Cull and edit, on your own computer" Style="{StaticResource Text.Secondary}" Margin="0,2,0,0" />
+            </StackPanel>
+        </StackPanel>
 
         <Grid>
             <Grid.ColumnDefinitions>
@@ -52,6 +59,9 @@
                    Text="Original photos are never modified. FrameForge stores only paths and metadata." />
 
         <TextBlock Text="Third-party notices" Style="{StaticResource Text.SectionLabel}" FontSize="{StaticResource FontSize.Section}" Margin="0,36,0,8" />
+        <TextBlock Style="{StaticResource Text.Secondary}" TextWrapping="Wrap" Margin="0,0,0,6"
+                   Text="FrameForge sends nothing over the internet. The only connections are model downloads that you start. The full licence texts are in this folder:" />
+        <TextBox Text="{Binding LicensesDirectory, Mode=OneWay}" IsReadOnly="True" Margin="0,0,0,12" AutomationProperties.Name="Licence texts folder" />
         <TextBox Text="{Binding Notices, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap"
                  FontFamily="Consolas" FontSize="12" MaxHeight="420"
                  VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"

@@ -9,7 +9,9 @@ presets and export, in plain steps.
 (keep/reject/review, ratings, colour labels), filter and sort, compare photos side by side, and export the selection.
 **Analyze** measures sharpness and exposure and finds exact and near-duplicates. These are explainable heuristics,
 not AI. Optional local AI models (face detection and scene similarity, off by default, installed only with your consent)
-add advisory badges and a suggested pick per group. They never change your decisions.
+add advisory badges and a suggested pick per group. They never change your decisions. Nothing is sent over the
+internet: the only connections are model downloads you start, and the AI runtime's telemetry is switched off (see
+[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) and [docs/licence-checklist.md](docs/licence-checklist.md)).
 **Develop** edits exposure, white balance, contrast, highlights/shadows, saturation and vibrance, plus crop and
 straighten, without ever changing the original file. Presets apply a look to many photos at once, and **Export** can
 save edited JPEGs. **Auto** suggests a few options for light, levelling and cropping to faces; you pick one, or none.

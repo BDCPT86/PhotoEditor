@@ -7,7 +7,15 @@
     <AssemblyName>FrameForge</AssemblyName>
     <RootNamespace>FrameForge.App</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- Rendered from Themes/Brand.xaml by `FrameForge.Evaluation brand` (docs/brand.md). -->
+    <ApplicationIcon>Assets\FrameForge.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Shown by Windows the moment the app starts, before .NET and WPF are up; closes when the main window appears. -->
+    <SplashScreen Include="Assets\Splash.png" />
+    <Resource Include="Assets\FrameForge.ico" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\FrameForge.Application\FrameForge.Application.csproj" />
@@ -22,6 +30,8 @@
 
   <ItemGroup>
     <Content Include="..\..\THIRD-PARTY-NOTICES.md" Link="THIRD-PARTY-NOTICES.md" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Full licence and notice texts, required by MIT and Apache-2.0 when the software is distributed. -->
+    <Content Include="..\..\licenses\**" Link="licenses\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

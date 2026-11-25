@@ -10,6 +10,7 @@
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance Type=vm:ShellViewModel}"
         Title="FrameForge AI"
+        Icon="/Assets/FrameForge.ico"
         Width="1440" Height="900" MinWidth="960" MinHeight="560"
         WindowStartupLocation="CenterScreen"
         Background="{StaticResource Brush.Canvas}"
@@ -59,9 +60,13 @@
         <!-- ============================== Sidebar: library views, folders, then Settings and About -->
         <Border Grid.Column="0" Background="{StaticResource Brush.Chrome}" BorderBrush="{StaticResource Brush.Hairline}" BorderThickness="0,0,1,0">
             <DockPanel>
-                <!-- Wordmark, aligned with the page header -->
-                <TextBlock DockPanel.Dock="Top" Margin="20,16,0,4" Text="FrameForge" FontFamily="{StaticResource Font.Display}"
-                           FontSize="{StaticResource FontSize.Section}" FontWeight="SemiBold" Foreground="{StaticResource Brush.Text.Primary}" />
+                <!-- Mark and wordmark, aligned with the page header -->
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="16,14,0,4">
+                    <Image Source="{StaticResource Brand.MarkBare}" Width="20" Height="20" Margin="0,0,8,0" VerticalAlignment="Center"
+                           RenderOptions.BitmapScalingMode="HighQuality" AutomationProperties.Name="FrameForge logo" />
+                    <TextBlock Text="FrameForge" FontFamily="{StaticResource Font.Display}" VerticalAlignment="Center"
+                               FontSize="{StaticResource FontSize.Section}" FontWeight="SemiBold" Foreground="{StaticResource Brush.Text.Primary}" />
+                </StackPanel>
 
                 <!-- Settings and About, at the foot -->
                 <StackPanel DockPanel.Dock="Bottom" Margin="0,8,0,12">
@@ -71,6 +76,10 @@
                             <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Status}">
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding StatusMessage}" Value="Ready">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                    <!-- While starting, the loading state in the page area already says it -->
+                                    <DataTrigger Binding="{Binding IsReady}" Value="False">
                                         <Setter Property="Visibility" Value="Collapsed" />
                                     </DataTrigger>
                                 </Style.Triggers>
@@ -229,5 +238,18 @@
 
         <!-- ============================== Current page -->
         <ContentControl Grid.Column="1" Content="{Binding CurrentPage}" Focusable="False" />
+
+        <!-- Until start-up has finished (database, settings): the mark and what is happening -->
+        <views:LoadingMark Grid.Column="1" Text="{Binding StatusMessage}" AutomationProperties.AutomationId="StartupLoading">
+            <views:LoadingMark.Style>
+                <Style TargetType="views:LoadingMark">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsReady}" Value="True">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </views:LoadingMark.Style>
+        </views:LoadingMark>
     </Grid>
 </Window>

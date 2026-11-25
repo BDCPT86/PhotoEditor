@@ -16,7 +16,7 @@ FrameForge is where photographs are judged, so the interface behaves like a neut
   (keep, review, reject) appear only where a decision is shown.
 - **The signature: a print mat.** Selection is a warm-white frame around the photo, like a mat cut around a print. It
   reads on any image and does not rely on colour. The same mat marks the active panel in Compare and the focused Auto
-  option.
+  option, and it is the logo: a blue print in that mat ([brand.md](brand.md)).
 - **Restraint.** No gradients, glass, glow, oversized cards or decorative AI imagery. Corners stay small (2–6 px);
   photos are never rounded into "cards".
 

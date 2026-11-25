@@ -37,8 +37,20 @@
 >
 >   See the [performance report](../benchmarks/m07-performance.md) for the baseline, the changes, the after-figures and
 >   what is still open.
+> - **Phase F1 (licence and privacy audit), implemented.**
+>   - ONNX Runtime's telemetry, on by default in its official builds, is now switched off before it starts.
+>   - The full licence texts ship in `licenses/`, and the notices cover all 49 packages.
+>   - The [distribution checklist](../licence-checklist.md) is completed, with the decisions phases E and A will need.
+>
+>   See [ADR 0018](../decisions/0018-licences-and-no-telemetry.md).
+> - **Phase F2 (logo and loading screen; added to M07 on request), implemented.**
+>   - The mark is a blue print in the app's warm-white selection mat: the app and window icon, the sidebar, About and
+>     the guide page.
+>   - A splash appears the moment the app starts.
+>   - While it starts and loads the library, the mark shows with what it is doing.
+>
+>   See [brand.md](../brand.md).
 > - **Order planned for the rest:**
->   - F: licence audit
 >   - E: installer and crash-report design
 >   - A: RAW integration (A2 onwards), each step planned from the spike's findings
 

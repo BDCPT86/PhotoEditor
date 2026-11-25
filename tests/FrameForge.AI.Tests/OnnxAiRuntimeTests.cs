@@ -8,6 +8,14 @@ public sealed class OnnxAiRuntimeTests : IDisposable
     private readonly string _dir = Directory.CreateTempSubdirectory("frameforge-ai-tests-").FullName;
 
     [Fact]
+    public void UsingTheRuntime_TurnsOffOnnxRuntimeTelemetry_ForThisProcess()
+    {
+        using var runtime = new OnnxAiRuntime(new Store(_ => new ModelStatus(AiModelCatalog.FaceDetector, ModelState.NotInstalled, null)), NullLogger<OnnxAiRuntime>.Instance);
+
+        Assert.Equal("1", Environment.GetEnvironmentVariable(OnnxPrivacy.DisableTelemetryVariable));
+    }
+
+    [Fact]
     public void NoModelsInstalled_ReturnsNull_WithoutError()
     {
         using var runtime = new OnnxAiRuntime(new Store(_ => new ModelStatus(AiModelCatalog.FaceDetector, ModelState.NotInstalled, null)), NullLogger<OnnxAiRuntime>.Instance);

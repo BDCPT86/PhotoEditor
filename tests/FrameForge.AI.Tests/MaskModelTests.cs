@@ -130,6 +130,7 @@ public sealed class MaskModelTests
             Assert.Equal(model.Sha256, Convert.ToHexStringLower(SHA256.HashData(stream)));
         }
 
+        OnnxPrivacy.EnsureApplied();
         return new InferenceSession(path, new SessionOptions { IntraOpNumThreads = OnnxAiRuntime.IntraOpThreads });
     }
 

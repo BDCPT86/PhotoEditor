@@ -6,8 +6,9 @@ folder, cull it with the keyboard, use analysis as hints, edit, and export.
 **Three promises hold everywhere in the app:**
 - **Your originals never change.** Photos are only ever read. Edits, decisions and analysis are stored separately, and
   export writes new files.
-- **Nothing leaves your computer.** There is no cloud. Optional AI models run locally and are downloaded only when you
-  say so.
+- **Nothing leaves your computer.** There is no cloud and no usage tracking. Optional AI models run locally and are
+  downloaded only when you say so. The AI runtime's own telemetry is switched off. **About** lists the third-party
+  licences and the folder with their full texts.
 - **Automatic tools only suggest.** Analysis badges, AI picks, Auto options and masks are hints or previews. Nothing
   changes until you apply it, and you can undo it.
 

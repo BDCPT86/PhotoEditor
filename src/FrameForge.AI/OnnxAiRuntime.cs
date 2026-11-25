@@ -21,6 +21,8 @@ public sealed partial class OnnxAiRuntime(IModelStore store, ILogger<OnnxAiRunti
     /// </summary>
     public const int MaskIntraOpThreads = 4;
 
+    static OnnxAiRuntime() => OnnxPrivacy.EnsureApplied(); // before any session is created
+
     private readonly Lock _gate = new();
     private YuNetFaceDetector? _faces;
     private DinoV2Embedder? _embedder;

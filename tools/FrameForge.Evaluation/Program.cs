@@ -27,9 +27,13 @@ using Microsoft.Extensions.Logging.Abstractions;
 //   draw-sheet --models <dir> --photos <dir> --sheet <new dir> [--count 12] [--seed 1] [--exclude <sheet dir>[;…]]  (you outline subject and sky; scored as IoU against the app's masks)
 //   raw-spike --raw <dir> [--jpeg <dir>] --libraw <libraw.dll> --out-dir <new dir> [--count 20] [--out report.md]  (M07 A1: LibRaw on your RAW files: speed, memory, colour against the camera JPEG, damaged copies)
 //   perf --work <new dir> [--sizes 1000,10000,50000] [--photos <dir>] [--count 30]  (M07 D1: import and startup loads at library scale, per-photo costs and export memory on real photos)
+//   brand --xaml <src/FrameForge.App/Themes/Brand.xaml> --dir <output dir>  (renders the app icon, splash image and a 256 px mark from the logo)
 // <dir> holds the catalogued model files (verified by SHA-256 before use). Photos are opened read-only.
+// Before anything touches ONNX Runtime: its telemetry is on by default (ADR 0018).
+OnnxPrivacy.EnsureApplied();
+
 var culture = CultureInfo.InvariantCulture;
-if (args.Length == 0 || args[0] is not ("benchmark" or "evaluate" or "annotate" or "review" or "light-sheet" or "crop-sheet" or "mask-sheet" or "score-sheet" or "mask-benchmark" or "sky-sheet" or "draw-sheet" or "sky-debug" or "raw-spike" or "raw-decode-one" or "perf"))
+if (args.Length == 0 || args[0] is not ("benchmark" or "evaluate" or "annotate" or "review" or "light-sheet" or "crop-sheet" or "mask-sheet" or "score-sheet" or "mask-benchmark" or "sky-sheet" or "draw-sheet" or "sky-debug" or "raw-spike" or "raw-decode-one" or "perf" or "brand"))
 {
     Console.Error.WriteLine("Usage:\n  benchmark --models <dir> [--count 100] [--out report.md]\n  evaluate --models <dir> --photos <dir> --labels <labels.csv> [--out report.md]\n  annotate --models <dir> --photos <dir> --annotations <dir>\n  review --photos <dir> --sheets <dir> [--count 6]\n  light-sheet --photos <dir> --sheet <new dir> [--count 30] [--seed 1]\n  crop-sheet --models <dir> --photos <dir> --sheet <new dir> [--count 30] [--seed 1]\n  mask-sheet --models <dir> --photos <dir> --sheet <new dir> [--count 30] [--seed 1] [--round 1|2|3] [--exclude <dir>[;<dir>]]\n  score-sheet --sheet <dir> --answers <saved csv> [--out report.md]");
     return 2;
@@ -42,7 +46,7 @@ if (args[0] == "raw-decode-one")
     return FrameForge.Evaluation.Raw.RawSpike.DecodeOne(options["libraw"], options["file"]);
 }
 
-var needsModels = args[0] is not ("review" or "light-sheet" or "score-sheet" or "mask-benchmark" or "sky-sheet" or "draw-sheet" or "sky-debug" or "raw-spike" or "perf");
+var needsModels = args[0] is not ("review" or "light-sheet" or "score-sheet" or "mask-benchmark" or "sky-sheet" or "draw-sheet" or "sky-debug" or "raw-spike" or "perf" or "brand");
 if (!options.TryGetValue("models", out var modelsDir) && needsModels)
 {
     Console.Error.WriteLine("--models <dir> is required.");
@@ -79,6 +83,7 @@ var exit = args[0] switch
     "sky-debug" => SkyDebugCommand(options),
     "raw-spike" => RawSpikeCommand(options),
     "perf" => PerfCommand(options),
+    "brand" => BrandCommand(options),
     _ => Evaluate(options),
 };
 
@@ -481,6 +486,17 @@ int BuildSheet(string kind, Dictionary<string, string> opts)
     report.AppendLine();
     report.AppendLine(culture, $"Open {Path.GetFullPath(Path.Combine(sheetDir, "index.html"))} in a browser, answer every item, press Save answers, then run score-sheet with the saved CSV.");
     return 0;
+}
+
+int BrandCommand(Dictionary<string, string> opts)
+{
+    if (!opts.TryGetValue("xaml", out var xaml) || !opts.TryGetValue("dir", out var outDir))
+    {
+        Console.Error.WriteLine("brand needs --xaml <Brand.xaml> and --dir <output dir>.");
+        return 2;
+    }
+
+    return FrameForge.Evaluation.Brand.BrandAssets.Run(xaml, outDir, report);
 }
 
 int PerfCommand(Dictionary<string, string> opts)

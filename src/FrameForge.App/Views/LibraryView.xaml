@@ -568,11 +568,8 @@
             </controls:PhotoGridListBox>
 
             <!-- Loading -->
-            <StackPanel Grid.Row="3" HorizontalAlignment="Center" VerticalAlignment="Center" Width="220"
-                        Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}">
-                <ProgressBar IsIndeterminate="True" AutomationProperties.Name="Loading the library" />
-                <TextBlock Margin="0,10,0,0" HorizontalAlignment="Center" Text="Loading the library…" Style="{StaticResource Text.Status}" />
-            </StackPanel>
+            <views:LoadingMark Grid.Row="3" Text="Loading the library…"
+                               Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}" />
 
             <!-- Empty: the first thing a new user sees, so it says what to do and does it -->
             <StackPanel Grid.Row="3" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="440"

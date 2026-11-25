@@ -13,6 +13,9 @@ public sealed partial class AboutViewModel(AppInfo appInfo, ILogger<AboutViewMod
 
     public AppInfo Info { get; } = appInfo;
 
+    /// <summary>The full licence and notice texts shipped next to the app (see licenses/README.md).</summary>
+    public string LicensesDirectory { get; } = Path.Combine(AppContext.BaseDirectory, "licenses");
+
     /// <summary>Third-party licences and model attributions, read from the file shipped next to the app.</summary>
     [ObservableProperty]
     private string _notices = string.Empty;
