@@ -59,7 +59,12 @@
 >
 >   See [ADR 0019](../decisions/0019-installer-updates-crash-reports.md).
 > - **Order planned for the rest:**
->   - A: RAW integration (A2 onwards), each step planned from the spike's findings
+>   - A: RAW integration. A0 (fix from E) is done: the installer adds the Visual C++ runtime when it is missing, and
+>     the app turns AI off instead of crashing when the runtime can't load (ADR 0019). A1 is done: LibRaw 0.22.3 (LGPL-2.1)
+>     is vendored and wrapped in `FrameForge.Raw`, checked on the R50 samples ([ADR 0020](../decisions/0020-raw-through-libraw-previews.md)).
+>     A2 is done: .CR3 files import with their details (camera, lens, exposure, capture time, orientation). A3 is done:
+>     RAW files show, analyse and edit through their embedded full-size JPEG. Next: A4 (export), then A5 and A6 (plan approved:
+>     embedded previews, LibRaw under LGPL-2.1, RAW and JPEG as separate photos, CR3 only).
 
 ## Goal
 Evaluate and integrate RAW decoding and harden the app for professional use.

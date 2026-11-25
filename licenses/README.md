@@ -13,6 +13,7 @@ licence.
 | `onnxruntime-LICENSE.txt`, `onnxruntime-ThirdPartyNotices.txt` | Microsoft.ML.OnnxRuntime and .Managed, including the native `onnxruntime.dll` (MIT, © Microsoft Corporation) |
 | `Apache-2.0.txt` | Serilog, Serilog.Extensions.Hosting, Serilog.Extensions.Logging, Serilog.Sinks.File (© Serilog Contributors); SQLitePCLRaw.\* (© SourceGear, LLC) |
 | `VirtualizingWrapPanel-LICENSE.txt` | VirtualizingWrapPanel (MIT, © sbaeumlisberger) |
+| `LibRaw-LICENSE.LGPL.txt`, `LibRaw-COPYRIGHT.txt` | LibRaw 0.22.3 (`libraw.dll`, © LibRaw LLC), used under the LGPL 2.1; the exact source is at https://www.libraw.org/data/LibRaw-0.22.3.tar.gz (see `third_party/libraw/0.22.3/README.md`) |
 
 SQLite itself (`e_sqlite3.dll`) is in the public domain and needs no licence text.
 

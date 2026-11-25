@@ -26,7 +26,7 @@
   - **release: 1.55–1.69 s**
   - debug build: 2.27–3.30 s (it needs .NET installed and compiles on start)
   - memory: the same
-- **Sizes:** the app folder is 180 MB, the ZIP 79 MB and the installer 56 MB.
+- **Sizes:** the app folder is 180 MB, the ZIP 79 MB and the installer 78 MB (56 MB without the Visual C++ runtime, see below).
 
 ### Installer (Inno Setup 6, `build/FrameForge.iss`)
 - **Per user, no admin prompt:** installs into `%LOCALAPPDATA%\Programs\FrameForge`, with a Start menu shortcut, an
@@ -40,6 +40,27 @@
   - A silent uninstall never asks, and always keeps it.
   - Photos are never touched.
 - **The app id** in the script must never change: it is how Windows recognises the same app across versions.
+
+### The Microsoft Visual C++ runtime (added in M07 A0)
+**The problem:** the native ONNX Runtime (`onnxruntime.dll`), and LibRaw from phase A, need the Visual C++ 2015–2022
+runtime (`MSVCP140`, `VCRUNTIME140`, `VCRUNTIME140_1`). A self-contained .NET app doesn't include it, and a clean
+Windows install may not have it.
+
+**The installer:**
+- **Bundling:** the installer bundles Microsoft's `vc_redist.x64.exe`. `build/publish.ps1` takes it from
+  `build\cache\`, which git ignores; it was downloaded by hand from Microsoft's permanent link. The script refuses a
+  file that isn't validly signed by Microsoft Corporation.
+- **When it runs:** only if Microsoft's documented registry key
+  (`HKLM\SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\X64`) shows no runtime, or an older one than the bundled
+  version. It then asks for administrator permission once; FrameForge's own install still needs none.
+- **The bundled version:** 14.44.35211, which adds 22 MB to the installer.
+
+**The app** treats a runtime that can't load as "AI is off", not as a crash (`OnnxNative.IsLoadFailure`):
+- The telemetry switch (`OnnxPrivacy`) and model loading catch it.
+- The AI settings show "the AI runtime could not start on this computer…".
+- Checked by running the evaluation tool with `onnxruntime.dll` removed. That found a further case: Windows 11's own,
+  older `onnxruntime.dll` (1.17, for Windows ML) in System32 can load instead, and fail with "does not support API
+  version 31". Any failure to initialise ONNX Runtime's native layer now counts.
 
 ### Updates: manual, no online check
 - **How to update:** install the newer installer over the old one.
@@ -106,9 +127,14 @@ If reports are ever sent automatically, these are the conditions:
   - The uninstaller's "remove the library" answer wasn't run, because it would delete the real library.
 
 ## Consequences and limits
+- **The "runtime missing" path wasn't tested:** this PC has a newer runtime (14.51), and removing it would affect other
+  software. Tested instead:
+  - Installing here doesn't unpack or run Microsoft's installer (the install log has no mention of it).
+  - The script compiles with the check.
+  - The app copes with a runtime that can't load.
 - **Not code-signed:** Windows SmartScreen will warn "unknown publisher" when the installer first runs on another PC.
   Signing needs a certificate, a cost decided if the app is ever shared.
-- **No delta updates:** each update is a full installer of about 56 MB.
+- **No delta updates:** each update is a full installer of about 78 MB.
 - **64-bit only:** `win-x64`, Windows 10 1809 or later.
 - **A failed upgrade** may leave the database partly migrated. The user restores it by copying the backup back. FrameForge
   doesn't do that automatically, because a wrong automatic restore would lose newer work.

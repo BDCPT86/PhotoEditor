@@ -72,7 +72,24 @@ $iscc = @(
 ) | Where-Object { Test-Path $_ } | Select-Object -First 1
 if ($iscc) {
     Write-Host 'Building the installer…'
-    & $iscc /Q "/DAppVersion=$Version" "/DSourceDir=$publish" "/DOutputDir=$artifacts" (Join-Path $PSScriptRoot 'FrameForge.iss')
+    $isccArgs = @('/Q', "/DAppVersion=$Version", "/DSourceDir=$publish", "/DOutputDir=$artifacts")
+
+    # Microsoft's Visual C++ runtime installer (native ONNX Runtime and LibRaw need it). Downloaded once, by hand, into
+    # build\cache\ (git ignores it); see ADR 0019. The installer runs it only on computers that lack this version.
+    $vcRedist = Join-Path $PSScriptRoot 'cache\vc_redist.x64.exe'
+    if (Test-Path $vcRedist) {
+        $signature = Get-AuthenticodeSignature $vcRedist
+        if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notlike 'CN=Microsoft Corporation,*') {
+            throw "$vcRedist is not validly signed by Microsoft; not bundling it."
+        }
+        $v = [version](Get-Item $vcRedist).VersionInfo.FileVersion
+        $isccArgs += "/DVCRedist=$vcRedist", "/DVCRedistMajor=$($v.Major)", "/DVCRedistMinor=$($v.Minor)", "/DVCRedistBuild=$($v.Build)"
+        Write-Host "Bundling the Visual C++ runtime $v"
+    } else {
+        Write-Warning "No ${vcRedist}: the installer won't install the Visual C++ runtime. AI models (and RAW) need it on computers that don't have it."
+    }
+
+    & $iscc @isccArgs (Join-Path $PSScriptRoot 'FrameForge.iss')
     if ($LASTEXITCODE -ne 0) { throw 'Installer build failed.' }
     Write-Host "Installer: $(Join-Path $artifacts "FrameForge-$Version-setup.exe")"
 } else {

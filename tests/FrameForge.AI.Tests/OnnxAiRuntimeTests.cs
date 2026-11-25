@@ -16,6 +16,19 @@ public sealed class OnnxAiRuntimeTests : IDisposable
     }
 
     [Fact]
+    public void NativeLoadFailures_AreRecognised_IncludingInsideATypeInitializer()
+    {
+        Assert.True(OnnxNative.IsLoadFailure(new DllNotFoundException("onnxruntime")));
+        Assert.True(OnnxNative.IsLoadFailure(new BadImageFormatException()));
+        Assert.True(OnnxNative.IsLoadFailure(new TypeInitializationException("Microsoft.ML.OnnxRuntime.NativeMethods", new DllNotFoundException("onnxruntime"))));
+        // Windows' own older onnxruntime.dll loaded instead of ours (seen in M07 A0).
+        Assert.True(OnnxNative.IsLoadFailure(new TypeInitializationException(
+            "Microsoft.ML.OnnxRuntime.NativeMethods", new InvalidOperationException("The native ONNX Runtime library does not support API version 31."))));
+        Assert.False(OnnxNative.IsLoadFailure(new InvalidOperationException()));
+        Assert.False(OnnxNative.IsLoadFailure(new TypeInitializationException("Other", new InvalidOperationException())));
+    }
+
+    [Fact]
     public void NoModelsInstalled_ReturnsNull_WithoutError()
     {
         using var runtime = new OnnxAiRuntime(new Store(_ => new ModelStatus(AiModelCatalog.FaceDetector, ModelState.NotInstalled, null)), NullLogger<OnnxAiRuntime>.Instance);

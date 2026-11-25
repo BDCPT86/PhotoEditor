@@ -54,15 +54,39 @@ Type: filesandordirs; Name: "{app}\*"
 
 [Files]
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+#ifdef VCRedist
+; Microsoft's Visual C++ runtime, needed by the native ONNX Runtime and LibRaw libraries. Unpacked only when the
+; computer doesn't already have this version or newer (see VCRedistNeeded below).
+Source: "{#VCRedist}"; DestDir: "{tmp}"; DestName: "vc_redist.x64.exe"; Flags: deleteafterinstall; Check: VCRedistNeeded
+#endif
 
 [Icons]
 Name: "{autoprograms}\FrameForge"; Filename: "{app}\FrameForge.exe"
 Name: "{autodesktop}\FrameForge"; Filename: "{app}\FrameForge.exe"; Tasks: desktopicon
 
 [Run]
+#ifdef VCRedist
+; Microsoft's installer asks for administrator permission itself (once); FrameForge's own install needs none.
+Filename: "{tmp}\vc_redist.x64.exe"; Parameters: "/install /passive /norestart"; StatusMsg: "Installing the Microsoft Visual C++ runtime..."; Flags: shellexec waituntilterminated; Check: VCRedistNeeded
+#endif
 Filename: "{app}\FrameForge.exe"; Description: "Start FrameForge"; Flags: nowait postinstall skipifsilent
 
 [Code]
+#ifdef VCRedist
+// The x64 Visual C++ 2015-2022 runtime is installed at this version or newer (Microsoft's documented registry key).
+function VCRedistNeeded: Boolean;
+var
+  Installed, Major, Minor, Bld: Cardinal;
+begin
+  Result := True;
+  if RegQueryDWordValue(HKLM64, 'SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\X64', 'Installed', Installed) and (Installed = 1) and
+     RegQueryDWordValue(HKLM64, 'SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\X64', 'Major', Major) and
+     RegQueryDWordValue(HKLM64, 'SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\X64', 'Minor', Minor) and
+     RegQueryDWordValue(HKLM64, 'SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\X64', 'Bld', Bld) then
+    Result := (Major < {#VCRedistMajor}) or ((Major = {#VCRedistMajor}) and ((Minor < {#VCRedistMinor}) or ((Minor = {#VCRedistMinor}) and (Bld < {#VCRedistBuild}))));
+end;
+#endif
+
 // Uninstall: offer to remove the library as well. Default No; never asked in a silent uninstall.
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var

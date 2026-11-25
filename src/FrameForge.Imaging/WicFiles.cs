@@ -45,5 +45,5 @@ internal static class WicFiles
             or OverflowException;
 
     public static PhotoReadException ToReadException(string path, Exception exception) =>
-        new($"'{Path.GetFileName(path)}' is not a readable JPEG image: {exception.Message}", exception);
+        new($"'{Path.GetFileName(path)}' is not a readable image: {exception.Message}", exception);
 }

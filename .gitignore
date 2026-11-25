@@ -16,3 +16,6 @@ TestResults/
 *.db-shm
 *.db-wal
 *.log
+
+# Downloaded build inputs (e.g. the Visual C++ runtime installer; see build/publish.ps1)
+build/cache/

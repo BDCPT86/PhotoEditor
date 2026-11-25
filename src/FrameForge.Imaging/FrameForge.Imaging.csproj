@@ -11,6 +11,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\FrameForge.Application\FrameForge.Application.csproj" />
+    <!-- RAW files: details and the embedded JPEG through LibRaw (ADR 0020) -->
+    <ProjectReference Include="..\FrameForge.Raw\FrameForge.Raw.csproj" />
   </ItemGroup>
 
   <ItemGroup>

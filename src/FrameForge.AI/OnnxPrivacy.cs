@@ -25,7 +25,16 @@ public static class OnnxPrivacy
     private static bool Apply()
     {
         Environment.SetEnvironmentVariable(DisableTelemetryVariable, "1");
-        OrtEnv.Instance().DisableTelemetryEvents();
-        return true;
+        try
+        {
+            OrtEnv.Instance().DisableTelemetryEvents();
+            return true;
+        }
+        catch (Exception ex) when (OnnxNative.IsLoadFailure(ex))
+        {
+            // The native runtime can't load (for example the Visual C++ runtime is missing). Then nothing runs and
+            // nothing is sent; model loading reports the problem instead.
+            return false;
+        }
     }
 }

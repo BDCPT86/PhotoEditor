@@ -150,6 +150,14 @@ public sealed partial class OnnxAiRuntime(IModelStore store, ILogger<OnnxAiRunti
             LogLoadFailed(ex, model.VersionTag);
             return null;
         }
+        catch (Exception ex) when (OnnxNative.IsLoadFailure(ex))
+        {
+            // The native runtime itself is missing or unusable: AI is off, everything else carries on.
+            failed = true;
+            LastError = $"{model.Name} could not be loaded: {OnnxNative.Explanation}";
+            LogLoadFailed(ex, model.VersionTag);
+            return null;
+        }
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Model loaded: {Model} (CPU, {Threads} threads)")]

@@ -22,6 +22,7 @@ All packages the app uses, including those pulled in by other packages (audited 
 | Serilog.Extensions.Hosting, Serilog.Extensions.Logging | 10.0.0 | Apache-2.0 | © Serilog Contributors — https://github.com/serilog |
 | Serilog.Sinks.File | 7.0.0 | Apache-2.0 | © Serilog Contributors — https://github.com/serilog/serilog-sinks-file |
 | VirtualizingWrapPanel | 2.5.4 | MIT | © sbaeumlisberger — https://github.com/sbaeumlisberger/VirtualizingWrapPanel |
+| LibRaw (`libraw.dll`, unmodified official Windows build, separate and replaceable) | 0.22.3 | **LGPL-2.1** (chosen from LGPL-2.1 or CDDL-1.0) | © 2008–2025 LibRaw LLC — https://www.libraw.org/ (source of this version: https://www.libraw.org/data/LibRaw-0.22.3.tar.gz). Reads RAW files (M07 phase A). |
 
 **Privacy:** official ONNX Runtime builds collect usage telemetry and send it to Microsoft by default. FrameForge
 turns this off before the runtime starts (ADR 0018). The app makes no network connections except model downloads you
@@ -51,4 +52,4 @@ MobileSAM reference: C. Zhang et al., "Faster Segment Anything: Towards Lightwei
 | xunit.v3 | Apache-2.0 |
 | Microsoft.EntityFrameworkCore.Design, dotnet-ef | MIT |
 | Inno Setup 6 (builds the installer; installers built with it may be distributed) | Inno Setup License — https://jrsoftware.org/files/is/license.txt |
-| LibRaw 0.22.3 (`libraw.dll`, used only by the RAW spike in `tools/FrameForge.Evaluation`; not in the repository) | LGPL-2.1 or CDDL-1.0, your choice |
+| LibRaw 0.22.3 in the RAW spike (`tools/FrameForge.Evaluation`, loaded from a path given on the command line) | as above |
