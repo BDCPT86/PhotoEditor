@@ -106,12 +106,13 @@ public static class LibraryQuery
         ArgumentNullException.ThrowIfNull(decisionOf);
         ArgumentNullException.ThrowIfNull(filter);
 
-        var filtered = items.Where(item => filter.Matches(photoOf(item), decisionOf(item)));
+        var filtered = items.Where(item => filter.Matches(photoOf(item), decisionOf(item))).ToList();
 
         IOrderedEnumerable<T> ordered = sort switch
         {
-            LibrarySort.FolderAndName => filtered
-                .OrderBy(i => photoOf(i).FolderPath, StringComparer.OrdinalIgnoreCase)
+            // Folders are ranked once, so the sort compares numbers instead of long paths with a shared prefix
+            // Same order as comparing the paths.
+            LibrarySort.FolderAndName => OrderByFolder(filtered, photoOf)
                 .ThenBy(i => photoOf(i).FileName, StringComparer.OrdinalIgnoreCase),
             LibrarySort.CaptureTime => filtered
                 .OrderBy(i => photoOf(i).CaptureLocalTime is null ? 1 : 0)
@@ -127,5 +128,16 @@ public static class LibraryQuery
             .ThenBy(i => photoOf(i).FilePath, StringComparer.OrdinalIgnoreCase)
             .ThenBy(i => photoOf(i).Id)
             .ToList();
+    }
+
+    private static IOrderedEnumerable<T> OrderByFolder<T>(List<T> items, Func<T, Photo> photoOf)
+    {
+        var rank = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (var folder in items.Select(i => photoOf(i).FolderPath).Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.OrdinalIgnoreCase))
+        {
+            rank[folder] = rank.Count;
+        }
+
+        return items.OrderBy(i => rank[photoOf(i).FolderPath]);
     }
 }

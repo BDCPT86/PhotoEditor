@@ -134,10 +134,8 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
 
     public IReadOnlyList<ShortcutHelpGroup> ShortcutHelp { get; } = CullingShortcuts.Help;
 
-    /// <summary>The photos shown in the grid: the library after filter and sort.</summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsEmpty), nameof(IsFilteredEmpty), nameof(CountText))]
-    private ObservableCollection<PhotoTileViewModel> _photos = [];
+    /// <summary>The photos shown in the grid: the library after filter and sort. Always the same collection (see <see cref="TileCollection"/>).</summary>
+    public TileCollection Photos { get; } = [];
 
     /// <summary>The focused/primary selected tile in the grid.</summary>
     [ObservableProperty]
@@ -620,7 +618,10 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
             view = view.OrderBy(t => t.Insight.GroupOrder);
         }
 
-        Photos = new ObservableCollection<PhotoTileViewModel>(view);
+        Photos.ReplaceAll(view);
+        OnPropertyChanged(nameof(IsEmpty));
+        OnPropertyChanged(nameof(IsFilteredEmpty));
+        OnPropertyChanged(nameof(CountText));
         SelectedPhoto = selected is not null && Photos.Contains(selected) ? selected : null;
         Locate.UpdateBanner(Filter.Folder?.Path, _all);
         OnPropertyChanged(nameof(ViewTitle));

@@ -26,9 +26,10 @@ using Microsoft.Extensions.Logging.Abstractions;
 //   sky-sheet --photos <dir> --sheet <new dir> [--count 30] [--seed 1] [--exclude <sheet dir>[;<sheet dir>…]]  (grades the sky rules; about two thirds with sky found)
 //   draw-sheet --models <dir> --photos <dir> --sheet <new dir> [--count 12] [--seed 1] [--exclude <sheet dir>[;…]]  (you outline subject and sky; scored as IoU against the app's masks)
 //   raw-spike --raw <dir> [--jpeg <dir>] --libraw <libraw.dll> --out-dir <new dir> [--count 20] [--out report.md]  (M07 A1: LibRaw on your RAW files: speed, memory, colour against the camera JPEG, damaged copies)
+//   perf --work <new dir> [--sizes 1000,10000,50000] [--photos <dir>] [--count 30]  (M07 D1: import and startup loads at library scale, per-photo costs and export memory on real photos)
 // <dir> holds the catalogued model files (verified by SHA-256 before use). Photos are opened read-only.
 var culture = CultureInfo.InvariantCulture;
-if (args.Length == 0 || args[0] is not ("benchmark" or "evaluate" or "annotate" or "review" or "light-sheet" or "crop-sheet" or "mask-sheet" or "score-sheet" or "mask-benchmark" or "sky-sheet" or "draw-sheet" or "sky-debug" or "raw-spike" or "raw-decode-one"))
+if (args.Length == 0 || args[0] is not ("benchmark" or "evaluate" or "annotate" or "review" or "light-sheet" or "crop-sheet" or "mask-sheet" or "score-sheet" or "mask-benchmark" or "sky-sheet" or "draw-sheet" or "sky-debug" or "raw-spike" or "raw-decode-one" or "perf"))
 {
     Console.Error.WriteLine("Usage:\n  benchmark --models <dir> [--count 100] [--out report.md]\n  evaluate --models <dir> --photos <dir> --labels <labels.csv> [--out report.md]\n  annotate --models <dir> --photos <dir> --annotations <dir>\n  review --photos <dir> --sheets <dir> [--count 6]\n  light-sheet --photos <dir> --sheet <new dir> [--count 30] [--seed 1]\n  crop-sheet --models <dir> --photos <dir> --sheet <new dir> [--count 30] [--seed 1]\n  mask-sheet --models <dir> --photos <dir> --sheet <new dir> [--count 30] [--seed 1] [--round 1|2|3] [--exclude <dir>[;<dir>]]\n  score-sheet --sheet <dir> --answers <saved csv> [--out report.md]");
     return 2;
@@ -41,7 +42,7 @@ if (args[0] == "raw-decode-one")
     return FrameForge.Evaluation.Raw.RawSpike.DecodeOne(options["libraw"], options["file"]);
 }
 
-var needsModels = args[0] is not ("review" or "light-sheet" or "score-sheet" or "mask-benchmark" or "sky-sheet" or "draw-sheet" or "sky-debug" or "raw-spike");
+var needsModels = args[0] is not ("review" or "light-sheet" or "score-sheet" or "mask-benchmark" or "sky-sheet" or "draw-sheet" or "sky-debug" or "raw-spike" or "perf");
 if (!options.TryGetValue("models", out var modelsDir) && needsModels)
 {
     Console.Error.WriteLine("--models <dir> is required.");
@@ -77,6 +78,7 @@ var exit = args[0] switch
     "mask-benchmark" => MaskBenchmarkCommand(options),
     "sky-debug" => SkyDebugCommand(options),
     "raw-spike" => RawSpikeCommand(options),
+    "perf" => PerfCommand(options),
     _ => Evaluate(options),
 };
 
@@ -479,6 +481,19 @@ int BuildSheet(string kind, Dictionary<string, string> opts)
     report.AppendLine();
     report.AppendLine(culture, $"Open {Path.GetFullPath(Path.Combine(sheetDir, "index.html"))} in a browser, answer every item, press Save answers, then run score-sheet with the saved CSV.");
     return 0;
+}
+
+int PerfCommand(Dictionary<string, string> opts)
+{
+    if (!opts.TryGetValue("work", out var work))
+    {
+        Console.Error.WriteLine("perf needs --work <new dir>.");
+        return 2;
+    }
+
+    var sizeText = opts.GetValueOrDefault("sizes", "1000,10000,50000");
+    var sizes = sizeText == "none" ? [] : sizeText.Split(',').Select(s => int.Parse(s, culture)).ToList();
+    return FrameForge.Evaluation.Perf.PerfBench.RunAsync(work, sizes, opts.GetValueOrDefault("photos"), int.Parse(opts.GetValueOrDefault("count", "30"), culture), report).GetAwaiter().GetResult();
 }
 
 int RawSpikeCommand(Dictionary<string, string> opts)

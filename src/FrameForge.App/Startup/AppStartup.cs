@@ -12,6 +12,7 @@ internal sealed class AppStartup(
     DatabaseMigrator migrator,
     ISettingsService settings,
     LogFileRetention logRetention,
+    DiskCacheLimit cacheLimit,
     AppDataPaths paths,
     ShellViewModel shell)
 {
@@ -24,5 +25,8 @@ internal sealed class AppStartup(
         await Task.Run(() => logRetention.DeleteExpiredLogs(paths.LogsDirectory, retentionDays), cancellationToken).ConfigureAwait(true);
 
         await shell.InitializeAsync(cancellationToken).ConfigureAwait(true);
+
+        // After the library is showing, so it never delays start-up. The grid remakes a thumbnail removed meanwhile.
+        _ = cacheLimit.TrimInBackgroundAsync();
     }
 }

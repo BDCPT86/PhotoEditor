@@ -90,12 +90,13 @@
             <views:DevelopPanel Grid.Column="1" Grid.RowSpan="2" Width="320" DataContext="{Binding Develop}"
                                 Visibility="{Binding IsOpen, Converter={StaticResource BoolToVisibility}}" />
 
-            <!-- Thumbnail placeholder while the full-resolution image decodes. -->
+            <!-- Thumbnail placeholder while the photo loads. -->
             <Image Source="{Binding Current.Thumbnail}" Stretch="Uniform" Margin="8" Opacity="0.6"
                    RenderOptions.BitmapScalingMode="HighQuality"
                    Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}" />
 
-            <controls:ZoomPanImage x:Name="Zoom" Source="{Binding DisplayImage}" FocusRequest="{Binding FaceFocus}" AutomationProperties.Name="Photo"
+            <controls:ZoomPanImage x:Name="Zoom" FullPixelWidth="{Binding DisplayFullWidth}" FullPixelHeight="{Binding DisplayFullHeight}" SourceKey="{Binding DisplayKey}"
+                                   NeedsDetail="{Binding WantsDetail, Mode=OneWayToSource}" Source="{Binding DisplayImage}" FocusRequest="{Binding FaceFocus}" AutomationProperties.Name="Photo"
                                    IsPointMode="{Binding Develop.Masks.IsRefining}" PointCommand="{Binding Develop.AddPointCommand}"
                                    Visibility="{Binding Develop.IsCropMode, Converter={StaticResource InverseBoolToVisibility}}" />
 
@@ -123,7 +124,7 @@
                        Visibility="{Binding Develop.ShowOriginal, Converter={StaticResource BoolToVisibility}}" />
 
             <TextBlock HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,16"
-                       Text="Loading full resolution…" Foreground="{StaticResource Brush.Text.Secondary}"
+                       Text="{Binding LoadingText}" Foreground="{StaticResource Brush.Text.Secondary}"
                        Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}" />
 
             <!-- Auto suggestions, below the photo so they never hide it; focus previews, Enter applies, Esc dismisses -->

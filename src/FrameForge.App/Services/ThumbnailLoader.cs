@@ -195,7 +195,18 @@ internal sealed partial class ThumbnailLoader : IThumbnailSource, IDisposable
         try
         {
             var path = await _thumbnails.GetOrCreateAsync(photo, token).ConfigureAwait(false);
-            var bitmap = _bitmaps.LoadThumbnail(path);
+            BitmapSource bitmap;
+            try
+            {
+                bitmap = _bitmaps.LoadThumbnail(path);
+            }
+            catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
+            {
+                // The cached file went after it was looked up (the cache was trimmed): make it again, once. If the
+                // photo itself is gone, this throws again and is reported below.
+                path = await _thumbnails.GetOrCreateAsync(photo, token).ConfigureAwait(false);
+                bitmap = _bitmaps.LoadThumbnail(path);
+            }
             var recipe = requester.Recipe;
             if (!recipe.IsNeutral)
             {

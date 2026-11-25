@@ -36,6 +36,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ISettingsStore, SqliteSettingsStore>();
         services.AddSingleton<DatabaseMigrator>();
         services.AddSingleton<LogFileRetention>();
+        services.AddSingleton<DiskCacheLimit>();
 
         services.AddSingleton<IPhotoRepository, SqlitePhotoRepository>();
         services.AddSingleton<IPhotoFileEnumerator, FileSystemPhotoEnumerator>();

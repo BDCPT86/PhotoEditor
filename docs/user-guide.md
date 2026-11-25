@@ -73,6 +73,8 @@ listed as "already in the library" and left alone.
   decisions, rating, label, similar group, analysis details and presets, each with its key shown.
 - **Viewer:** press **Enter** on a photo. ← / → go to the previous or next photo, **Esc** goes back to the grid.
   - **Z** or a double-click switches between fit and 100 %. **+ / −** or the mouse wheel zoom, and dragging pans.
+  - Photos are shown at the size of your screen, and the next one is prepared while you look, so stepping through
+    them is instant. Zooming past that size loads the full-resolution photo ("Loading full resolution…").
   - **F / Shift+F** jump the 100 % view from face to face, to check focus quickly (needs face analysis, see
     section 7).
 
@@ -305,6 +307,8 @@ your library, FrameForge warns you that the copies will appear as new photos at 
 | AI models | `%LOCALAPPDATA%\FrameForge\models\` |
 
 The **About** page shows the data folder, the logs folder and the database. Deleting the thumbnail or mask folder only makes FrameForge rebuild them.
+Thumbnails and masks together are kept under 2 GB: when they grow past that, the oldest are removed after start-up
+and made again if needed.
 Deleting the whole `FrameForge` folder resets the app; your photos are not touched.
 
 ## 14. Limits worth knowing

@@ -541,6 +541,10 @@ public sealed partial class ExportViewModel(
             _cts = null;
             IsExporting = false;
             ProgressText = null;
+            if (!manifest && Mode == ExportMode.EditedJpegs)
+            {
+                MemoryRelief.AfterLargeWork(); // every photo went through full-size buffers
+            }
         }
     }
 

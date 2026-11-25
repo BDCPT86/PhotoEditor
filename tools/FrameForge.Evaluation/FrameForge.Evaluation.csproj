@@ -16,6 +16,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\FrameForge.AI\FrameForge.AI.csproj" />
     <ProjectReference Include="..\..\src\FrameForge.Imaging\FrameForge.Imaging.csproj" />
+    <!-- perf: the real database, import and export services, on generated libraries. -->
+    <ProjectReference Include="..\..\src\FrameForge.Infrastructure\FrameForge.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -56,15 +56,31 @@ internal sealed class ScriptedBitmapLoader : IPhotoBitmapLoader
 
     public int CompletedLoads => Volatile.Read(ref _completedLoads);
 
-    public BitmapSource LoadThumbnail(string thumbnailPath) => TestPhotos.Bitmap();
+    /// <summary>How many more thumbnail reads fail as if the cached file had just been removed.</summary>
+    public int ThumbnailFilesGone { get; set; }
+
+    public BitmapSource LoadThumbnail(string thumbnailPath)
+    {
+        if (ThumbnailFilesGone > 0)
+        {
+            ThumbnailFilesGone--;
+            throw new FileNotFoundException("Cached thumbnail removed", thumbnailPath);
+        }
+
+        return TestPhotos.Bitmap();
+    }
 
     public List<int> DisplaySizesRequested { get; } = [];
 
+    private int _fullLoadsRequested;
+
+    /// <summary>Calls of <see cref="LoadFull"/> itself (full resolution), not via <see cref="LoadForDisplay"/>.</summary>
+    public int FullLoadsRequested => Volatile.Read(ref _fullLoadsRequested);
+
     public BitmapSource LoadFull(string photoPath, CancellationToken cancellationToken)
     {
-        var result = Behaviours.TryGetValue(photoPath, out var behaviour) ? behaviour(cancellationToken) : TestPhotos.Bitmap();
-        Interlocked.Increment(ref _completedLoads);
-        return result;
+        Interlocked.Increment(ref _fullLoadsRequested);
+        return Load(photoPath, cancellationToken);
     }
 
     public BitmapSource LoadForDisplay(string photoPath, int maxPixelSize, CancellationToken cancellationToken)
@@ -74,7 +90,14 @@ internal sealed class ScriptedBitmapLoader : IPhotoBitmapLoader
             DisplaySizesRequested.Add(maxPixelSize);
         }
 
-        return LoadFull(photoPath, cancellationToken);
+        return Load(photoPath, cancellationToken);
+    }
+
+    private BitmapSource Load(string photoPath, CancellationToken cancellationToken)
+    {
+        var result = Behaviours.TryGetValue(photoPath, out var behaviour) ? behaviour(cancellationToken) : TestPhotos.Bitmap();
+        Interlocked.Increment(ref _completedLoads);
+        return result;
     }
 }
 

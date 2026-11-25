@@ -123,6 +123,54 @@ public sealed class PhotoTileAndLoaderTests
     }
 
     [Fact]
+    public async Task Loader_RemakesAThumbnailWhoseCachedFileWasRemoved_Once()
+    {
+        var made = 0;
+        var bitmaps = new ScriptedBitmapLoader { ThumbnailFilesGone = 1 };
+        using var loader = new ThumbnailLoader(
+            new FakeThumbnailService(_ => { Interlocked.Increment(ref made); return "thumb.jpg"; }),
+            bitmaps,
+            new ImmediateDispatcher(),
+            NullLogger<ThumbnailLoader>.Instance);
+        var requester = new AwaitableRequester(TestPhotos.Create("a.jpg"));
+
+        loader.Request(requester);
+
+        Assert.Null(await requester.Completion.WaitAsync(TimeSpan.FromSeconds(5), Ct));
+        Assert.Equal(2, made);
+    }
+
+    [Fact]
+    public async Task Loader_ACachedFileThatKeepsVanishing_IsReportedAsNotFound()
+    {
+        using var loader = new ThumbnailLoader(
+            new FakeThumbnailService(_ => "thumb.jpg"),
+            new ScriptedBitmapLoader { ThumbnailFilesGone = 2 },
+            new ImmediateDispatcher(),
+            NullLogger<ThumbnailLoader>.Instance);
+        var requester = new AwaitableRequester(TestPhotos.Create("a.jpg"));
+
+        loader.Request(requester);
+
+        Assert.Equal("File not found", await requester.Completion.WaitAsync(TimeSpan.FromSeconds(5), Ct));
+    }
+
+    [Fact]
+    public void TileCollection_ReplaceAll_RaisesOneReset_AndHoldsTheNewTiles()
+    {
+        var thumbnails = new FakeThumbnailSource();
+        var tiles = Enumerable.Range(0, 5).Select(i => new PhotoTileViewModel(TestPhotos.Create($"{i}.jpg"), thumbnails)).ToList();
+        var collection = new TileCollection(tiles.Take(3));
+        var events = new List<System.Collections.Specialized.NotifyCollectionChangedAction>();
+        collection.CollectionChanged += (_, e) => events.Add(e.Action);
+
+        collection.ReplaceAll(tiles.Skip(2));
+
+        Assert.Equal([System.Collections.Specialized.NotifyCollectionChangedAction.Reset], events);
+        Assert.Equal(tiles.Skip(2), collection);
+    }
+
+    [Fact]
     public async Task Loader_ReportsMissingSourceAsFileNotFound()
     {
         using var loader = new ThumbnailLoader(

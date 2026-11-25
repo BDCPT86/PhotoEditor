@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Threading;
 using FrameForge.App.ViewModels;
 
@@ -28,6 +29,17 @@ public partial class ViewerView : UserControl
 
         PreviewKeyDown += OnPreviewKeyDown;
         PreviewKeyUp += OnPreviewKeyUp;
+
+        // Photos are loaded at the size of the image area (in device pixels), rounded up so small resizes don't reload.
+        Zoom.SizeChanged += (_, _) =>
+        {
+            if (DataContext is ViewerViewModel viewer && Zoom.ActualWidth > 0)
+            {
+                var dpi = VisualTreeHelper.GetDpi(Zoom).DpiScaleX;
+                var longSide = Math.Max(Zoom.ActualWidth, Zoom.ActualHeight) * dpi;
+                viewer.DisplayLongSide = Math.Clamp((int)Math.Ceiling(longSide / 512) * 512, 1024, 8192);
+            }
+        };
 
         // When Develop or the suggestions tray closes, the control that had focus disappears and keyboard focus would
         // fall out of the page (no shortcut would work until a click). Hand focus back to the photo.

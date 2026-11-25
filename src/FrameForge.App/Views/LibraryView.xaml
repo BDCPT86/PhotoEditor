@@ -62,6 +62,97 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
+        <!-- A tile's analysis marks. Applied only to tiles that have some (see the grid), so the many tiles without
+             any don't build and style these elements: that made switching views and sorting slow. -->
+        <DataTemplate x:Key="TileAnalysisBadges" DataType="{x:Type vm:PhotoTileViewModel}">
+            <WrapPanel HorizontalAlignment="Left" VerticalAlignment="Top" Margin="4,4,28,0">
+                <Border Style="{StaticResource AnalysisBadge}" ToolTip="AI suggested pick in its group (advisory; your decision is unchanged)"
+                        Visibility="{Binding ShowAiPickBadge, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Style="{StaticResource Text.AnalysisBadge}" Text="AI pick" Foreground="{StaticResource Brush.Decision.Keep}" />
+                </Border>
+                <Border Style="{StaticResource AnalysisBadge}" ToolTip="Sharpest in its similar group"
+                        Visibility="{Binding ShowSharpestBadge, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Style="{StaticResource Text.AnalysisBadge}" Text="◆" Foreground="{StaticResource Brush.Decision.Keep}" />
+                </Border>
+                <Border Style="{StaticResource AnalysisBadge}" ToolTip="Likely blurry (heuristic)"
+                        Visibility="{Binding ShowBlurBadge, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Style="{StaticResource Text.AnalysisBadge}" Text="≈ blur" Foreground="{StaticResource Brush.Decision.Review}" />
+                </Border>
+                <!-- Informational marks (clipping, group size, faces) appear on hover or selection, so scanning stays quiet -->
+                <WrapPanel Style="{StaticResource RevealOnHover}">
+                <Border Style="{StaticResource AnalysisBadge}" ToolTip="Highlights or shadows clipped"
+                        Visibility="{Binding ShowClipBadge, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Style="{StaticResource Text.AnalysisBadge}" Text="◐" />
+                </Border>
+                <Border ToolTip="In a group of similar photos (G selects the group)">
+                    <Border.Style>
+                        <Style TargetType="Border" BasedOn="{StaticResource AnalysisBadge}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding GroupBadgeText}" Value="{x:Null}">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <TextBlock Style="{StaticResource Text.AnalysisBadge}" Text="{Binding GroupBadgeText}" />
+                </Border>
+                </WrapPanel>
+                <Border Style="{StaticResource AnalysisBadge}" ToolTip="Exact duplicate of another file"
+                        Visibility="{Binding ShowExactBadge, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Style="{StaticResource Text.AnalysisBadge}" Text="= dup" />
+                </Border>
+                <WrapPanel Style="{StaticResource RevealOnHover}">
+                <Border ToolTip="Faces found by AI (advisory)">
+                    <Border.Style>
+                        <Style TargetType="Border" BasedOn="{StaticResource AnalysisBadge}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding FaceBadgeText}" Value="{x:Null}">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <TextBlock Style="{StaticResource Text.AnalysisBadge}" Text="{Binding FaceBadgeText}" />
+                </Border>
+                </WrapPanel>
+                <Border Style="{StaticResource AnalysisBadge}" ToolTip="All faces look soft (AI, advisory)"
+                        Visibility="{Binding ShowFacesSoftBadge, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Style="{StaticResource Text.AnalysisBadge}" Text="☺ soft" Foreground="{StaticResource Brush.Decision.Review}" />
+                </Border>
+            </WrapPanel>
+        </DataTemplate>
+        <!-- A tile's problem (Offline, Missing, Unreadable), also applied only where there is one. Without a thumbnail the
+             centred text says it; with one, the badge on the photo does. -->
+        <DataTemplate x:Key="TileProblemText" DataType="{x:Type vm:PhotoTileViewModel}">
+            <TextBlock FontSize="{StaticResource FontSize.Meta}" Foreground="{StaticResource Brush.Status.Error}" TextAlignment="Center"
+                       TextWrapping="Wrap" Margin="8,0" Text="{Binding StatusText, StringFormat='⚠&#x0a;{0}'}">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Opacity" Value="0" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Thumbnail}" Value="{x:Null}">
+                                <Setter Property="Opacity" Value="1" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+        </DataTemplate>
+        <DataTemplate x:Key="TileProblemBadge" DataType="{x:Type vm:PhotoTileViewModel}">
+            <Border Margin="4,0,0,1">
+                <Border.Style>
+                    <Style TargetType="Border" BasedOn="{StaticResource AnalysisBadge}">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Thumbnail}" Value="{x:Null}">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <TextBlock Style="{StaticResource Text.AnalysisBadge}" Foreground="{StaticResource Brush.Status.Warning}"
+                           Text="{Binding StatusText, StringFormat='⚠ {0}'}" />
+            </Border>
+        </DataTemplate>
         <Style x:Key="FilterCombo" TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
             <Setter Property="MinHeight" Value="26" />
             <Setter Property="SelectedValuePath" Value="Tag" />
@@ -290,7 +381,7 @@
                      VirtualizingPanel.IsVirtualizing="True"
                      VirtualizingPanel.VirtualizationMode="Recycling"
                      VirtualizingPanel.CacheLengthUnit="Page"
-                     VirtualizingPanel.CacheLength="1"
+                     VirtualizingPanel.CacheLength="0.25"
                      VirtualizingPanel.ScrollUnit="Pixel"
                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                      SelectionMode="Extended"
@@ -381,103 +472,47 @@
                                     </Style>
                                 </Border.Style>
                                 <Grid>
-                                    <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="{StaticResource FontSize.Meta}"
-                                               Foreground="{StaticResource Brush.Status.Error}" TextAlignment="Center" TextWrapping="Wrap" Margin="8,0"
-                                               Text="{Binding StatusText, StringFormat='⚠&#x0a;{0}'}"
-                                               Visibility="{Binding HasProblem, Converter={StaticResource BoolToVisibility}}">
-                                        <TextBlock.Style>
-                                            <Style TargetType="TextBlock">
-                                                <!-- With a thumbnail, the badge on the photo says it instead -->
-                                                <Setter Property="Opacity" Value="0" />
+                                    <ContentPresenter Content="{Binding}" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <ContentPresenter.Style>
+                                            <Style TargetType="ContentPresenter">
                                                 <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding Thumbnail}" Value="{x:Null}">
-                                                        <Setter Property="Opacity" Value="1" />
+                                                    <DataTrigger Binding="{Binding HasProblem}" Value="True">
+                                                        <Setter Property="ContentTemplate" Value="{StaticResource TileProblemText}" />
                                                     </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
-                                        </TextBlock.Style>
-                                    </TextBlock>
+                                        </ContentPresenter.Style>
+                                    </ContentPresenter>
                                 <!-- Shrinks to the photo itself, so the marks sit on its corners rather than on the letterbox -->
                                 <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
                                     <Image x:Name="Thumb" Source="{Binding Thumbnail}" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" />
 
                                     <!-- Analysis indicators: short marks on a scrim, top-left. The tooltip names each; I shows the numbers. -->
-                                    <WrapPanel HorizontalAlignment="Left" VerticalAlignment="Top" Margin="4,4,28,0"
-                                               Visibility="{Binding HasAnalysisBadges, Converter={StaticResource BoolToVisibility}}">
-                                        <Border Style="{StaticResource AnalysisBadge}" ToolTip="AI suggested pick in its group (advisory; your decision is unchanged)"
-                                                Visibility="{Binding ShowAiPickBadge, Converter={StaticResource BoolToVisibility}}">
-                                            <TextBlock Style="{StaticResource Text.AnalysisBadge}" Text="AI pick" Foreground="{StaticResource Brush.Decision.Keep}" />
-                                        </Border>
-                                        <Border Style="{StaticResource AnalysisBadge}" ToolTip="Sharpest in its similar group"
-                                                Visibility="{Binding ShowSharpestBadge, Converter={StaticResource BoolToVisibility}}">
-                                            <TextBlock Style="{StaticResource Text.AnalysisBadge}" Text="◆" Foreground="{StaticResource Brush.Decision.Keep}" />
-                                        </Border>
-                                        <Border Style="{StaticResource AnalysisBadge}" ToolTip="Likely blurry (heuristic)"
-                                                Visibility="{Binding ShowBlurBadge, Converter={StaticResource BoolToVisibility}}">
-                                            <TextBlock Style="{StaticResource Text.AnalysisBadge}" Text="≈ blur" Foreground="{StaticResource Brush.Decision.Review}" />
-                                        </Border>
-                                        <!-- Informational marks (clipping, group size, faces) appear on hover or selection, so scanning stays quiet -->
-                                        <WrapPanel Style="{StaticResource RevealOnHover}">
-                                        <Border Style="{StaticResource AnalysisBadge}" ToolTip="Highlights or shadows clipped"
-                                                Visibility="{Binding ShowClipBadge, Converter={StaticResource BoolToVisibility}}">
-                                            <TextBlock Style="{StaticResource Text.AnalysisBadge}" Text="◐" />
-                                        </Border>
-                                        <Border ToolTip="In a group of similar photos (G selects the group)">
-                                            <Border.Style>
-                                                <Style TargetType="Border" BasedOn="{StaticResource AnalysisBadge}">
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding GroupBadgeText}" Value="{x:Null}">
-                                                            <Setter Property="Visibility" Value="Collapsed" />
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </Border.Style>
-                                            <TextBlock Style="{StaticResource Text.AnalysisBadge}" Text="{Binding GroupBadgeText}" />
-                                        </Border>
-                                        </WrapPanel>
-                                        <Border Style="{StaticResource AnalysisBadge}" ToolTip="Exact duplicate of another file"
-                                                Visibility="{Binding ShowExactBadge, Converter={StaticResource BoolToVisibility}}">
-                                            <TextBlock Style="{StaticResource Text.AnalysisBadge}" Text="= dup" />
-                                        </Border>
-                                        <WrapPanel Style="{StaticResource RevealOnHover}">
-                                        <Border ToolTip="Faces found by AI (advisory)">
-                                            <Border.Style>
-                                                <Style TargetType="Border" BasedOn="{StaticResource AnalysisBadge}">
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding FaceBadgeText}" Value="{x:Null}">
-                                                            <Setter Property="Visibility" Value="Collapsed" />
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </Border.Style>
-                                            <TextBlock Style="{StaticResource Text.AnalysisBadge}" Text="{Binding FaceBadgeText}" />
-                                        </Border>
-                                        </WrapPanel>
-                                        <Border Style="{StaticResource AnalysisBadge}" ToolTip="All faces look soft (AI, advisory)"
-                                                Visibility="{Binding ShowFacesSoftBadge, Converter={StaticResource BoolToVisibility}}">
-                                            <TextBlock Style="{StaticResource Text.AnalysisBadge}" Text="☺ soft" Foreground="{StaticResource Brush.Decision.Review}" />
-                                        </Border>
-                                    </WrapPanel>
-
-                                    <!-- Problem (Offline, Missing, Unreadable), bottom-left, on a photo that still has its thumbnail.
-                                         Without a thumbnail the centred text behind the image says it instead. -->
-                                    <Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="4,0,0,1">
-                                        <Border.Style>
-                                            <Style TargetType="Border" BasedOn="{StaticResource AnalysisBadge}">
-                                                <Setter Property="Visibility" Value="Collapsed" />
+                                    <ContentPresenter Content="{Binding}" HorizontalAlignment="Left" VerticalAlignment="Top">
+                                        <ContentPresenter.Style>
+                                            <Style TargetType="ContentPresenter">
                                                 <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding HasProblem}" Value="True">
-                                                        <Setter Property="Visibility" Value="Visible" />
-                                                    </DataTrigger>
-                                                    <DataTrigger Binding="{Binding Thumbnail}" Value="{x:Null}">
-                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                    <DataTrigger Binding="{Binding HasAnalysisBadges}" Value="True">
+                                                        <Setter Property="ContentTemplate" Value="{StaticResource TileAnalysisBadges}" />
                                                     </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
-                                        </Border.Style>
-                                        <TextBlock Style="{StaticResource Text.AnalysisBadge}" Foreground="{StaticResource Brush.Status.Warning}"
-                                                   Text="{Binding StatusText, StringFormat='⚠ {0}'}" />
-                                    </Border>
+                                        </ContentPresenter.Style>
+                                    </ContentPresenter>
+
+                                    <!-- Problem (Offline, Missing, Unreadable), bottom-left, on a photo that still has its thumbnail.
+                                         Without a thumbnail the centred text behind the image says it instead. -->
+                                    <ContentPresenter Content="{Binding}" HorizontalAlignment="Left" VerticalAlignment="Bottom">
+                                        <ContentPresenter.Style>
+                                            <Style TargetType="ContentPresenter">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding HasProblem}" Value="True">
+                                                        <Setter Property="ContentTemplate" Value="{StaticResource TileProblemBadge}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </ContentPresenter.Style>
+                                    </ContentPresenter>
 
                                     <!-- Decision, top-right: the mark the cull is scanning for -->
                                     <Border x:Name="StateChip" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,4,4,0" Width="20" Height="20"

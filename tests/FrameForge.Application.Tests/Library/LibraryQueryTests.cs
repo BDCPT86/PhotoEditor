@@ -68,6 +68,32 @@ public sealed class LibraryQueryTests
     }
 
     [Fact]
+    public void FolderSort_MatchesComparingThePaths_IgnoringCase_WithNestedFolders()
+    {
+        Item[] items =
+        [
+            Make(@"C:\shoots\b\x.jpg"),
+            Make(@"C:\Shoots\a\y.jpg"),
+            Make(@"C:\Shoots\A\x.jpg"), // same folder as above, different case
+            Make(@"C:\Shoots\a b\x.jpg"),
+            Make(@"C:\Shoots\a\sub\x.jpg"),
+            Make(@"C:\Shoots\x.jpg"),
+        ];
+
+        var expected = items
+            .OrderBy(i => i.Photo.FolderPath, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(i => i.Photo.FileName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(i => i.Photo.FilePath, StringComparer.OrdinalIgnoreCase)
+            .Select(i => i.Photo.FilePath)
+            .ToList();
+
+        var actual = LibraryQuery.Apply(items, i => i.Photo, i => i.Decision, LibraryFilter.All, LibrarySort.FolderAndName).Select(i => i.Photo.FilePath).ToList();
+
+        Assert.Equal(expected, actual);
+        Assert.Equal([@"C:\Shoots\x.jpg", @"C:\Shoots\A\x.jpg", @"C:\Shoots\a\y.jpg"], actual.Take(3));
+    }
+
+    [Fact]
     public void FileNameSort_BreaksTiesByPath()
     {
         Item[] items = [Make(@"C:\Z\IMG_1.jpg"), Make(@"C:\A\IMG_1.jpg"), Make(@"C:\M\img_1.jpg")];

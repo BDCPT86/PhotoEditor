@@ -270,6 +270,15 @@ public sealed partial class EditRenderService(IAnalysisImageLoader loader, Masks
         return new LocalMasks(found, unavailable);
     }
 
+    /// <summary>Size of a full-resolution render (after crop and straighten), or null if the photo's size is unknown.</summary>
+    public static (int Width, int Height)? FullOutputSize(Photo photo, EditRecipe recipe)
+    {
+        ArgumentNullException.ThrowIfNull(recipe);
+        return OrientedSize(photo) is not { } size ? null
+            : recipe.HasGeometry ? new EditGeometry(size.Width, size.Height, recipe).OutputSize(null)
+            : size;
+    }
+
     /// <summary>Stored size as displayed (EXIF orientations 5–8 swap width and height), or null if unknown.</summary>
     public static (int Width, int Height)? OrientedSize(Photo photo) =>
         photo.Width is { } w && photo.Height is { } h

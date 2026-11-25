@@ -4,6 +4,7 @@ using System.IO;
 using System.Windows.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using FrameForge.App.Services;
 using FrameForge.Application.Editing;
 using FrameForge.Application.Editing.Auto;
 using FrameForge.Application.Photos;
@@ -13,19 +14,25 @@ using Microsoft.Extensions.Logging;
 namespace FrameForge.App.ViewModels;
 
 /// <summary>
-/// Single-photo viewer. Only the current photo is decoded at full resolution; moving to another
-/// photo cancels any pending load, and at most one decode runs at a time so rapid key-repeat
-/// cannot stack up full-resolution bitmaps. Edited photos are shown with their edit applied.
-/// While the Develop panel is open, the live preview is shown instead.
+/// Single-photo viewer. Photos are shown at screen size (<see cref="DisplayLongSide"/>), and the next and previous
+/// photos are loaded ahead (<see cref="ViewerImageCache"/>), so stepping through them doesn't wait for a decode. The
+/// full-resolution image is loaded only when the zoom needs it (<see cref="WantsDetail"/>), for the current photo only.
+/// Edited photos are shown with their edit applied. While the Develop panel is open, the live preview is shown instead.
 /// </summary>
 public sealed partial class ViewerViewModel : ObservableObject, IDisposable
 {
+    /// <summary>Used until the view reports its size: enough for a 1440p screen.</summary>
+    public const int DefaultDisplayLongSide = 2560;
+
     private readonly IPhotoBitmapLoader _loader;
     private readonly IEditRenderService _renderer;
     private readonly ILogger<ViewerViewModel> _logger;
-    private readonly SemaphoreSlim _decodeGate = new(1, 1);
+    private readonly ViewerImageCache _cache;
     private IReadOnlyList<PhotoTileViewModel> _items = [];
     private CancellationTokenSource? _loadCts;
+    private CancellationTokenSource? _detailCts;
+    private PhotoTileViewModel? _detailFor;
+    private int _direction = 1;
 
     private readonly IFaceLookup _faces;
     private int _faceIndex = -1;
@@ -36,9 +43,38 @@ public sealed partial class ViewerViewModel : ObservableObject, IDisposable
         _renderer = renderer;
         _faces = faces;
         _logger = logger;
+        _cache = new ViewerImageCache(LoadForDisplayAsync);
         Develop = develop;
         Develop.PropertyChanged += OnDevelopChanged;
     }
+
+    /// <summary>Longest side, in device pixels, that photos are loaded at for the fit view. Set by the view from its size.</summary>
+    public int DisplayLongSide { get; set; } = DefaultDisplayLongSide;
+
+    /// <summary>Full size of the photo shown (after its edit), which zoom refers to; 0 when unknown.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DisplayFullWidth))]
+    private int _fullWidth;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DisplayFullHeight))]
+    private int _fullHeight;
+
+    /// <summary>Full size for the image area: 0 (the bitmap's own size) while developing.</summary>
+    public int DisplayFullWidth => Develop.IsOpen ? 0 : FullWidth;
+
+    public int DisplayFullHeight => Develop.IsOpen ? 0 : FullHeight;
+
+    /// <summary>Which photo the image area shows, so a sharper copy keeps the zoom; null while developing.</summary>
+    public object? DisplayKey => Develop.IsOpen ? null : Current?.Id;
+
+    /// <summary>Set by the image area while the zoom enlarges the screen-size copy: loads the full-resolution image.</summary>
+    [ObservableProperty]
+    private bool _wantsDetail;
+
+    /// <summary>What the loading line says.</summary>
+    [ObservableProperty]
+    private string _loadingText = "Loading…";
 
     public DevelopViewModel Develop { get; }
 
@@ -151,7 +187,7 @@ public sealed partial class ViewerViewModel : ObservableObject, IDisposable
         MoveTo(index);
     }
 
-    /// <summary>Closes the viewer; any pending Develop change is saved first.</summary>
+    /// <summary>Closes the viewer; any pending Develop change is saved first. The viewer's images are released.</summary>
     public async Task CloseAsync()
     {
         if (Develop.IsOpen)
@@ -160,9 +196,12 @@ public sealed partial class ViewerViewModel : ObservableObject, IDisposable
         }
 
         CancelLoad();
-        Image = null; // release the full-resolution bitmap
+        CancelDetail();
+        _cache.Clear();
+        Image = null;
         ErrorMessage = null;
         IsLoading = false;
+        MemoryRelief.AfterLargeWork();
     }
 
     /// <summary>Opens or closes the Develop panel for the current photo.</summary>
@@ -186,7 +225,8 @@ public sealed partial class ViewerViewModel : ObservableObject, IDisposable
     public void Dispose()
     {
         CancelLoad();
-        _decodeGate.Dispose();
+        CancelDetail();
+        _cache.Clear();
         Develop.PropertyChanged -= OnDevelopChanged;
     }
 
@@ -194,6 +234,10 @@ public sealed partial class ViewerViewModel : ObservableObject, IDisposable
     {
         if (e.PropertyName is nameof(DevelopViewModel.DisplayImage) or nameof(DevelopViewModel.IsOpen))
         {
+            // Size and key before the image: the image area reads them when the image changes.
+            OnPropertyChanged(nameof(DisplayFullWidth));
+            OnPropertyChanged(nameof(DisplayFullHeight));
+            OnPropertyChanged(nameof(DisplayKey));
             OnPropertyChanged(nameof(DisplayImage));
         }
     }
@@ -227,15 +271,30 @@ public sealed partial class ViewerViewModel : ObservableObject, IDisposable
             return;
         }
 
+        _direction = CurrentIndex < 0 || index >= CurrentIndex ? 1 : -1;
         CurrentIndex = index;
         Current = _items[index];
         _faceIndex = -1;
         FaceFocus = null;
         FaceStatus = null;
+        CancelDetail();
         CurrentLoad = LoadCurrentAsync(Current);
         if (Develop.IsOpen)
         {
             _ = Develop.OpenAsync(Current); // saves the previous photo's pending change first
+        }
+    }
+
+    /// <summary>The photo shown, then the next one in the direction of travel, then the one behind.</summary>
+    private IEnumerable<PhotoTileViewModel> Neighbourhood(int index)
+    {
+        yield return _items[index];
+        foreach (var i in new[] { index + _direction, index - _direction })
+        {
+            if (i >= 0 && i < _items.Count)
+            {
+                yield return _items[i];
+            }
         }
     }
 
@@ -249,32 +308,48 @@ public sealed partial class ViewerViewModel : ObservableObject, IDisposable
         _loadCts = null;
     }
 
+    private void CancelDetail()
+    {
+        _detailCts?.Cancel();
+        _detailCts = null;
+        _detailFor = null;
+    }
+
+    /// <summary>Loads one photo at screen size, with its edit; runs on a worker thread.</summary>
+    private async Task<BitmapSource> LoadForDisplayAsync(PhotoTileViewModel tile, int longSide, CancellationToken token)
+    {
+        var photo = tile.Photo;
+        var recipe = tile.Recipe;
+        return recipe.IsNeutral
+            ? await Task.Run(() => _loader.LoadForDisplay(photo.FilePath, longSide, token), token).ConfigureAwait(false)
+            : BitmapConversions.ToBitmap(await _renderer.RenderAsync(photo, recipe, longSide, token).ConfigureAwait(false));
+    }
+
     private async Task LoadCurrentAsync(PhotoTileViewModel tile)
     {
         CancelLoad();
         var cts = new CancellationTokenSource();
         _loadCts = cts;
         var token = cts.Token;
+        var side = DisplayLongSide;
+        var index = CurrentIndex;
 
-        Image = null;
         ErrorMessage = null;
-        IsLoading = true;
+        LoadingText = "Loading…";
+        var ready = _cache.TryGet(tile, side);
+        var loading = ready is null ? _cache.GetAsync(tile, side, token) : null;
 
-        var acquired = false;
+        // Then load ahead: the next photo in the direction of travel, then the one behind. Anything else is cancelled.
+        _cache.Want(Neighbourhood(index), side);
+        if (loading is not null)
+        {
+            Image = null;
+            IsLoading = true;
+        }
+
         try
         {
-            await _decodeGate.WaitAsync(token).ConfigureAwait(true);
-            acquired = true;
-
-            var photo = tile.Photo;
-            var recipe = tile.Recipe;
-            var bitmap = recipe.IsNeutral
-                ? await Task.Run(() => _loader.LoadFull(photo.FilePath, token), token).ConfigureAwait(true)
-                : BitmapConversions.ToBitmap(await _renderer.RenderAsync(photo, recipe, null, token).ConfigureAwait(true));
-            if (!token.IsCancellationRequested)
-            {
-                Image = bitmap;
-            }
+            Show(tile, ready ?? await loading!.ConfigureAwait(true));
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested)
         {
@@ -294,15 +369,131 @@ public sealed partial class ViewerViewModel : ObservableObject, IDisposable
         }
         finally
         {
-            if (acquired)
-            {
-                _decodeGate.Release();
-            }
-
             if (ReferenceEquals(_loadCts, cts))
             {
                 IsLoading = false;
                 _loadCts = null;
+            }
+
+            cts.Dispose();
+        }
+    }
+
+    /// <summary>Shows an image of the current photo; its full size first, so the image area scales it correctly.</summary>
+    private void Show(PhotoTileViewModel tile, BitmapSource image)
+    {
+        var (width, height) = EditRenderService.FullOutputSize(tile.Photo, tile.Recipe) ?? (image.PixelWidth, image.PixelHeight);
+        FullWidth = width;
+        FullHeight = height;
+        OnPropertyChanged(nameof(DisplayKey));
+        Image = image;
+    }
+
+    partial void OnWantsDetailChanged(bool value)
+    {
+        if (value)
+        {
+            RequestDetail();
+        }
+    }
+
+    /// <summary>
+    /// A sharper image of the current photo: the screen-size one if what is shown is smaller (it was loaded before
+    /// the window had its size), otherwise the full-resolution one.
+    /// </summary>
+    private void RequestDetail()
+    {
+        if (Current is not { } tile || Develop.IsOpen || _detailFor == tile || Image is not { } shown)
+        {
+            return;
+        }
+
+        var shownLongSide = Math.Max(shown.PixelWidth, shown.PixelHeight);
+        var fullLongSide = Math.Max(FullWidth, FullHeight);
+        if (shownLongSide >= fullLongSide)
+        {
+            return;
+        }
+
+        if (shownLongSide < DisplayLongSide && DisplayLongSide < fullLongSide)
+        {
+            _ = LoadScreenSizeAsync(tile, shownLongSide);
+        }
+        else
+        {
+            _ = LoadDetailAsync(tile);
+        }
+    }
+
+    private async Task LoadScreenSizeAsync(PhotoTileViewModel tile, int shownLongSide)
+    {
+        var token = _loadCts?.Token ?? CancellationToken.None;
+        try
+        {
+            var image = await _cache.GetAsync(tile, DisplayLongSide, token).ConfigureAwait(true);
+            if (Math.Max(image.PixelWidth, image.PixelHeight) <= shownLongSide)
+            {
+                await LoadDetailAsync(tile).ConfigureAwait(true); // no sharper at screen size (a small original)
+                return;
+            }
+
+            if (Current == tile && !token.IsCancellationRequested)
+            {
+                Show(tile, image);
+                if (WantsDetail)
+                {
+                    RequestDetail(); // zoomed in further than the screen-size image covers
+                }
+            }
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+            // Moved on or closed.
+        }
+        catch (Exception ex) when (ex is PhotoReadException or IOException or UnauthorizedAccessException)
+        {
+            LogLoadFailed(ex, tile.FilePath); // the smaller image stays
+        }
+    }
+
+    /// <summary>The full-resolution image of the current photo, for zooming in; replaces the screen-size one.</summary>
+    private async Task LoadDetailAsync(PhotoTileViewModel tile)
+    {
+        CancelDetail();
+        var cts = new CancellationTokenSource();
+        _detailCts = cts;
+        _detailFor = tile;
+        var token = cts.Token;
+        LoadingText = "Loading full resolution…";
+        IsLoading = true;
+        try
+        {
+            var photo = tile.Photo;
+            var recipe = tile.Recipe;
+            var full = recipe.IsNeutral
+                ? await Task.Run(() => _loader.LoadFull(photo.FilePath, token), token).ConfigureAwait(true)
+                : BitmapConversions.ToBitmap(await _renderer.RenderAsync(photo, recipe, null, token).ConfigureAwait(true));
+            if (!token.IsCancellationRequested && Current == tile)
+            {
+                Show(tile, full);
+            }
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+            // Moved on or closed.
+        }
+        catch (Exception ex) when (ex is PhotoReadException or IOException or UnauthorizedAccessException)
+        {
+            // The screen-size image stays; zooming just shows it enlarged.
+            LogLoadFailed(ex, tile.FilePath);
+            _detailFor = null;
+        }
+        finally
+        {
+            if (ReferenceEquals(_detailCts, cts))
+            {
+                IsLoading = false;
+                _detailCts = null;
             }
 
             cts.Dispose();

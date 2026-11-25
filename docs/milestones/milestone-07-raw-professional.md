@@ -29,8 +29,15 @@
 >     edits.
 >
 >   See [ADR 0016](../decisions/0016-moved-folders-and-offline-drives.md).
+> - **Phase D (performance and memory), implemented.**
+>   - The viewer shows photos at screen size and loads the next one ahead, so stepping through them is instant. Full
+>     resolution loads only when zooming in.
+>   - Memory is given back after the viewer and after exports.
+>   - Grid view and sort changes are faster, and the disk caches are kept under 2 GB.
+>
+>   See the [performance report](../benchmarks/m07-performance.md) for the baseline, the changes, the after-figures and
+>   what is still open.
 > - **Order planned for the rest:**
->   - D: performance and memory
 >   - F: licence audit
 >   - E: installer and crash-report design
 >   - A: RAW integration (A2 onwards), each step planned from the spike's findings

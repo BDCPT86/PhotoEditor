@@ -50,6 +50,28 @@ public sealed class ZoomPanImage : Border
     public static readonly DependencyProperty PointCommandProperty = DependencyProperty.Register(
         nameof(PointCommand), typeof(ICommand), typeof(ZoomPanImage), new FrameworkPropertyMetadata(null));
 
+    /// <summary>
+    /// The photo's full size in pixels when <see cref="Source"/> is a smaller copy (0 = <see cref="Source"/> is full
+    /// size). Zoom percentages and 100 % refer to this size. Set it before <see cref="Source"/>.
+    /// </summary>
+    public static readonly DependencyProperty FullPixelWidthProperty = DependencyProperty.Register(
+        nameof(FullPixelWidth), typeof(int), typeof(ZoomPanImage), new FrameworkPropertyMetadata(0));
+
+    /// <inheritdoc cref="FullPixelWidthProperty"/>
+    public static readonly DependencyProperty FullPixelHeightProperty = DependencyProperty.Register(
+        nameof(FullPixelHeight), typeof(int), typeof(ZoomPanImage), new FrameworkPropertyMetadata(0));
+
+    /// <summary>
+    /// Identifies what is shown (for example the photo). When a new <see cref="Source"/> arrives with the same key and
+    /// the same full size, such as a sharper copy, the zoom and position are kept. Null: only kept while pointing.
+    /// </summary>
+    public static readonly DependencyProperty SourceKeyProperty = DependencyProperty.Register(
+        nameof(SourceKey), typeof(object), typeof(ZoomPanImage), new FrameworkPropertyMetadata(null));
+
+    /// <summary>True while the current zoom shows <see cref="Source"/> enlarged beyond its pixels, so a sharper copy would show more.</summary>
+    public static readonly DependencyProperty NeedsDetailProperty = DependencyProperty.Register(
+        nameof(NeedsDetail), typeof(bool), typeof(ZoomPanImage), new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault));
+
     /// <summary>A drag shorter than this (DIPs) still counts as a click.</summary>
     private const double ClickSlop = 4;
 
@@ -76,6 +98,7 @@ public sealed class ZoomPanImage : Border
     private Point? _dragStart;
     private Point _dragStartOffset;
     private bool _moved;
+    private object? _shownKey;
 
     public ZoomPanImage()
     {
@@ -118,8 +141,38 @@ public sealed class ZoomPanImage : Border
         set => SetValue(PointCommandProperty, value);
     }
 
+    public int FullPixelWidth
+    {
+        get => (int)GetValue(FullPixelWidthProperty);
+        set => SetValue(FullPixelWidthProperty, value);
+    }
+
+    public int FullPixelHeight
+    {
+        get => (int)GetValue(FullPixelHeightProperty);
+        set => SetValue(FullPixelHeightProperty, value);
+    }
+
+    public object? SourceKey
+    {
+        get => GetValue(SourceKeyProperty);
+        set => SetValue(SourceKeyProperty, value);
+    }
+
+    public bool NeedsDetail
+    {
+        get => (bool)GetValue(NeedsDetailProperty);
+        set => SetValue(NeedsDetailProperty, value);
+    }
+
     /// <summary>"Fit" or a percentage such as "100%".</summary>
     public string ZoomText => (string)GetValue(ZoomTextProperty);
+
+    /// <summary>The size zoom refers to: the full photo, even when a smaller copy is shown.</summary>
+    private (int Width, int Height) LogicalSize =>
+        Source is not { } s ? default
+            : FullPixelWidth > 0 && FullPixelHeight > 0 ? (FullPixelWidth, FullPixelHeight)
+            : (s.PixelWidth, s.PixelHeight);
 
     private double DpiScale => VisualTreeHelper.GetDpi(this).DpiScaleX;
 
@@ -128,7 +181,7 @@ public sealed class ZoomPanImage : Border
 
     private Size ViewportSize => new(ActualWidth, ActualHeight);
 
-    private Size ContentSize => Source is { } s ? new Size(s.PixelWidth * Scale, s.PixelHeight * Scale) : default;
+    private Size ContentSize => Source is null ? default : new Size(LogicalSize.Width * Scale, LogicalSize.Height * Scale);
 
     protected override void OnMouseWheel(MouseWheelEventArgs e)
     {
@@ -222,7 +275,7 @@ public sealed class ZoomPanImage : Border
             return;
         }
 
-        var (u, v) = ToImage(position, _offset, Scale, source.PixelWidth, source.PixelHeight);
+        var (u, v) = ToImage(position, _offset, Scale, LogicalSize.Width, LogicalSize.Height);
         var point = new ImagePoint(u, v, include);
         if (u is >= 0 and <= 1 && v is >= 0 and <= 1 && PointCommand?.CanExecute(point) == true)
         {
@@ -261,16 +314,19 @@ public sealed class ZoomPanImage : Border
 
     private void OnSourceChanged()
     {
-        // While pointing, a re-render of the same photo (same size) keeps the zoom and position being worked on.
-        var keepView = IsPointMode && !_isFit && Source is { } next
-            && Math.Abs(_image.Width - next.PixelWidth) < 0.5 && Math.Abs(_image.Height - next.PixelHeight) < 0.5;
-        if (Source is { } source)
-        {
-            _image.Width = source.PixelWidth;
-            _image.Height = source.PixelHeight;
-        }
+        // A new copy of the same picture at the same full size keeps the zoom and position: a re-render while pointing,
+        // or a sharper copy swapped in after zooming. Without a key, only while pointing (the old rule).
+        var key = SourceKey;
+        var sameKey = key is null ? IsPointMode : Equals(key, _shownKey);
+        var (width, height) = LogicalSize;
+        var keepView = sameKey && !_isFit && Source is not null
+            && Math.Abs(_image.Width - width) < 0.5 && Math.Abs(_image.Height - height) < 0.5;
 
+        // The image element always has the full size; a smaller bitmap is stretched to it.
+        _image.Width = width;
+        _image.Height = height;
         _image.Source = Source;
+        _shownKey = key;
         if (keepView)
         {
             SetOffset(_offset);
@@ -291,7 +347,7 @@ public sealed class ZoomPanImage : Border
         // 100 % (never below fit), centred on the requested area.
         _zoom = Math.Max(1.0, CurrentFitZoom());
         _isFit = Math.Abs(_zoom - CurrentFitZoom()) < 1e-6;
-        var point = new Point((focus.X + (focus.Width / 2)) * source.PixelWidth * Scale, (focus.Y + (focus.Height / 2)) * source.PixelHeight * Scale);
+        var point = new Point((focus.X + (focus.Width / 2)) * LogicalSize.Width * Scale, (focus.Y + (focus.Height / 2)) * LogicalSize.Height * Scale);
         SetOffset(new Point((ActualWidth / 2) - point.X, (ActualHeight / 2) - point.Y));
     }
 
@@ -308,7 +364,7 @@ public sealed class ZoomPanImage : Border
     }
 
     private double CurrentFitZoom() =>
-        Source is { } s ? ZoomMath.FitZoom(s.PixelWidth, s.PixelHeight, ActualWidth, ActualHeight, DpiScale) : 1.0;
+        Source is null ? 1.0 : ZoomMath.FitZoom(LogicalSize.Width, LogicalSize.Height, ActualWidth, ActualHeight, DpiScale);
 
     private void Fit()
     {
@@ -346,8 +402,17 @@ public sealed class ZoomPanImage : Border
         var scale = Scale;
         _transform.Matrix = new Matrix(scale, 0, 0, scale, _offset.X, _offset.Y);
 
-        // Smooth when reducing; crisp pixels when inspecting above 100%.
-        RenderOptions.SetBitmapScalingMode(_image, _zoom > 1.0 ? BitmapScalingMode.NearestNeighbor : BitmapScalingMode.HighQuality);
+        // A smaller copy enlarged beyond its own pixels: a sharper copy would show more. (Device pixels per shown pixel.)
+        var isSmallerCopy = Source is { } shown && shown.PixelWidth > 0 && LogicalSize.Width > shown.PixelWidth;
+        var shownZoom = isSmallerCopy ? _zoom * LogicalSize.Width / Source!.PixelWidth : _zoom;
+        var needsDetail = isSmallerCopy && shownZoom > 1.05;
+        if (NeedsDetail != needsDetail)
+        {
+            NeedsDetail = needsDetail;
+        }
+
+        // Smooth when reducing; crisp pixels when inspecting the full image above 100 %.
+        RenderOptions.SetBitmapScalingMode(_image, _zoom > 1.0 && !isSmallerCopy ? BitmapScalingMode.NearestNeighbor : BitmapScalingMode.HighQuality);
         Cursor = IsPointMode ? Cursors.Cross
             : ContentSize.Width > ActualWidth + 0.5 || ContentSize.Height > ActualHeight + 0.5 ? Cursors.SizeAll : null;
         SetValue(ZoomTextPropertyKey, Source is null ? string.Empty
