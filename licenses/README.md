@@ -16,6 +16,9 @@ licence.
 
 SQLite itself (`e_sqlite3.dll`) is in the public domain and needs no licence text.
 
+A release build (`build/publish.ps1`) also adds the .NET runtime's licence and notices here, because a self-contained
+app ships the runtime: `dotnet-netcore-runtime-<version>-*.txt` and `dotnet-windowsdesktop-runtime-<version>-LICENSE.txt`.
+
 **Where the texts came from:** the NuGet packages themselves, as restored on the build machine. Where a package carries
 only an SPDX licence expression and no text, the standard text was used: Apache-2.0 from another package's copy, and
 MIT with the copyright holder named in the package. None of the Apache-2.0 packages ships a NOTICE file. See

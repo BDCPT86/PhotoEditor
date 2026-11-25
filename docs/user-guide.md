@@ -306,11 +306,30 @@ your library, FrameForge warns you that the copies will appear as new photos at 
 | Thumbnails (safe to delete) | `%LOCALAPPDATA%\FrameForge\thumbnails\` |
 | Masks (safe to delete) | `%LOCALAPPDATA%\FrameForge\masks\` |
 | AI models | `%LOCALAPPDATA%\FrameForge\models\` |
+| Backups made before an upgrade (newest 3) | `%LOCALAPPDATA%\FrameForge\backups\` |
+| Crash reports (newest 10; never sent) | `%LOCALAPPDATA%\FrameForge\crash-reports\` |
+| The app itself (when installed) | `%LOCALAPPDATA%\Programs\FrameForge\` |
 
 The **About** page shows the data folder, the logs folder and the database. Deleting the thumbnail or mask folder only makes FrameForge rebuild them.
 Thumbnails and masks together are kept under 2 GB: when they grow past that, the oldest are removed after start-up
 and made again if needed.
 Deleting the whole `FrameForge` folder resets the app; your photos are not touched.
+
+### Install, update and uninstall
+- **Install:** run `FrameForge-<version>-setup.exe`. It installs for your Windows account only, with no admin prompt,
+  and adds FrameForge to the Start menu. It includes everything it needs, so .NET doesn't have to be installed.
+- **Update:** run the newer installer. It closes FrameForge if it's open and replaces the app; your library stays as
+  it is. If the new version changes the database, the old one is copied to `backups\` first. FrameForge doesn't check
+  for updates online.
+- **Uninstall:** from Windows' **Settings → Apps**. It asks whether to remove your library too (decisions, edits,
+  settings, thumbnails, models); the answer is **No** unless you choose otherwise. Your photos are never touched.
+- **Without installing:** the portable ZIP runs from any folder; the library is in the same place.
+
+### If FrameForge has a problem
+If it closes unexpectedly, or hits an error it can recover from, FrameForge saves a report on this computer. Next time
+it starts, a note at the bottom right says so, with **Show report**, **Copy report** and **Dismiss**. Reports hold the
+version, the error and the end of the log, with your user and computer names removed. Nothing is sent: share a report
+yourself if you want help.
 
 ## 14. Limits worth knowing
 - JPEG only for now. RAW support is planned: Canon EOS R50 RAW files have been tested, but the app can't open them yet.

@@ -50,8 +50,15 @@
 >   - While it starts and loads the library, the mark shows with what it is doing.
 >
 >   See [brand.md](../brand.md).
+> - **Phase E (installer, updates, crash reports), implemented.**
+>   - `build/publish.ps1` makes a self-contained ReadyToRun release (start-up 1.6 s, against 2.3–3.3 s for a debug
+>     build), a portable ZIP, and a per-user Inno Setup installer.
+>   - Updates are manual (a newer installer), with no online check.
+>   - The database is backed up before upgrades.
+>   - Crash reports are written locally and never sent, with a note on the next start.
+>
+>   See [ADR 0019](../decisions/0019-installer-updates-crash-reports.md).
 > - **Order planned for the rest:**
->   - E: installer and crash-report design
 >   - A: RAW integration (A2 onwards), each step planned from the spike's findings
 
 ## Goal

@@ -50,4 +50,5 @@ MobileSAM reference: C. Zhang et al., "Faster Segment Anything: Towards Lightwei
 |---|---|
 | xunit.v3 | Apache-2.0 |
 | Microsoft.EntityFrameworkCore.Design, dotnet-ef | MIT |
+| Inno Setup 6 (builds the installer; installers built with it may be distributed) | Inno Setup License — https://jrsoftware.org/files/is/license.txt |
 | LibRaw 0.22.3 (`libraw.dll`, used only by the RAW spike in `tools/FrameForge.Evaluation`; not in the repository) | LGPL-2.1 or CDDL-1.0, your choice |

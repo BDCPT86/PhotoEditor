@@ -15,7 +15,11 @@ public sealed class AppDataPaths
         ThumbnailsDirectory = Path.Combine(RootDirectory, "thumbnails");
         ModelsDirectory = Path.Combine(RootDirectory, "models");
         MasksDirectory = Path.Combine(RootDirectory, "masks");
+        CrashReportsDirectory = Path.Combine(RootDirectory, "crash-reports");
     }
+
+    /// <summary>Crash reports, written on this computer only and never sent anywhere (ADR 0019).</summary>
+    public string CrashReportsDirectory { get; }
 
     /// <summary>Disposable cache of computed masks (Milestone 08); safe to delete, masks are recomputed on demand.</summary>
     public string MasksDirectory { get; }

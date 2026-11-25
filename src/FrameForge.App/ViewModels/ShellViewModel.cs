@@ -15,12 +15,14 @@ public sealed partial class ShellViewModel : ObservableObject
         LibraryViewModel library,
         SettingsViewModel settingsPage,
         AboutViewModel about,
+        CrashNoticeViewModel crashNotice,
         ISettingsService settings,
         ILogger<ShellViewModel> logger)
     {
         _settings = settings;
         _logger = logger;
         Library = library;
+        CrashNotice = crashNotice;
 
         Pages =
         [
@@ -32,6 +34,9 @@ public sealed partial class ShellViewModel : ObservableObject
 
     /// <summary>The library page; the sidebar shows its views and folders on every page.</summary>
     public LibraryViewModel Library { get; }
+
+    /// <summary>Shown after start-up when crash reports were written since the user last looked.</summary>
+    public CrashNoticeViewModel CrashNotice { get; }
 
     public IReadOnlyList<NavigationItem> Pages { get; }
 
@@ -61,6 +66,7 @@ public sealed partial class ShellViewModel : ObservableObject
         IsReady = true;
         Navigate(startPage);
         StatusMessage = "Ready";
+        CrashNotice.Check();
     }
 
     [RelayCommand(CanExecute = nameof(IsReady))]

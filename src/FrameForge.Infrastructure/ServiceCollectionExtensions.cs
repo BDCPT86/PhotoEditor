@@ -37,6 +37,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<DatabaseMigrator>();
         services.AddSingleton<LogFileRetention>();
         services.AddSingleton<DiskCacheLimit>();
+        services.AddSingleton<Diagnostics.FileCrashReports>();
+        services.AddSingleton<Application.Diagnostics.ICrashReports>(sp => sp.GetRequiredService<Diagnostics.FileCrashReports>());
 
         services.AddSingleton<IPhotoRepository, SqlitePhotoRepository>();
         services.AddSingleton<IPhotoFileEnumerator, FileSystemPhotoEnumerator>();

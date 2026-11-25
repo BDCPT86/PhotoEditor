@@ -41,7 +41,7 @@ sources below, unchanged and checked by SHA-256.
 ## 4. Decisions for later phases
 | Phase | What changes | What it needs |
 |---|---|---|
-| E: installer | If the installer bundles the .NET runtime (self-contained publish) | ship its `LICENSE.TXT` (MIT) and `THIRD-PARTY-NOTICES.TXT`, from the runtime pack, in `licenses/` |
-| E: installer | The installer tool itself (WiX, MSIX, Inno Setup …) | check its licence covers redistributing what it produces; add any runtime it installs |
-| E: crash reports | Any upload | must be opt-in, explained, and listed here and in About; it changes the "sends nothing" statement |
+| E: installer ✅ done | The release is self-contained, so it bundles the .NET runtime | `build/publish.ps1` copies the runtime packs' `LICENSE` and `THIRD-PARTY-NOTICES` (Microsoft.NETCore.App and Microsoft.WindowsDesktop.App) into the release's `licenses` |
+| E: installer ✅ done | Inno Setup 6.7.4 builds the installer (not shipped; the installer it produces is) | Its licence allows "any purpose, including commercial applications". The author asks commercial users (for-profit, above US$5,000 a year) to buy a licence; this is not strictly required, and FrameForge's use is personal. An acknowledgement "would be appreciated but is not required". Downloaded from the official GitHub release; Authenticode signature (Pyrsys B.V.) and GitHub release attestation both verified (ADR 0019). |
+| E: crash reports ✅ local only | Reports are written on the computer and never sent | Any future upload must meet the conditions in ADR 0019 (opt-in, shown in full before sending, disclosed here and in About) and changes the "sends nothing" statement |
 | A: RAW | LibRaw (`libraw.dll`), dual-licensed LGPL-2.1 or CDDL-1.0 | **Choose one.** LGPL-2.1: keep it a separate, replaceable DLL (dynamic linking, as now), ship its licence and source offer or a link to the exact source, and don't modify it without publishing the changes. CDDL-1.0: ship the licence and keep any changes to its files open. Either way, add its notices and its own third-party notices to `licenses/`. Record the choice in an ADR. |

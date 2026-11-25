@@ -42,6 +42,8 @@ internal static class CompositionRoot
         builder.Services.AddSingleton<IFolderPicker, WindowsFolderPicker>();
         builder.Services.AddSingleton<IFileSavePicker, WindowsFileSavePicker>();
         builder.Services.AddSingleton<IFileOpenPicker, WindowsFileOpenPicker>();
+        builder.Services.AddSingleton<IDesktopShell, WindowsDesktopShell>();
+        builder.Services.AddSingleton<CrashNoticeViewModel>();
         builder.Services.AddSingleton<ThumbnailLoader>();
         builder.Services.AddSingleton<IThumbnailSource>(sp => sp.GetRequiredService<ThumbnailLoader>());
         builder.Services.AddSingleton<DecisionController>();

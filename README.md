@@ -104,6 +104,23 @@ dotnet run --project src/FrameForge.App
 
 `dotnet test` uses Microsoft.Testing.Platform (opted in via `global.json`), which xunit.v3 requires on the .NET 10 SDK.
 
+## Release
+
+```powershell
+./build/publish.ps1 -Version 0.2.0
+```
+
+1. Bump `<Version>` in `Directory.Build.props`, or pass `-Version`.
+2. The script runs the tests, then builds a self-contained, ReadyToRun app for 64-bit Windows (with the .NET runtime's
+   licence texts added).
+3. It writes to `artifacts\`:
+   - `FrameForge-<version>-win-x64-portable.zip`
+   - `FrameForge-<version>-setup.exe`, when [Inno Setup 6](https://jrsoftware.org/isinfo.php) is installed
+
+The installer is per user (no admin). Updating means running a newer installer over the old one; the library in
+`%LOCALAPPDATA%\FrameForge` is kept, and the database is backed up before any upgrade. Crash reports stay on the
+computer. See [ADR 0019](docs/decisions/0019-installer-updates-crash-reports.md).
+
 ## Where data is stored
 
 | What | Location |
