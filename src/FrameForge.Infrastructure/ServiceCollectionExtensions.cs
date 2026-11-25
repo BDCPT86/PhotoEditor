@@ -39,6 +39,7 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<IPhotoRepository, SqlitePhotoRepository>();
         services.AddSingleton<IPhotoFileEnumerator, FileSystemPhotoEnumerator>();
+        services.AddSingleton<IFolderProbe, FileSystemFolderProbe>();
         services.AddSingleton<IThumbnailService, DiskThumbnailService>();
 
         services.AddSingleton<IPhotoDecisionRepository, SqliteDecisionRepository>();

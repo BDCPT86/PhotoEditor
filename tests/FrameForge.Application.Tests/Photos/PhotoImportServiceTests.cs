@@ -208,6 +208,38 @@ public sealed class PhotoImportServiceTests
     }
 
     [Fact]
+    public async Task AFolderThatLooksEmpty_DoesNotMarkItsPhotosMissing()
+    {
+        AddFiles(3);
+        var service = CreateService();
+        await service.ImportFolderAsync(Root, true, null, Ct);
+        foreach (var photo in _repository.All)
+        {
+            _files.RemoveFile(photo.FilePath);
+        }
+
+        var summary = await service.ImportFolderAsync(Root, true, null, Ct);
+
+        Assert.Equal(0, summary.MarkedMissing);
+        Assert.Equal(3, summary.MissingCheckSkipped);
+        Assert.All(_repository.All, p => Assert.Equal(ImportStatus.Imported, p.Status));
+    }
+
+    [Fact]
+    public async Task OneFileGone_IsStillMarkedMissing_AndNothingIsSkipped()
+    {
+        AddFiles(3);
+        var service = CreateService();
+        await service.ImportFolderAsync(Root, true, null, Ct);
+        _files.RemoveFile($@"{Root}\IMG_0002.jpg");
+
+        var summary = await service.ImportFolderAsync(Root, true, null, Ct);
+
+        Assert.Equal(1, summary.MarkedMissing);
+        Assert.Equal(0, summary.MissingCheckSkipped);
+    }
+
+    [Fact]
     public async Task MissingDetection_IsScopedToTheImportedFolder()
     {
         AddFiles(2, Root);

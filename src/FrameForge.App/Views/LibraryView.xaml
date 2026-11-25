@@ -88,6 +88,7 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
@@ -258,8 +259,29 @@
                 </DockPanel>
             </Border>
 
+            <!-- Offline or missing photos where you are looking: say why, and offer Locate folder… -->
+            <Border x:Name="OfflineBanner" Grid.Row="2" Background="{StaticResource Brush.Control}" Padding="24,8,16,8"
+                    DataContext="{Binding Locate}" Visibility="{Binding HasBanner, Converter={StaticResource BoolToVisibility}}"
+                    AutomationProperties.AutomationId="OfflineBanner">
+                <DockPanel>
+                    <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE7BA;" Foreground="{StaticResource Brush.Status.Warning}"
+                               VerticalAlignment="Top" Margin="0,2,12,0" />
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
+                        <Button Style="{StaticResource Button.Link}" Content="Locate folder…" Command="{Binding LocateBannerFolderCommand}"
+                                ToolTip="Point these photos at the folder's new place, keeping decisions and edits"
+                                Visibility="{Binding HasBannerFolder, Converter={StaticResource BoolToVisibility}}" />
+                        <Button Style="{StaticResource Button.Link}" Content="Check again" Margin="16,0,0,0"
+                                ToolTip="Look for the drive or folder again (F5)"
+                                Command="{Binding DataContext.RunShortcutCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                CommandParameter="{x:Static shortcuts:CullingAction.Refresh}" />
+                    </StackPanel>
+                    <TextBlock Text="{Binding BannerText}" TextWrapping="Wrap" VerticalAlignment="Center"
+                               Foreground="{StaticResource Brush.Text.Secondary}" AutomationProperties.LiveSetting="Polite" />
+                </DockPanel>
+            </Border>
+
             <!-- Photo grid: virtualised and recycled. Extended selection: Shift/Ctrl+click, Shift+arrows. -->
-            <controls:PhotoGridListBox x:Name="PhotoGrid" Grid.Row="2" Padding="16,12,8,12"
+            <controls:PhotoGridListBox x:Name="PhotoGrid" Grid.Row="3" Padding="16,12,8,12"
                      ItemsSource="{Binding Photos}"
                      SelectedItem="{Binding SelectedPhoto}"
                      Background="Transparent" BorderThickness="0"
@@ -362,7 +384,19 @@
                                     <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="{StaticResource FontSize.Meta}"
                                                Foreground="{StaticResource Brush.Status.Error}" TextAlignment="Center" TextWrapping="Wrap" Margin="8,0"
                                                Text="{Binding StatusText, StringFormat='⚠&#x0a;{0}'}"
-                                               Visibility="{Binding HasProblem, Converter={StaticResource BoolToVisibility}}" />
+                                               Visibility="{Binding HasProblem, Converter={StaticResource BoolToVisibility}}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <!-- With a thumbnail, the badge on the photo says it instead -->
+                                                <Setter Property="Opacity" Value="0" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Thumbnail}" Value="{x:Null}">
+                                                        <Setter Property="Opacity" Value="1" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
                                 <!-- Shrinks to the photo itself, so the marks sit on its corners rather than on the letterbox -->
                                 <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
                                     <Image x:Name="Thumb" Source="{Binding Thumbnail}" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" />
@@ -425,6 +459,26 @@
                                         </Border>
                                     </WrapPanel>
 
+                                    <!-- Problem (Offline, Missing, Unreadable), bottom-left, on a photo that still has its thumbnail.
+                                         Without a thumbnail the centred text behind the image says it instead. -->
+                                    <Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="4,0,0,1">
+                                        <Border.Style>
+                                            <Style TargetType="Border" BasedOn="{StaticResource AnalysisBadge}">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding HasProblem}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Thumbnail}" Value="{x:Null}">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <TextBlock Style="{StaticResource Text.AnalysisBadge}" Foreground="{StaticResource Brush.Status.Warning}"
+                                                   Text="{Binding StatusText, StringFormat='⚠ {0}'}" />
+                                    </Border>
+
                                     <!-- Decision, top-right: the mark the cull is scanning for -->
                                     <Border x:Name="StateChip" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,4,4,0" Width="20" Height="20"
                                             CornerRadius="10" Background="{StaticResource Brush.Scrim}" Visibility="Collapsed">
@@ -479,14 +533,14 @@
             </controls:PhotoGridListBox>
 
             <!-- Loading -->
-            <StackPanel Grid.Row="2" HorizontalAlignment="Center" VerticalAlignment="Center" Width="220"
+            <StackPanel Grid.Row="3" HorizontalAlignment="Center" VerticalAlignment="Center" Width="220"
                         Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}">
                 <ProgressBar IsIndeterminate="True" AutomationProperties.Name="Loading the library" />
                 <TextBlock Margin="0,10,0,0" HorizontalAlignment="Center" Text="Loading the library…" Style="{StaticResource Text.Status}" />
             </StackPanel>
 
             <!-- Empty: the first thing a new user sees, so it says what to do and does it -->
-            <StackPanel Grid.Row="2" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="440"
+            <StackPanel Grid.Row="3" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="440"
                         Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}">
                 <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE8B9;" FontSize="40" Foreground="{StaticResource Brush.Text.Disabled}" Margin="0,0,0,20" />
                 <TextBlock Text="Import a folder to start culling" Style="{StaticResource Text.PageTitle}" HorizontalAlignment="Center" Margin="0,0,0,8" />
@@ -496,7 +550,7 @@
                         Content="Import folder…" AutomationProperties.Name="Import folder" />
                 <TextBlock HorizontalAlignment="Center" Style="{StaticResource Text.Count}" Text="or drop a folder here  ·  Ctrl+I" />
             </StackPanel>
-            <StackPanel Grid.Row="2" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="440"
+            <StackPanel Grid.Row="3" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="440"
                         Visibility="{Binding IsFilteredEmpty, Converter={StaticResource BoolToVisibility}}">
                 <TextBlock Text="Nothing to show here" Style="{StaticResource Text.PageTitle}" HorizontalAlignment="Center" Margin="0,0,0,8" />
                 <TextBlock Style="{StaticResource Text.Secondary}" TextAlignment="Center"
@@ -506,7 +560,7 @@
             </StackPanel>
 
             <!-- Drop target: shown only while a folder is dragged over the window -->
-            <Border x:Name="DropHint" Grid.Row="0" Grid.RowSpan="4" Margin="12" CornerRadius="8" Background="#E6121212"
+            <Border x:Name="DropHint" Grid.Row="0" Grid.RowSpan="5" Margin="12" CornerRadius="8" Background="#E6121212"
                     BorderBrush="{StaticResource Brush.Accent}" BorderThickness="2" Visibility="Collapsed" IsHitTestVisible="False">
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                     <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE8B5;" FontSize="32" Foreground="{StaticResource Brush.Accent}" Margin="0,0,0,12" />
@@ -516,7 +570,7 @@
             </Border>
 
             <!-- Footer: what is happening (import, analysis, last result) and the library's decision totals -->
-            <Border Grid.Row="3" Background="{StaticResource Brush.Chrome}" BorderBrush="{StaticResource Brush.Hairline}" BorderThickness="0,1,0,0"
+            <Border Grid.Row="4" Background="{StaticResource Brush.Chrome}" BorderBrush="{StaticResource Brush.Hairline}" BorderThickness="0,1,0,0"
                     Padding="24,0,16,0" MinHeight="32">
                 <DockPanel>
                     <TextBlock DockPanel.Dock="Right" Margin="16,0,0,0" Text="{Binding DecisionSummaryText}" Style="{StaticResource Text.Count}"
@@ -577,6 +631,8 @@
                            Visibility="{Binding IsOpen, Converter={StaticResource BoolToVisibility}}" />
         <views:PresetPanel x:Name="PresetsSide" Grid.Column="1" DataContext="{Binding Presets}" HorizontalAlignment="Right"
                            Visibility="{Binding IsOpen, Converter={StaticResource BoolToVisibility}}" />
+        <views:LocateFolderPanel x:Name="LocateSide" Grid.Column="1" DataContext="{Binding Locate}" HorizontalAlignment="Right"
+                                 Visibility="{Binding IsOpen, Converter={StaticResource BoolToVisibility}}" />
 
         <!-- Analysis details: the numbers, thresholds and method behind every indicator. -->
         <Border x:Name="DetailsSide" Grid.Column="1" Style="{StaticResource SidePanel}" DataContext="{Binding Analysis}"

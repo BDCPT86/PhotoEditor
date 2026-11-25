@@ -87,6 +87,40 @@ public sealed class SqlitePhotoRepository(IDbContextFactory<FrameForgeDbContext>
             cancellationToken);
     }
 
+    public Task<int> RelocateAsync(IReadOnlyCollection<PhotoMove> moves, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(moves);
+        if (moves.Count == 0)
+        {
+            return Task.FromResult(0);
+        }
+
+        var byId = moves.ToDictionary(m => m.PhotoId);
+        return RunAsync(
+            async context =>
+            {
+                var ids = byId.Keys.ToList();
+                var photos = await context.Photos.Where(p => ids.Contains(p.Id)).ToListAsync(cancellationToken).ConfigureAwait(false);
+                foreach (var photo in photos)
+                {
+                    var path = byId[photo.Id].NewFilePath;
+                    photo.FilePath = path;
+                    photo.FileName = Path.GetFileName(path);
+                    photo.FolderPath = Path.GetDirectoryName(path) ?? path;
+                    if (photo.Status == ImportStatus.Missing)
+                    {
+                        photo.Status = ImportStatus.Imported;
+                        photo.LastError = null;
+                    }
+                }
+
+                // One SaveChanges is one transaction: a clash on the unique path index rolls every move back.
+                await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+                return photos.Count;
+            },
+            cancellationToken);
+    }
+
     /// <summary>Updates everything an import can change; keeps identity and first-import time.</summary>
     private static void CopyImportedFields(Photo source, Photo target)
     {

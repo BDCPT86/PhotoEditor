@@ -19,6 +19,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ISettingsService, SettingsService>();
         services.AddSingleton<IPhotoImportService, PhotoImportService>();
         services.AddSingleton<IPhotoLibraryService, PhotoLibraryService>();
+        services.AddSingleton<IFolderRelocationService, FolderRelocationService>();
+        services.AddSingleton<FolderAvailabilityChecker>();
         services.AddSingleton<IDecisionService, DecisionService>();
 
         services.TryAddSingleton(new PhotoAnalysisOptions());

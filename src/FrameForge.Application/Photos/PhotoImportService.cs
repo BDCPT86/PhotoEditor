@@ -77,7 +77,7 @@ public sealed partial class PhotoImportService(
             }
 
             reporter.Report(new ImportProgress(ImportPhase.Finishing, scan.Files.Count, work.Count, work.Count, tally.Failed), force: true);
-            tally.MarkedMissing = await MarkMissingAsync(root, includeSubfolders, scan, existing).ConfigureAwait(false);
+            tally.MarkedMissing = await MarkMissingAsync(root, includeSubfolders, scan, existing, tally).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -93,6 +93,7 @@ public sealed partial class PhotoImportService(
             Unchanged = tally.Unchanged,
             Failed = tally.Failed,
             MarkedMissing = tally.MarkedMissing,
+            MissingCheckSkipped = tally.MissingCheckSkipped,
             SkippedFolders = scan?.SkippedFolders ?? [],
             WasCancelled = cancelled,
             Duration = timeProvider.GetElapsedTime(startedAt),
@@ -179,7 +180,7 @@ public sealed partial class PhotoImportService(
         return photo;
     }
 
-    private async Task<int> MarkMissingAsync(string root, bool includeSubfolders, PhotoFolderScan scan, IReadOnlyList<PhotoFileState> existing)
+    private async Task<int> MarkMissingAsync(string root, bool includeSubfolders, PhotoFolderScan scan, IReadOnlyList<PhotoFileState> existing, Tally tally)
     {
         var found = new HashSet<string>(scan.Files.Select(f => f.FilePath), StringComparer.OrdinalIgnoreCase);
 
@@ -190,6 +191,15 @@ public sealed partial class PhotoImportService(
                 && !found.Contains(s.FilePath))
             .Select(s => s.Id)
             .ToList();
+
+        if (missing.Count > 0 && scan.Files.Count == 0)
+        {
+            // Nothing found at all, yet the library has photos here: more likely an empty mount or share than every
+            // file deleted. Leave them as they are and say so; a later import that finds files checks again.
+            LogMissingCheckSkipped(root, missing.Count);
+            tally.MissingCheckSkipped = missing.Count;
+            return 0;
+        }
 
         if (missing.Count > 0)
         {
@@ -226,6 +236,8 @@ public sealed partial class PhotoImportService(
         public int Unchanged { get; set; }
 
         public int MarkedMissing { get; set; }
+
+        public int MissingCheckSkipped { get; set; }
 
         public void Record(Photo photo, bool isNew)
         {
@@ -310,6 +322,9 @@ public sealed partial class PhotoImportService(
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Photo could not be read: {FilePath}")]
     private partial void LogFileFailed(Exception exception, string filePath);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Import of {FolderPath} found no photos where the library has {Count}; none were marked missing")]
+    private partial void LogMissingCheckSkipped(string folderPath, int count);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Import finished: {FolderPath} cancelled={Cancelled} discovered={Discovered} added={Added} updated={Updated} unchanged={Unchanged} failed={Failed} missing={Missing} in {Seconds:0.0}s")]
     private partial void LogFinished(string folderPath, bool cancelled, int discovered, int added, int updated, int unchanged, int failed, int missing, double seconds);

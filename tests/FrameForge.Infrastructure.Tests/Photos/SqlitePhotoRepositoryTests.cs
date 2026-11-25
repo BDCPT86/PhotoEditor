@@ -102,4 +102,43 @@ public sealed class SqlitePhotoRepositoryTests : IDisposable
 
         Assert.Equal([@"C:\A\1.jpg", @"C:\A\2.jpg", @"C:\B\1.jpg"], paths);
     }
+
+    [Fact]
+    public async Task Relocate_MovesPaths_KeepsIdsAndDecisions_AndClearsMissing()
+    {
+        await using var services = await TestServices.BuildMigratedAsync(_paths, Ct);
+        var repository = services.GetRequiredService<IPhotoRepository>();
+        var photo = CreatePhoto(@"E:\Match\Day 2\IMG_1.jpg", ImportStatus.Missing);
+        await repository.UpsertAsync([photo], Ct);
+        var decisions = services.GetRequiredService<FrameForge.Application.Decisions.IDecisionService>();
+        await decisions.SaveAsync([(photo.Id, new FrameForge.Core.Decisions.PhotoDecision(FrameForge.Core.Decisions.CullState.Keep, 5))], Ct);
+
+        var moved = await repository.RelocateAsync([new PhotoMove(photo.Id, @"D:\Archive\Match\Day 2\IMG_1.jpg")], Ct);
+
+        Assert.Equal(1, moved);
+        var stored = Assert.Single(await repository.GetAllAsync(Ct));
+        Assert.Equal(photo.Id, stored.Id);
+        Assert.Equal(@"D:\Archive\Match\Day 2", stored.FolderPath);
+        Assert.Equal("IMG_1.jpg", stored.FileName);
+        Assert.Equal(ImportStatus.Imported, stored.Status);
+        Assert.Null(stored.LastError);
+        Assert.Equal(5, (await decisions.LoadAsync(Ct))[photo.Id].Rating);
+    }
+
+    [Fact]
+    public async Task Relocate_IsAllOrNothing_WhenOnePathClashes()
+    {
+        await using var services = await TestServices.BuildMigratedAsync(_paths, Ct);
+        var repository = services.GetRequiredService<IPhotoRepository>();
+        var a = CreatePhoto(@"E:\Match\1.jpg");
+        var b = CreatePhoto(@"E:\Match\2.jpg");
+        var other = CreatePhoto(@"D:\Match\2.jpg");
+        await repository.UpsertAsync([a, b, other], Ct);
+
+        await Assert.ThrowsAnyAsync<Exception>(() => repository.RelocateAsync(
+            [new PhotoMove(a.Id, @"D:\Match\1.jpg"), new PhotoMove(b.Id, @"D:\Match\2.jpg")], Ct));
+
+        var paths = (await repository.GetAllAsync(Ct)).Select(p => p.FilePath).Order();
+        Assert.Equal([@"D:\Match\2.jpg", @"E:\Match\1.jpg", @"E:\Match\2.jpg"], paths);
+    }
 }

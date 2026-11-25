@@ -9,6 +9,8 @@
     <UseWPF>true</UseWPF>
     <OutputType>Exe</OutputType>
     <IsPackable>false</IsPackable>
+    <!-- The LibRaw spike uses source-generated P/Invoke (LibraryImport), which needs unsafe code. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>

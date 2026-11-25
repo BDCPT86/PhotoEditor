@@ -28,8 +28,9 @@ public partial class LibraryView : UserControl
         };
 
         // When a side panel closes (often by clicking its Close button), the focused control disappears and focus
-        // falls to the window, so no shortcut works until a click. Give it back to whatever is showing.
-        foreach (var panel in new FrameworkElement[] { ExportSide, PresetsSide, DetailsSide, HelpSide })
+        // falls to the window, so no shortcut works until a click. The offline banner does the same when "Check again"
+        // finds the drive. Give focus back to whatever is showing.
+        foreach (var panel in new FrameworkElement[] { ExportSide, PresetsSide, DetailsSide, HelpSide, LocateSide, OfflineBanner })
         {
             panel.IsVisibleChanged += (_, e) =>
             {

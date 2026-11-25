@@ -5,7 +5,7 @@ A Windows-first, local-first photography application focused on photo culling an
 **New here? Read the [user guide](docs/user-guide.md)**: importing, culling, analysis, optional AI, Develop, masks,
 presets and export, in plain steps.
 
-**Status:** Milestone 08 (AI-assisted editing: Auto tools, and masks for local adjustments — Subject, Sky, Background, refined with clicks) is complete, after Milestone 06 (non-destructive editing). Milestone 07 (RAW) is not started. Import folders of JPEGs, cull them with the keyboard
+**Status:** Milestone 08 (AI-assisted editing: Auto tools, and masks for local adjustments — Subject, Sky, Background, refined with clicks) is complete, after Milestone 06 (non-destructive editing). Milestone 07 is in progress: photos on an unplugged drive show as Offline, and **Locate folder…** reconnects a folder you moved; RAW support is not started. Import folders of JPEGs, cull them with the keyboard
 (keep/reject/review, ratings, colour labels), filter and sort, compare photos side by side, and export the selection.
 **Analyze** measures sharpness and exposure and finds exact and near-duplicates. These are explainable heuristics,
 not AI. Optional local AI models (face detection and scene similarity, off by default, installed only with your consent)

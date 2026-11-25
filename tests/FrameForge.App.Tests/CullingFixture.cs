@@ -35,6 +35,8 @@ internal sealed class CullingFixture : IDisposable
         AnalysisController = new AnalysisController(AnalysisService, AiService, AiRuntime, Settings);
         AnalysisPanel = new LibraryAnalysisViewModel(AnalysisController, NullLogger<LibraryAnalysisViewModel>.Instance);
 
+        Locate = new LocateFolderViewModel(new UnusedRelocation(), new FolderAvailabilityChecker(FolderProbe), new NullFolderPicker(), NullLogger<LocateFolderViewModel>.Instance);
+
         Library = new LibraryViewModel(
             new FixedLibrary(Photos),
             new UnusedImporter(),
@@ -49,8 +51,14 @@ internal sealed class CullingFixture : IDisposable
             Export,
             AnalysisPanel,
             PresetPanel,
+            Locate,
             NullLogger<LibraryViewModel>.Instance);
     }
+
+    public LocateFolderViewModel Locate { get; }
+
+    /// <summary>Every folder is there unless a test lists it as gone.</summary>
+    public TestFolderProbe FolderProbe { get; } = new();
 
     public EditStack Edit { get; } = new();
 
@@ -153,6 +161,21 @@ internal sealed class CullingFixture : IDisposable
     private sealed class NullFolderPicker : IFolderPicker
     {
         public string? PickFolder(string title, string? initialFolder) => null;
+    }
+
+    private sealed class UnusedRelocation : IFolderRelocationService
+    {
+        public Task<RelocationPlan> PreviewAsync(string oldFolder, string newFolder, CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task<int> ApplyAsync(RelocationPlan plan, CancellationToken cancellationToken) => throw new NotSupportedException();
+    }
+
+    /// <summary>Folders and drives are there unless listed in <see cref="Gone"/>.</summary>
+    internal sealed class TestFolderProbe : IFolderProbe
+    {
+        public HashSet<string> Gone { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+        public bool Exists(string folderPath) => !Gone.Contains(folderPath);
     }
 
     private sealed class NullSavePicker : IFileSavePicker

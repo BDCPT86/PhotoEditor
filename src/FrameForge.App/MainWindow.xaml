@@ -178,9 +178,23 @@
                                         <Setter Property="AutomationProperties.Name" Value="{Binding TreeName}" />
                                         <Setter Property="AutomationProperties.HelpText" Value="{Binding ToolTip}" />
                                         <Setter Property="ToolTip" Value="{Binding ToolTip}" />
+                                        <!-- The menu sits outside the visual tree, so it reaches the shell through the item's Tag. -->
+                                        <Setter Property="Tag" Value="{Binding DataContext, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                        <Setter Property="ContextMenu">
+                                            <Setter.Value>
+                                                <ContextMenu>
+                                                    <MenuItem Header="_Locate folder…"
+                                                              Command="{Binding PlacementTarget.Tag.Library.Locate.BeginCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                              CommandParameter="{Binding Path}" />
+                                                </ContextMenu>
+                                            </Setter.Value>
+                                        </Setter>
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding DataContext.IsLibraryPage, RelativeSource={RelativeSource AncestorType=Window}}" Value="False">
                                                 <Setter Property="Opacity" Value="0.6" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Path}" Value="{x:Null}">
+                                                <Setter Property="ContextMenu" Value="{x:Null}" />
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
@@ -196,6 +210,12 @@
                                         <DataTemplate.Triggers>
                                             <DataTrigger Binding="{Binding Path}" Value="{x:Null}">
                                                 <Setter TargetName="Icon" Property="Text" Value="&#xE8D5;" />
+                                            </DataTrigger>
+                                            <!-- Offline: the folder (or one inside it) can't be reached; the reason is in the tooltip -->
+                                            <DataTrigger Binding="{Binding IsOffline}" Value="True">
+                                                <Setter TargetName="Icon" Property="Text" Value="&#xE7BA;" />
+                                                <Setter TargetName="Icon" Property="Foreground" Value="{StaticResource Brush.Status.Warning}" />
+                                                <Setter TargetName="Icon" Property="AutomationProperties.Name" Value="Offline" />
                                             </DataTrigger>
                                         </DataTemplate.Triggers>
                                     </DataTemplate>

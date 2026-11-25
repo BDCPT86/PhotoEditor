@@ -283,7 +283,9 @@ public sealed partial class ViewerViewModel : ObservableObject, IDisposable
         catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
         {
             LogLoadFailed(ex, tile.FilePath);
-            ErrorMessage = "This file no longer exists:\n" + tile.FilePath;
+            ErrorMessage = tile.OfflineReason is { } offline
+                ? offline + "\n" + tile.FilePath + "\nConnect the drive, or use Locate folder… on the folder in the sidebar."
+                : "This file no longer exists:\n" + tile.FilePath;
         }
         catch (Exception ex) when (ex is PhotoReadException or IOException or UnauthorizedAccessException)
         {

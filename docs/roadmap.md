@@ -59,7 +59,7 @@ Each phase must build, test, and be documented before the next phase starts.
 
 **Gate:** original files untouched; recipe round-trips; output is visually reviewed.
 
-## Phase 7 — RAW and professional workflow
+## Phase 7 — RAW and professional workflow (`docs/milestones/milestone-07-raw-professional.md`; in progress)
 - Evaluate LibRaw integration and supported camera formats
 - RAW preview/render pipeline
 - Export profiles and metadata preservation

@@ -140,6 +140,32 @@ internal sealed class InMemoryPhotoRepository : IPhotoRepository
 
     public Task<IReadOnlyList<Photo>> GetAllAsync(CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<Photo>>(All.OrderBy(p => p.FilePath, StringComparer.OrdinalIgnoreCase).ToList());
+
+    public Task<int> RelocateAsync(IReadOnlyCollection<PhotoMove> moves, CancellationToken cancellationToken = default)
+    {
+        lock (_gate)
+        {
+            var moved = 0;
+            foreach (var move in moves)
+            {
+                var photo = _byPath.Values.Single(p => p.Id == move.PhotoId);
+                _byPath.Remove(photo.FilePath);
+                photo.FilePath = move.NewFilePath;
+                photo.FileName = Path.GetFileName(move.NewFilePath);
+                photo.FolderPath = Path.GetDirectoryName(move.NewFilePath)!;
+                if (photo.Status == ImportStatus.Missing)
+                {
+                    photo.Status = ImportStatus.Imported;
+                    photo.LastError = null;
+                }
+
+                _byPath[photo.FilePath] = photo;
+                moved++;
+            }
+
+            return Task.FromResult(moved);
+        }
+    }
 }
 
 /// <summary>Synchronous IProgress (Progress&lt;T&gt; posts asynchronously, which makes tests racy).</summary>

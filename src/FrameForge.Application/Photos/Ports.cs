@@ -25,6 +25,9 @@ public interface IPhotoMetadataReader
     PhotoMetadata Read(string filePath);
 }
 
+/// <summary>A photo's new location after its folder moved.</summary>
+public sealed record PhotoMove(Guid PhotoId, string NewFilePath);
+
 /// <summary>Minimal stored state used to decide whether a file needs re-reading.</summary>
 public sealed record PhotoFileState(Guid Id, string FilePath, string FolderPath, long FileSizeBytes, DateTime LastModifiedUtc, ImportStatus Status);
 
@@ -36,6 +39,13 @@ public interface IPhotoRepository
     Task UpsertAsync(IReadOnlyCollection<Photo> photos, CancellationToken cancellationToken = default);
 
     Task MarkMissingAsync(IReadOnlyCollection<Guid> photoIds, string reason, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Points photos at new paths in one transaction (all or none), keeping their identity and everything stored
+    /// against it. A photo that was <see cref="ImportStatus.Missing"/> becomes <see cref="ImportStatus.Imported"/>.
+    /// </summary>
+    /// <returns>The number of photos moved.</returns>
+    Task<int> RelocateAsync(IReadOnlyCollection<PhotoMove> moves, CancellationToken cancellationToken = default);
 
     /// <summary>All photos ordered by folder, then file name.</summary>
     Task<IReadOnlyList<Photo>> GetAllAsync(CancellationToken cancellationToken = default);

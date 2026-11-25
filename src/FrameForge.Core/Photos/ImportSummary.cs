@@ -22,6 +22,12 @@ public sealed record ImportSummary
     /// <summary>Existing records whose files were not found and are now <see cref="ImportStatus.Missing"/>.</summary>
     public int MarkedMissing { get; init; }
 
+    /// <summary>
+    /// Records that were not marked missing because the scan found no photos at all where the library has some (an
+    /// empty network share or a drive mounted without its files, say). Zero unless that happened.
+    /// </summary>
+    public int MissingCheckSkipped { get; init; }
+
     /// <summary>Sub-folders that could not be read (permissions, I/O errors). Their photos are left untouched.</summary>
     public IReadOnlyList<string> SkippedFolders { get; init; } = [];
 

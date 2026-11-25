@@ -55,10 +55,13 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
         ExportViewModel export,
         LibraryAnalysisViewModel analysis,
         PresetPanelViewModel presets,
+        LocateFolderViewModel locate,
         ILogger<LibraryViewModel> logger)
     {
         Analysis = analysis;
         Presets = presets;
+        Locate = locate;
+        Locate.Relocated += (_, moved) => _ = OnRelocatedAsync(moved);
         _library = library;
         _importer = importer;
         _decisionService = decisionService;
@@ -103,6 +106,9 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
     }
 
     public LibraryAnalysisViewModel Analysis { get; }
+
+    /// <summary>Offline folders and Locate folder… for a folder that moved.</summary>
+    public LocateFolderViewModel Locate { get; }
 
     /// <summary>Preset batch panel; its controller also owns every tile's edit recipe.</summary>
     public PresetPanelViewModel Presets { get; }
@@ -262,7 +268,7 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
                 _ => LibraryScope.Undecided,
             };
             counts[scope]++;
-            if (tile.Status != ImportStatus.Imported)
+            if (tile.Status != ImportStatus.Imported || tile.OfflineReason is not null)
             {
                 counts[LibraryScope.Problems]++;
             }
@@ -424,6 +430,7 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
                 return true;
             case CullingAction.Refresh:
                 RebuildView();
+                _ = RecheckFoldersAsync(); // a drive plugged back in shows up without a restart
                 return true;
             case CullingAction.ToggleHelp:
                 IsHelpOpen = !IsHelpOpen;
@@ -615,6 +622,7 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
 
         Photos = new ObservableCollection<PhotoTileViewModel>(view);
         SelectedPhoto = selected is not null && Photos.Contains(selected) ? selected : null;
+        Locate.UpdateBanner(Filter.Folder?.Path, _all);
         OnPropertyChanged(nameof(ViewTitle));
         OnPropertyChanged(nameof(ShownCountText));
         if (Export.IsOpen)
@@ -703,13 +711,61 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
             Decisions.Register(_all);
             await Edits.LoadAsync(_all, cancellationToken).ConfigureAwait(true);
             await Analysis.Controller.LoadAsync(_all, cancellationToken).ConfigureAwait(true);
-            Filter.SetFolders(_all.Select(t => t.Photo.FolderPath));
-            RebuildView();
-            UpdateCounts();
+            ApplyOffline(Locate.Offline); // the last check, until the new one below finishes
         }
         finally
         {
             IsLoading = false;
+        }
+
+        await CheckFoldersAsync(cancellationToken).ConfigureAwait(true);
+    }
+
+    /// <summary>Finds folders that can't be reached (a drive unplugged, a folder moved) and marks their photos Offline.</summary>
+    private async Task CheckFoldersAsync(CancellationToken cancellationToken)
+    {
+        var offline = await Locate.CheckAsync(_all.Select(t => t.Photo.FolderPath), cancellationToken).ConfigureAwait(true);
+        ApplyOffline(offline);
+    }
+
+    private async Task RecheckFoldersAsync()
+    {
+        try
+        {
+            await CheckFoldersAsync(CancellationToken.None).ConfigureAwait(true);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            LogFolderCheckFailed(ex);
+        }
+    }
+
+    private void ApplyOffline(IReadOnlyDictionary<string, OfflineFolder> offline)
+    {
+        foreach (var tile in _all)
+        {
+            tile.OfflineReason = offline.TryGetValue(tile.Photo.FolderPath, out var o) ? o.Reason : null;
+        }
+
+        Filter.SetOffline(offline);
+        Filter.SetFolders(_all.Select(t => t.Photo.FolderPath));
+        RebuildView();
+        UpdateCounts();
+    }
+
+    private async Task OnRelocatedAsync(int moved)
+    {
+        try
+        {
+            await ReloadAsync(CancellationToken.None).ConfigureAwait(true);
+            SetStatus(
+                string.Create(CultureInfo.CurrentCulture, $"Moved {moved:N0} photo{(moved == 1 ? string.Empty : "s")} to “{Locate.NewFolder}”. Decisions, edits and analysis came with them."),
+                warning: false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            LogFolderCheckFailed(ex);
+            SetStatus("The photos were moved, but the library could not be reloaded. Restart FrameForge to see them.", warning: true);
         }
     }
 
@@ -768,6 +824,11 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
         if (summary.MarkedMissing > 0)
         {
             parts.Add(string.Create(culture, $"{summary.MarkedMissing:N0} missing"));
+        }
+
+        if (summary.MissingCheckSkipped > 0)
+        {
+            parts.Add(string.Create(culture, $"no photos found, so the {summary.MissingCheckSkipped:N0} already in the library were left as they are"));
         }
 
         if (summary.SkippedFolders.Count > 0)
@@ -913,6 +974,9 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Loading the library failed.")]
     private partial void LogLoadFailed(Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Checking whether library folders can be reached failed.")]
+    private partial void LogFolderCheckFailed(Exception exception);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Import of {FolderPath} failed.")]
     private partial void LogImportFailed(Exception exception, string folderPath);

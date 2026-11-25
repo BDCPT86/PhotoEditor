@@ -169,7 +169,7 @@ public sealed partial class PhotoTileViewModel : ObservableObject, IThumbnailReq
     public ImportStatus Status => Photo.Status;
 
     /// <summary>Short label for problem states; null when the photo is fine.</summary>
-    public string? StatusText => Photo.Status switch
+    public string? StatusText => OfflineReason is not null ? "Offline" : Photo.Status switch
     {
         ImportStatus.Missing => "Missing",
         ImportStatus.Failed => "Unreadable",
@@ -178,7 +178,12 @@ public sealed partial class PhotoTileViewModel : ObservableObject, IThumbnailReq
 
     public bool HasProblem => StatusText is not null;
 
-    public string ToolTipText => Photo.LastError is { } error ? $"{Photo.FilePath}\n{error}" : Photo.FilePath;
+    /// <summary>Why the photo's folder can't be reached right now (drive unplugged, folder moved), or null.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StatusText), nameof(HasProblem), nameof(AccessibleStatus), nameof(ToolTipText))]
+    private string? _offlineReason;
+
+    public string ToolTipText => (OfflineReason ?? Photo.LastError) is { } error ? $"{Photo.FilePath}\n{error}" : Photo.FilePath;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(StatusText), nameof(HasProblem), nameof(AccessibleStatus))]

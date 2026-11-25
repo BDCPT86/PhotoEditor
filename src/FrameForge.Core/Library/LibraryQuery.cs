@@ -30,8 +30,11 @@ public sealed record LibraryFilter
 
     public IReadOnlySet<ColourLabel>? Labels { get; init; }
 
-    /// <summary>Only missing or unreadable photos.</summary>
+    /// <summary>Only missing, unreadable or offline photos.</summary>
     public bool ProblemsOnly { get; init; }
+
+    /// <summary>Folders that can't be reached right now (found at run time, not stored); their photos count as problems.</summary>
+    public IReadOnlySet<string>? OfflineFolders { get; init; }
 
     /// <summary>Only photos in this folder or its subfolders (case-insensitive); null = every folder.</summary>
     public string? Folder { get; init; }
@@ -66,7 +69,7 @@ public sealed record LibraryFilter
             return false;
         }
 
-        if (ProblemsOnly && photo.Status == ImportStatus.Imported)
+        if (ProblemsOnly && photo.Status == ImportStatus.Imported && OfflineFolders?.Contains(photo.FolderPath) != true)
         {
             return false;
         }

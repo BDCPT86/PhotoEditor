@@ -156,7 +156,7 @@ public static class CullingShortcuts
             new("C", "Compare selected photos (2–4)"),
             new("← / →", "Previous / next photo (viewer) or panel (compare)"),
             new("Esc", "Back to the grid"),
-            new("F5", "Re-apply filter and sort"),
+            new("F5", "Re-apply filter and sort; check offline drives"),
             new("Ctrl+I", "Import folder"),
         ]),
         new("Analysis (heuristics, not AI)",

@@ -83,6 +83,11 @@ public sealed partial class LibraryScopeItem(LibraryScope scope, string title, s
 /// <summary>One entry in the Folder filter. <see cref="Path"/> is null for "All folders".</summary>
 public sealed record FolderOption(string? Path, string Label, int Count, int Depth = 0, string? Name = null)
 {
+    /// <summary>Why this folder (or one inside it) can't be reached right now, or null.</summary>
+    public string? OfflineReason { get; init; }
+
+    public bool IsOffline => OfflineReason is not null;
+
     public string Display => string.Create(CultureInfo.CurrentCulture, $"{Label}  ·  {Count:N0}");
 
     /// <summary>Name in the sidebar tree: the folder below its parent, or the label for a top-level folder.</summary>
@@ -91,7 +96,7 @@ public sealed record FolderOption(string? Path, string Label, int Count, int Dep
     public string CountText => Count.ToString("N0", CultureInfo.CurrentCulture);
 
     /// <summary>The full path, as a tooltip, so folders with the same name can be told apart.</summary>
-    public string ToolTip => Path ?? "Every imported folder";
+    public string ToolTip => (Path ?? "Every imported folder") + (OfflineReason is { } reason ? Environment.NewLine + reason : string.Empty);
 }
 
 /// <summary>Filter and sort choices for the grid. Raises <see cref="Changed"/> when any choice changes.</summary>
@@ -109,7 +114,7 @@ public sealed partial class LibraryFilterViewModel : ObservableObject
             new(LibraryScope.ToReview, "To review", "Marked Review (V)"),
             new(LibraryScope.Rejected, "Rejected", "Marked Reject (X)"),
             new(LibraryScope.LastImport, "Last import", "Photos first added by the most recent import that added any") { IsAvailable = false },
-            new(LibraryScope.Problems, "Problems", "Missing or unreadable files") { IsAvailable = false },
+            new(LibraryScope.Problems, "Problems", "Missing, unreadable or offline files") { IsAvailable = false },
         ];
         _selectedScope = Scopes[0];
     }
@@ -254,6 +259,22 @@ public sealed partial class LibraryFilterViewModel : ObservableObject
     public bool HasFolders => Folders.Count > 1;
 
     /// <summary>Refreshes the folder list after the library changes, keeping the chosen folder if it still has photos.</summary>
+    /// <summary>Folders that can't be reached right now; their photos count as problems. Call <see cref="SetFolders"/> after.</summary>
+    public void SetOffline(IReadOnlyDictionary<string, FrameForge.Application.Photos.OfflineFolder> offline)
+    {
+        ArgumentNullException.ThrowIfNull(offline);
+        _offline = offline;
+        OfflineFolders = offline.Count == 0 ? null : new HashSet<string>(offline.Keys, StringComparer.OrdinalIgnoreCase);
+    }
+
+    private IReadOnlyDictionary<string, FrameForge.Application.Photos.OfflineFolder> _offline = new Dictionary<string, FrameForge.Application.Photos.OfflineFolder>();
+
+    /// <summary>Paths of the folders that are offline, for <see cref="ToFilter"/>; null when none are.</summary>
+    public IReadOnlySet<string>? OfflineFolders { get; private set; }
+
+    private string? OfflineReasonFor(string folder) =>
+        _offline.Values.FirstOrDefault(o => FrameForge.Core.Photos.FolderScope.IsSameOrUnder(o.Folder, folder))?.Reason;
+
     public void SetFolders(IEnumerable<string> photoFolders)
     {
         ArgumentNullException.ThrowIfNull(photoFolders);
@@ -266,7 +287,7 @@ public sealed partial class LibraryFilterViewModel : ObservableObject
             Folders.Add(new FolderOption(null, "All folders", list.Count));
             foreach (var folder in LibraryFolders.Build(list))
             {
-                Folders.Add(new FolderOption(folder.Path, folder.Label, folder.Count, folder.Depth, folder.Name));
+                Folders.Add(new FolderOption(folder.Path, folder.Label, folder.Count, folder.Depth, folder.Name) { OfflineReason = OfflineReasonFor(folder.Path) });
             }
 
             Folder = Folders.FirstOrDefault(f => chosen is not null && string.Equals(f.Path, chosen, StringComparison.OrdinalIgnoreCase)) ?? Folders[0];
@@ -365,6 +386,7 @@ public sealed partial class LibraryFilterViewModel : ObservableObject
     {
         Folder = Folder?.Path,
         ProblemsOnly = State == StateFilterChoice.Problems,
+        OfflineFolders = OfflineFolders,
         ImportedSinceUtc = RecentOnly ? LastImportUtc ?? DateTime.MaxValue : null,
         States = State switch
         {

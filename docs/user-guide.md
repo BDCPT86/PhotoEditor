@@ -19,7 +19,7 @@ app for the keyboard list at any time.
 ## Finding your way around
 - **Sidebar (left):** under **Library**, the views: **All photos**, **Undecided** (no Keep, Review or Reject yet),
   **Kept**, **To review**, **Rejected**, **Last import** (the photos the most recent import added) and, only when there
-  are any, **Problems** (missing or unreadable files). Each shows how many photos it holds. Under **Folders**, every
+  are any, **Problems** (missing, unreadable or offline files). Each shows how many photos it holds. Under **Folders**, every
   imported folder, nested under its parent; a folder includes its subfolders. A view and a folder combine: **Kept** with
   a folder chosen shows that folder's keepers. **Settings** and **About** are at the bottom.
 - **Header:** the view you are in and how many photos it shows, then the main actions: **Import**, **Analyze**,
@@ -38,7 +38,29 @@ app for the keyboard list at any time.
    never creates duplicates.
 
 Files that can't be read are listed as **Unreadable**. Files deleted since the last import show as **Missing** the next
-time that folder is imported.
+time that folder is imported. If an import finds no photos at all in a folder that has some in the library (an empty
+card reader or network share, say), nothing is marked Missing, and the result says so.
+
+### Photos on a drive that isn't connected
+If the drive or network share a folder is on isn't there, or the folder has gone, its photos show **⚠ Offline** in the
+corner of each thumbnail:
+- The folder gets a ⚠ mark in the sidebar; hover over it for the reason ("Drive E: isn't connected.").
+- A note above the grid says how many photos are offline. **Check again** (or F5) looks again after you plug the drive
+  back in.
+- Your decisions, ratings and edits are kept, and thumbnails already made still show, so you can go on culling. Opening
+  a photo at full size needs the drive.
+
+### A folder you moved: Locate folder…
+If you moved or copied a folder to another place (a new drive, an archive folder), don't import it again as new. Instead:
+1. Right-click the folder in the sidebar and choose **Locate folder…**, or choose it on the note above the grid.
+2. Pick where the folder is now.
+3. FrameForge looks for each photo at the same place inside the new folder, with the same size, and shows what it found:
+   found, found with a different date (copied; these move too), and any it couldn't match.
+4. Choose **Move … photos**. Only the library changes; no file is moved or renamed. Decisions, ratings, edits and
+   analysis stay with each photo. Thumbnails are made again as you scroll.
+
+Photos it couldn't match are left as they were. If you already imported the folder at its new place, those photos are
+listed as "already in the library" and left alone.
 
 ## 2. Look at your photos
 - **Grid:** arrow keys move, Shift/Ctrl+click or Shift+arrows select several. Selected photos get a light frame; the
@@ -80,7 +102,7 @@ selection moves on to the next one. The sidebar counts update as you go.
   blurry, clipping, similar groups, exact duplicates, AI pick, AI: faces soft, changed by Auto) narrow the current view
   further. A filter that is on turns its caption blue. **Clear refinements** sets them back to Any and keeps the view
   and folder.
-- **Sort** by Folder, Capture time, File name or Rating. **F5** applies the filter and sort again.
+- **Sort** by Folder, Capture time, File name or Rating. **F5** applies the filter and sort again, and checks for drives that were plugged back in.
 - The number beside the heading counts the photos shown; "84 of 312" means the refinements hide the rest of the view.
   When nothing matches, **Show all photos** goes back to everything.
 
@@ -229,7 +251,7 @@ your library, FrameForge warns you that the copies will appear as new photos at 
 | Grid | **Enter** | Open the viewer |
 | Grid | **C** | Compare 2–4 selected photos |
 | Grid | **G** / **I** | Select the similar group / show analysis details |
-| Grid | **F5** | Re-apply filter and sort |
+| Grid | **F5** | Re-apply filter and sort; look for offline drives again |
 | Viewer | **← / →**, **Esc** | Previous / next photo, back to the grid |
 | Viewer | **Z**, **+ / −** | Fit ↔ 100 %, zoom |
 | Viewer | **F / Shift+F** | Next / previous face |
