@@ -38,6 +38,9 @@ public sealed record ExportProfile
 
     public bool WriteRatingAndLabel { get; init; } = EditedExportOptions.Default.WriteRatingAndLabel;
 
+    /// <summary>Which files of a RAW + JPEG pair a copy includes (M09). Older stored profiles have none, so both.</summary>
+    public PairFiles PairFiles { get; init; } = PairFiles.Both;
+
     /// <summary>The name: what lists and screen readers show for a profile.</summary>
     public override string ToString() => Name;
 
@@ -64,6 +67,11 @@ public sealed record ExportProfile
         if (!Enum.IsDefined(Mode))
         {
             errors.Add("Unknown export mode.");
+        }
+
+        if (!Enum.IsDefined(PairFiles))
+        {
+            errors.Add("Unknown choice of RAW + JPEG files.");
         }
 
         if (NamePattern is null)

@@ -964,9 +964,9 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
         scope => (scope == ExportScope.Keep
                 ? LibraryQuery.Apply(_all, t => t.Photo, t => t.Decision, new LibraryFilter { States = new HashSet<CullState> { CullState.Keep } }, Filter.Sort)
                 : Photos.ToList())
-            // Both files of a pair, as before pairs were shown as one photo; A4 of M09 adds the choice.
+            // Both files of a pair, JPEG first, each knowing its cover; the panel picks the files for the chosen export.
             .SelectMany(t => t.Partner is { } raw
-                ? new[] { new ExportItem(t.Photo, t.Decision, t.Recipe), new ExportItem(raw.Photo, t.Decision, raw.Recipe) }
+                ? new[] { new ExportItem(t.Photo, t.Decision, t.Recipe) { Cover = t.Photo }, new ExportItem(raw.Photo, t.Decision, t.Recipe) { Cover = t.Photo } }
                 : [new ExportItem(t.Photo, t.Decision, t.Recipe)])
             .ToList(),
         _all.Select(t => t.Photo.FolderPath).Distinct(StringComparer.OrdinalIgnoreCase).ToList());

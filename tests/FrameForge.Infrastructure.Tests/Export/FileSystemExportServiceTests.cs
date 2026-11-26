@@ -42,6 +42,34 @@ public sealed class FileSystemExportServiceTests : IDisposable
         Directory.EnumerateFiles(_destination.Path).Select(Path.GetFileName).Order(StringComparer.Ordinal).ToArray()!;
 
     [Fact]
+    public async Task APair_GetsMatchingNames_FromThePattern_AndIsRenamedTogether()
+    {
+        var taken = new DateTime(2026, 11, 14, 9, 30, 15);
+        var single = Source("IMG_0700.JPG", seed: 3);
+        var jpeg = Source("IMG_0603.JPG", seed: 1);
+        var raw = Source("IMG_0603.CR3", seed: 2);
+        foreach (var item in new[] { single, jpeg, raw })
+        {
+            item.Photo.Id = Guid.NewGuid();
+            item.Photo.CaptureLocalTime = taken;
+        }
+
+        File.WriteAllBytes(Path.Combine(_destination.Path, "2026-11-14_002.JPG"), [1]); // the pair's JPEG name is taken
+        Assert.True(ExportNameTemplate.TryParse("{date:yyyy-MM-dd}_{seq:3}", out var naming, out _));
+
+        var summary = await _service.CopyAsync(
+            [single, jpeg with { Cover = jpeg.Photo }, raw with { Cover = jpeg.Photo }],
+            _destination.Path,
+            naming,
+            null,
+            Ct);
+
+        Assert.Equal(3, summary.Exported);
+        Assert.Equal(["2026-11-14_001.JPG", "2026-11-14_002 (2).CR3", "2026-11-14_002 (2).JPG", "2026-11-14_002.JPG"], DestinationNames());
+        Assert.Equal(Fingerprint(raw.Photo.FilePath).Hash, Fingerprint(Path.Combine(_destination.Path, "2026-11-14_002 (2).CR3")).Hash);
+    }
+
+    [Fact]
     public async Task Copies_FilesByteForByte_AndPreservesModifiedTime()
     {
         var items = new[] { Source("a.jpg", seed: 1), Source("b.jpg", seed: 2) };

@@ -111,7 +111,7 @@ public sealed partial class ExportViewModel(
     private string? _nameError;
 
     private Func<ExportScope, IReadOnlyList<ExportItem>> _source = _ => [];
-    private ExportItem? _previewItem;
+    private IReadOnlyList<ExportItem> _previewItems = [];
     private IReadOnlyCollection<string> _libraryFolders = [];
     private CancellationTokenSource? _cts;
 
@@ -156,7 +156,38 @@ public sealed partial class ExportViewModel(
 
     public bool HasPendingDestination => PendingDestination is not null;
 
-    public string CountText => string.Create(CultureInfo.CurrentCulture, $"{(Scope == ExportScope.Keep ? KeepCount : ViewCount):N0} photo(s)");
+    /// <summary>Which files of each RAW + JPEG pair a copy includes.</summary>
+    [ObservableProperty]
+    private PairFiles _pairFiles = PairFiles.Both;
+
+    /// <summary>The photos in scope include a RAW + JPEG pair, so the choice of files applies.</summary>
+    [ObservableProperty]
+    private bool _hasPairs;
+
+    /// <summary>How many files the export writes, when that differs from the number of photos (pairs); otherwise 0.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CountText))]
+    private int _fileCount;
+
+    /// <summary>Photos counted as the grid shows them, a pair once; "12 photo(s) · 24 files" when a pair gives two files.</summary>
+    public string CountText
+    {
+        get
+        {
+            var photos = Scope == ExportScope.Keep ? KeepCount : ViewCount;
+            return FileCount > 0 && FileCount != photos
+                ? string.Create(CultureInfo.CurrentCulture, $"{photos:N0} photo(s)  ·  {FileCount:N0} files")
+                : string.Create(CultureInfo.CurrentCulture, $"{photos:N0} photo(s)");
+        }
+    }
+
+    /// <summary>The files this mode exports: a copy follows the pair choice, edited JPEGs one per photo, the manifest every file.</summary>
+    private IReadOnlyList<ExportItem> FilesFor(IReadOnlyList<ExportItem> items) => Mode switch
+    {
+        ExportMode.CopyFiles => ExportFrames.Select(items, PairFiles),
+        ExportMode.EditedJpegs => ExportFrames.Covers(items),
+        _ => items,
+    };
 
     public void Open(Func<ExportScope, IReadOnlyList<ExportItem>> source, IReadOnlyCollection<string> libraryFolders)
     {
@@ -249,6 +280,7 @@ public sealed partial class ExportViewModel(
             MaxLongSideText = profile.MaxLongSide?.ToString(CultureInfo.CurrentCulture) ?? string.Empty;
             Metadata = profile.Metadata;
             WriteRatingAndLabel = profile.WriteRatingAndLabel;
+            PairFiles = profile.PairFiles;
         }
         finally
         {
@@ -281,6 +313,7 @@ public sealed partial class ExportViewModel(
             MaxLongSide = maxSide,
             Metadata = Metadata,
             WriteRatingAndLabel = WriteRatingAndLabel,
+            PairFiles = PairFiles,
         };
     }
 
@@ -299,6 +332,12 @@ public sealed partial class ExportViewModel(
     partial void OnMetadataChanged(ExportMetadata value) => SettingChanged();
 
     partial void OnWriteRatingAndLabelChanged(bool value) => SettingChanged();
+
+    partial void OnPairFilesChanged(PairFiles value)
+    {
+        RefreshCounts();
+        SettingChanged();
+    }
 
     private bool CanSaveProfile() => !string.IsNullOrWhiteSpace(NewProfileName);
 
@@ -380,10 +419,14 @@ public sealed partial class ExportViewModel(
     {
         var keep = _source(ExportScope.Keep);
         var view = _source(ExportScope.CurrentView);
-        KeepCount = keep.Count;
-        ViewCount = view.Count;
+        KeepCount = ExportFrames.Count(keep);
+        ViewCount = ExportFrames.Count(view);
         var shown = Scope == ExportScope.Keep ? keep : view;
-        _previewItem = shown.Count > 0 ? shown[0] : null;
+        HasPairs = ExportFrames.HasPairs(shown);
+        var files = FilesFor(shown);
+        FileCount = files.Count;
+        OnPropertyChanged(nameof(CountText));
+        _previewItems = files;
         UpdateNamePreview();
     }
 
@@ -391,7 +434,7 @@ public sealed partial class ExportViewModel(
 
     partial void OnModeChanged(ExportMode value)
     {
-        UpdateNamePreview();
+        RefreshCounts();
         SettingChanged();
     }
 
@@ -411,9 +454,14 @@ public sealed partial class ExportViewModel(
         }
 
         NameError = null;
-        NamePreview = _previewItem is { } item
-            ? template.FileNameFor(new ExportNameContext(item.Photo, item.Decision, 1), Mode == ExportMode.EditedJpegs ? ".jpg" : null)
-            : null;
+
+        // The first photo's names: both files of a pair ("IMG_0603.JPG, IMG_0603.CR3"), since they are named together.
+        var first = _previewItems.Count == 0 ? []
+            : _previewItems[0].Cover is { } cover ? _previewItems.TakeWhile(i => i.Cover?.Id == cover.Id).ToList()
+            : [_previewItems[0]];
+        NamePreview = first.Count == 0
+            ? null
+            : string.Join(", ", ExportFrames.WantedNames(first, template, Mode == ExportMode.EditedJpegs ? ".jpg" : null).Select(n => n.Name));
     }
 
     [RelayCommand]
@@ -436,7 +484,7 @@ public sealed partial class ExportViewModel(
     {
         PendingDestination = null;
         ResultText = null; // a new export starts clean; the previous result no longer applies
-        var items = _source(Scope);
+        var items = FilesFor(_source(Scope));
         if (items.Count == 0)
         {
             SetResult(Scope == ExportScope.Keep ? "No photos are marked Keep (press P to keep a photo)." : "No photos are shown.", warning: true);
@@ -491,7 +539,7 @@ public sealed partial class ExportViewModel(
         }
 
         PendingDestination = null;
-        await RunAsync(_source(Scope), folder, manifest: false).ConfigureAwait(true);
+        await RunAsync(FilesFor(_source(Scope)), folder, manifest: false).ConfigureAwait(true);
     }
 
     [RelayCommand]
@@ -525,7 +573,7 @@ public sealed partial class ExportViewModel(
                 summary = await exporter.CopyAsync(items, destination, Naming(), progress, cts.Token).ConfigureAwait(true);
             }
 
-            SetResult(Describe(summary, manifest, Mode == ExportMode.EditedJpegs), warning: summary.Failures.Count > 0 || summary.Notes.Count > 0 || summary.WasCancelled);
+            SetResult(Describe(summary, manifest, Mode == ExportMode.EditedJpegs, ExportFrames.Count(items)), warning: summary.Failures.Count > 0 || summary.Notes.Count > 0 || summary.WasCancelled);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
         {
@@ -585,12 +633,16 @@ public sealed partial class ExportViewModel(
     private ExportNameTemplate Naming() =>
         ExportNameTemplate.TryParse(NameTemplateText, out var template, out _) ? template : ExportNameTemplate.Original;
 
-    internal static string Describe(ExportSummary summary, bool manifest, bool edited = false)
+    /// <param name="photos">Photos the files belong to, a RAW + JPEG pair once; shown when it differs from the number of files.</param>
+    internal static string Describe(ExportSummary summary, bool manifest, bool edited = false, int? photos = null)
     {
         var culture = CultureInfo.CurrentCulture;
+        var files = photos is { } p && p != summary.Requested
+            ? string.Create(culture, $"{summary.Exported:N0} files ({p:N0} photos)")
+            : string.Create(culture, $"{summary.Exported:N0} photo(s)");
         if (manifest)
         {
-            return string.Create(culture, $"Manifest of {summary.Exported:N0} photo(s) saved to {summary.Destination}.");
+            return string.Create(culture, $"Manifest of {files} saved to {summary.Destination}.");
         }
 
         var verb = edited ? "saved as edited JPEGs" : "copied";
@@ -598,7 +650,7 @@ public sealed partial class ExportViewModel(
             ? string.Create(culture, $"Export cancelled: {summary.Exported:N0} of {summary.Requested:N0} {verb} to {summary.Destination}.")
             : edited
                 ? string.Create(culture, $"Saved {summary.Exported:N0} edited JPEG(s) to {summary.Destination}.")
-                : string.Create(culture, $"Copied {summary.Exported:N0} photo(s) to {summary.Destination}.");
+                : string.Create(culture, $"Copied {files} to {summary.Destination}.");
 
         if (summary.Renamed > 0)
         {
@@ -607,8 +659,8 @@ public sealed partial class ExportViewModel(
 
         if (summary.Notes.Count > 0)
         {
-            var photos = summary.Notes.Select(n => n.SourcePath).Distinct(StringComparer.OrdinalIgnoreCase).Count();
-            text += string.Create(culture, $" {photos:N0} saved without a mask: ")
+            var withoutMask = summary.Notes.Select(n => n.SourcePath).Distinct(StringComparer.OrdinalIgnoreCase).Count();
+            text += string.Create(culture, $" {withoutMask:N0} saved without a mask: ")
                 + string.Join("; ", summary.Notes.Take(3).Select(n => $"{Path.GetFileName(n.SourcePath)} ({n.Note})"))
                 + (summary.Notes.Count > 3 ? "…" : string.Empty);
         }

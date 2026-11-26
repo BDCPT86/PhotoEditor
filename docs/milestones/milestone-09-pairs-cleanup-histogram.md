@@ -21,10 +21,21 @@
 >   - A pair with matching hashes isn't grouped as similar.
 >   - A preset reaches the cover and not its RAW file.
 >   - An edit stored for a RAW file before this milestone stays stored but isn't shown.
->   - **Until A4:**
->     - Export still writes both files of a pair, and its panel counts them as two photos.
->     - Edited JPEGs are made from both files. The one from the RAW file has no edit.
->     - An edit made to a RAW file before this milestone isn't shown, since the tile is the JPEG.
+> - **A4 done:** each exported file knows its pair's cover (`ExportItem.Cover`), and `ExportFrames` holds the rules.
+>   - **Copy files:** a **RAW + JPEG** drop-down (Both files, RAW only, JPEG only) under "Export as". It shows only
+>     when the photos in scope include a pair. Photos on their own are always copied. Profiles keep the choice; older
+>     stored profiles mean Both.
+>   - **Names:**
+>     - **With a pattern,** both files are named from the JPEG, with one `{seq}` number per photo
+>       (`2026-11-14_002.JPG` and `2026-11-14_002.CR3`).
+>     - **With no pattern,** each keeps its own name.
+>     - **A clash** renames the pair together (`… (2).JPG` and `… (2).CR3`) with the first number free for both.
+>   - **Edited JPEGs:** one per pair, from the JPEG.
+>   - **The manifest:** lists both files.
+>   - **Counts:** the panel counts photos, plus files when a pair gives two ("2 photo(s) · 3 files"). The result line
+>     says "Copied 3 files (2 photos)". The name preview shows both names of a pair.
+>   - **Tests:** 9 rule tests, 1 copier test with real files, and 8 panel tests.
+>   - **An edit made to a RAW file before this milestone** isn't shown, since the tile is the JPEG.
 
 ## Goal
 Make culling a real shoot fast from card to keepers. A camera that saves RAW and JPEG should give one photo to decide

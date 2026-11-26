@@ -1,6 +1,7 @@
 using FrameForge.App.Shortcuts;
 using FrameForge.App.ViewModels;
 using FrameForge.Application.Editing;
+using FrameForge.Application.Export;
 using FrameForge.Core.Decisions;
 using FrameForge.Core.Editing;
 
@@ -119,19 +120,96 @@ public sealed class PairWorkflowTests
         Assert.Equal(2, f.Library.Photos.Count);
     }
 
-    [Fact]
-    public async Task Export_StillCopiesBothFilesOfAPair()
+    // ------------------------------------------------------------------ A4: export
+
+    [Theory]
+    [InlineData(PairFiles.Both, new[] { "IMG_00.jpg", "IMG_01.jpg", "IMG_01.CR3" })]
+    [InlineData(PairFiles.RawOnly, new[] { "IMG_00.jpg", "IMG_01.CR3" })]
+    [InlineData(PairFiles.JpegOnly, new[] { "IMG_00.jpg", "IMG_01.jpg" })]
+    public async Task CopyFiles_CopiesTheChosenFilesOfAPair(PairFiles choice, string[] expected)
     {
-        using var f = new CullingFixture(photoCount: 2, pairedRaws: [1]);
+        using var f = await OpenExportAsync();
+        Assert.True(f.Export.HasPairs);
+
+        f.Export.PairFiles = choice;
+        f.FolderPicker.Next = @"D:\Out";
+        await f.Export.StartCommand.ExecuteAsync(null);
+
+        Assert.Equal(expected, Assert.Single(f.Exporter.Calls).Select(i => i.Photo.FileName));
+    }
+
+    [Fact]
+    public async Task ThePanel_CountsPhotos_AndFilesWhenAPairGivesTwo()
+    {
+        using var f = await OpenExportAsync();
+
+        Assert.Equal("2 photo(s)  ·  3 files", f.Export.CountText);
+        Assert.Equal("IMG_00.jpg", f.Export.NamePreview);
+
+        f.Export.PairFiles = PairFiles.JpegOnly;
+        Assert.Equal("2 photo(s)", f.Export.CountText);
+
+        f.Export.Mode = ExportMode.Manifest; // the manifest lists every file
+        Assert.Equal("2 photo(s)  ·  3 files", f.Export.CountText);
+    }
+
+    [Fact]
+    public async Task ThePreview_ShowsBothNamesOfAPair()
+    {
+        using var f = new CullingFixture(photoCount: 1, pairedRaws: [0]);
         await f.LoadAsync();
         f.Library.OpenExportCommand.Execute(null);
         f.Export.Scope = ExportScope.CurrentView;
 
+        f.Export.NameTemplateText = "{seq:3}-shoot";
+
+        Assert.Equal("001-shoot.jpg, 001-shoot.CR3", f.Export.NamePreview);
+    }
+
+    [Fact]
+    public async Task EditedJpegs_AreMadeOncePerPair_FromTheJpeg()
+    {
+        using var f = await OpenExportAsync();
+
+        f.Export.Mode = ExportMode.EditedJpegs;
         f.FolderPicker.Next = @"D:\Out";
         await f.Export.StartCommand.ExecuteAsync(null);
 
-        var items = Assert.Single(f.Exporter.Calls);
-        Assert.Equal(["IMG_00.jpg", "IMG_01.jpg", "IMG_01.CR3"], items.Select(i => i.Photo.FileName));
+        var (items, _) = Assert.Single(f.EditedExporter.Calls);
+        Assert.Equal(["IMG_00.jpg", "IMG_01.jpg"], items.Select(i => i.Photo.FileName));
+        Assert.Equal("2 photo(s)", f.Export.CountText);
+    }
+
+    [Fact]
+    public async Task TheResult_CountsFilesAndPhotos()
+    {
+        using var f = await OpenExportAsync();
+
+        f.FolderPicker.Next = @"D:\Out";
+        await f.Export.StartCommand.ExecuteAsync(null);
+
+        Assert.StartsWith("Copied 3 files (2 photos) to", f.Export.ResultText, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task WithNoPairs_TheChoiceIsHidden()
+    {
+        using var f = new CullingFixture(photoCount: 2);
+        await f.LoadAsync();
+        f.Library.OpenExportCommand.Execute(null);
+        f.Export.Scope = ExportScope.CurrentView;
+
+        Assert.False(f.Export.HasPairs);
+        Assert.Equal("2 photo(s)", f.Export.CountText);
+    }
+
+    private static async Task<CullingFixture> OpenExportAsync()
+    {
+        var f = new CullingFixture(photoCount: 2, pairedRaws: [1]);
+        await f.LoadAsync();
+        f.Library.OpenExportCommand.Execute(null);
+        f.Export.Scope = ExportScope.CurrentView;
+        return f;
     }
 
     // ------------------------------------------------------------------ A3: the cover only

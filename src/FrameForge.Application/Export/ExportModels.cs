@@ -5,7 +5,25 @@ using FrameForge.Core.Photos;
 namespace FrameForge.Application.Export;
 
 /// <summary>A photo to export, with its decision (used by the manifest) and edit (used when exporting edited JPEGs).</summary>
-public sealed record ExportItem(Photo Photo, PhotoDecision Decision, EditRecipe? Recipe = null);
+public sealed record ExportItem(Photo Photo, PhotoDecision Decision, EditRecipe? Recipe = null)
+{
+    /// <summary>
+    /// For a file of a RAW + JPEG pair (M09): the pair's cover, the JPEG (for the JPEG itself, the same photo). Null for a
+    /// photo that isn't paired. Both files of a pair are named from the cover, so a pattern gives them the same name.
+    /// </summary>
+    public Photo? Cover { get; init; }
+
+    /// <summary>The RAW file of a pair, shown through its cover.</summary>
+    public bool IsPairRaw => Cover is not null && Cover.Id != Photo.Id;
+}
+
+/// <summary>Which files of each RAW + JPEG pair an export copies. Photos that aren't paired are always copied.</summary>
+public enum PairFiles
+{
+    Both,
+    RawOnly,
+    JpegOnly,
+}
 
 public sealed record ExportProgress(int Total, int Completed, int Failed, long BytesCopied, string? CurrentFile);
 

@@ -95,8 +95,8 @@ public sealed partial class FileSystemExportService(ILogger<FileSystemExportServ
         }
 
         var existing = Directory.EnumerateFileSystemEntries(destination).Select(e => Path.GetFileName(e)).ToList();
-        var wanted = items.Select((item, i) => naming.FileNameFor(new ExportNameContext(item.Photo, item.Decision, i + 1)));
-        var plan = ExportNamePlanner.Plan(wanted, existing);
+        // Both files of a RAW + JPEG pair get the same name and number.
+        var plan = ExportNamePlanner.PlanFrames(ExportFrames.WantedNames(items, naming), existing);
         var taken = new HashSet<string>(existing.Concat(plan.Select(p => p.TargetFileName)), StringComparer.OrdinalIgnoreCase);
 
         var failures = new List<ExportFailure>();
