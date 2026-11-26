@@ -13,7 +13,8 @@ folder, cull it with the keyboard, use analysis as hints, edit, and export.
 - **Automatic tools only suggest.** Analysis badges, AI picks, Auto options and masks are hints or previews. Nothing
   changes until you apply it, and you can undo it.
 
-This guide describes FrameForge as of Milestone 07 phase A (Canon CR3 RAW files), after Milestone 08 phase B (masks).
+This guide describes FrameForge as of Milestone 09: RAW + JPEG pairs as one photo, moving rejects to the Recycle Bin,
+and the histogram with its clipping overlay.
 Press **F1** in the app for the keyboard list at any time.
 
 ---
@@ -50,8 +51,16 @@ card reader or network share, say), nothing is marked Missing, and the result sa
   (CR2, NEF, ARW, DNG and so on) aren't imported yet; the import result counts them.
 - **What you see and edit:** the camera's own full-size JPEG, which every CR3 file carries inside it. Thumbnails, the
   viewer, Analyze, AI, masks and edits all use it, so a RAW file looks like the camera's JPEG of the same shot.
-- **RAW + JPEG:** when the camera saves both, they import as two separate photos side by side. Analyze puts each pair
-  in the same similar group, so **G** selects both.
+- **RAW + JPEG:** when the camera saves both, they are shown as **one photo**, the JPEG.
+  - **What makes a pair:** the same folder and name apart from the extension (`IMG_0603.CR3` and `IMG_0603.JPG`), and
+    the same capture time.
+  - **One decision for both:** a decision, rating or label applies to both files, and one undo reverts both. Counts and
+    filters count the pair once.
+  - **Analyze, edits and presets** work on the JPEG, so a pair is never "similar" to itself.
+  - **How to tell:** pointing at or selecting the tile shows a **RAW+JPEG** mark on the photo's corner, and the
+    viewer's info line starts with "RAW + JPEG".
+  - **Seeing both files:** turn off **Settings → Culling → Show RAW + JPEG pairs as one photo**. Each file then has its
+    own tile and decisions again; nothing is lost either way.
 - **Details:** camera, lens, exposure, capture time and orientation are read from the RAW file, the same way as from a
   JPEG.
 - **A CR3 file that can't be read** is listed as **Unreadable**, with the reason, like a damaged JPEG.
@@ -92,6 +101,12 @@ listed as "already in the library" and left alone.
     them is instant. Zooming past that size loads the full-resolution photo ("Loading full resolution…").
   - **F / Shift+F** jump the 100 % view from face to face, to check focus quickly (needs face analysis, see
     section 7).
+  - **H** shows the **histogram** in the top-right corner, and FrameForge remembers it.
+    - **What it shows:** red, green and blue over a grey luminance shape, for the photo on screen.
+    - **Underneath:** how much is clipped, for example "Shadows 0.8 %" (every channel at 0–1) and "Highlights 1.4 %"
+      (any channel at 254–255). These are the same levels as the ◐ clipping finding.
+  - **J** shows **clipping on the photo:** clipped highlights turn red and clipped shadows blue, and the header names
+    the colours. It is only on screen; nothing is changed or exported. **J** again turns it off.
 
 ## 3. Cull
 | Key | Decision |
@@ -111,6 +126,27 @@ listed as "already in the library" and left alone.
 
 **Work through what's left:** choose **Undecided** in the sidebar. Each photo you decide leaves the view, and the
 selection moves on to the next one. The sidebar counts update as you go.
+
+### Clear out the rejects: Move to Recycle Bin…
+When you're done, choose **Rejected** in the sidebar, then **Move to Recycle Bin…** beside the heading (or press
+**Delete**). It acts on the rejects shown, so choose a folder first to clear only that one. Both files of a RAW + JPEG
+pair go.
+
+- **Nothing moves yet.** A panel shows:
+  - how many photos and files, and their total size;
+  - the folders they come from;
+  - any files that will be **skipped**, and why.
+
+  Only **Move N files to Recycle Bin** moves them. Cancel or **Esc** closes the panel with nothing moved.
+- **Skipped files:** FrameForge moves files only to the Recycle Bin and never deletes one. Files on a drive without a
+  Recycle Bin are skipped and stay where they are, still marked Reject. That covers memory cards, most USB drives and
+  network folders, and drives whose Recycle Bin is off or too small for the file.
+- **Afterwards:**
+  - The moved photos leave the library, with their decisions, edits and analysis.
+  - The status line says what moved and why anything stayed, and the log lists every file.
+  - **Stop** while it runs finishes the file being moved and leaves the rest.
+- **Getting a photo back:** restore it from the Windows Recycle Bin, then import its folder again. It returns as a new
+  photo, without its Reject mark.
 
 ## 4. Views, folders, filters and sort
 - **Views and folders** are in the sidebar (see *Finding your way around*). When two folders have the same name, enough
@@ -169,6 +205,9 @@ quality is reported only where it has been measured on a set you reviewed yourse
 Open a photo in the viewer and press **D**, or press **D** in the grid. The panel on the right edits the photo
 non-destructively; the original never changes.
 
+- **The histogram** sits at the top of the panel and follows the edit as you drag, with the clipped shares under it.
+  **J** paints the clipped areas on the photo (red highlights, blue shadows) while you work; it is never part of an
+  export.
 - **Light:** Exposure, Contrast, Highlights, Shadows. **Colour:** Temperature, Tint, Vibrance, Saturation.
 - The preview updates as you drag. Double-click a slider to reset it.
 - Each pause while editing is one undo step: **Ctrl+Z / Ctrl+Y** (or ↶ ↷). Hold **\\** or use ◐ to see the original;
@@ -247,6 +286,11 @@ those shown in the grid) and what to **Export as**, then **Choose destination an
 folder's keepers, choose **Kept** and that folder in the sidebar, then **Photos shown in the grid**.
 - **Copy files to a folder:** the originals, copied unchanged (all their metadata included); a RAW file is copied as
   the `.CR3` itself.
+  - **RAW + JPEG pairs:** when the photos include a pair, a **RAW + JPEG** choice appears: **Both files**, **RAW only**
+    or **JPEG only**. Photos that aren't paired are always copied. Profiles remember the choice.
+  - **Names:** with a file-name pattern, both files of a pair get the same name and number (`2026-11-14_001.CR3` and
+    `2026-11-14_001.JPG`). A clash renames them together.
+  - **Counts:** the panel counts photos, plus files when pairs make more ("12 photo(s) · 24 files").
 - **Edited JPEGs:** new JPEGs with each photo's edits, masks included. Masks not worked out yet are worked out during
   the export. If one can't be made, the JPEG is still saved with the rest of the edit, and the result says which photo
   and why. You choose:
@@ -258,7 +302,9 @@ folder's keepers, choose **Kept** and that folder in the sidebar, then **Photos 
   - **From a RAW file:** the JPEG gets the camera details read from the RAW file (camera, lens, capture time,
     exposure, aperture, ISO, focal length), plus your rating and label. GPS, copyright and other details aren't
     carried over, so **All** and **All except location** give the same result.
-- **Selection manifest (CSV):** a list of the photos and your decisions, with no image files.
+- **Edited JPEGs of a pair** are made once, from the JPEG.
+- **Selection manifest (CSV):** a list of the photos and your decisions, with no image files. Both files of a pair are
+  listed.
 
 ### File names
 Leave **File names** empty to keep the original names, or type a pattern. **First file** shows what the first photo
@@ -307,6 +353,9 @@ your library, FrameForge warns you that the copies will appear as new photos at 
 | Grid | **C** | Compare 2–4 selected photos |
 | Grid | **G** / **I** | Select the similar group / show analysis details |
 | Grid | **F5** | Re-apply filter and sort; look for offline drives again |
+| Rejected view | **Delete** | Move the rejects shown to the Recycle Bin (asks first) |
+| Viewer | **H** | Show or hide the histogram (Develop always shows it) |
+| Viewer, Develop | **J** | Show or hide clipping on the photo (display only) |
 | Viewer | **← / →**, **Esc** | Previous / next photo, back to the grid |
 | Viewer | **Z**, **+ / −** | Fit ↔ 100 %, zoom |
 | Viewer | **F / Shift+F** | Next / previous face |
@@ -355,6 +404,12 @@ yourself if you want help.
   - RAW files are shown and edited through the camera's JPEG inside them, so they have no extra highlight or shadow
     latitude yet. A true RAW develop is planned for a later milestone.
   - Exported JPEGs of RAW files carry no GPS.
+- **RAW + JPEG pairs:** only a RAW file and a JPEG with the same name in the same folder pair up. Other combinations
+  (RAW + HEIC, two RAW formats) and sidecar files (XMP) don't. An edit you made to a RAW file before pairs were shown
+  as one photo stays saved, but isn't shown while the pair is shown as one.
+- **Recycle Bin:** there is no undo inside FrameForge for moving files. Restore them from the Windows Recycle Bin and
+  import the folder again.
+- **Histogram:** for a RAW file it shows the camera's JPEG inside it, the same image you see and edit.
 - At the largest thumbnail size on a high-DPI screen (150 % and up), thumbnails can look slightly soft: they are made at
   320 px.
 - There are no collections yet; the sidebar shows views and folders only.

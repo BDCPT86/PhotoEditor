@@ -4,8 +4,9 @@ Each phase must build, test, and be documented before the next phase starts. Eac
 what was delivered, and what was left out or done differently. The milestone briefs in `docs/milestones/` and the
 ADRs in `docs/decisions/` hold the details.
 
-**Where things stand (2026-11-26):** Phases 1–8 are done. Phase 8 was done before Phase 7, because it depends only on
-Phases 5 and 6. Nothing after Phase 8 is planned yet; see [Not yet scheduled](#not-yet-scheduled).
+**Where things stand (2026-11-26):** Phases 1–9 are done. Phase 8 was done before Phase 7, because it depends only on
+Phases 5 and 6. Phase 9 came from gaps that using the app turned up. Nothing after Phase 9 is planned yet; see
+[Not yet scheduled](#not-yet-scheduled).
 
 ## Phase 1 — Foundation (M01; done 2026-11-16)
 - Solution/projects and build configuration
@@ -153,11 +154,46 @@ evaluated.
 **Gate:** works with no model installed; suggestions are applied only by the user and are undoable; mask quality is
 measured on a human-reviewed set; preview matches export. **Met.**
 
+## Phase 9 — Pairs, clearing out rejects, histogram (M09; done 2026-11-26)
+Not in the original plan; added after Phases 7 and 8 from using the app on a real RAW + JPEG shoot.
+- RAW + JPEG pairs shown and decided on as one photo
+- Moving rejects to the Recycle Bin, safely
+- A histogram and a clipping overlay
+
+**Delivered:**
+- **Pairs** ([ADR 0021](decisions/0021-raw-jpeg-pairs.md)):
+  - one tile per frame, with the JPEG as cover;
+  - one decision and one undo for both files;
+  - Analyze and edits on the cover only;
+  - export choices (both files, RAW only, JPEG only) with matching names;
+  - a setting to show the files separately.
+- **Moving rejects to the Recycle Bin** ([ADR 0022](decisions/0022-moving-rejects-to-the-recycle-bin.md)):
+  - a confirmation panel that lists what will move and what will be skipped;
+  - three layers of protection against a permanent delete;
+  - moved photos leave the library.
+  - The promise now reads: "FrameForge never changes your photos. It moves rejects to the Recycle Bin only when you
+    ask, and only after you confirm."
+- **Histogram:** red, green, blue and luminance, in Develop and in the viewer (**H**). Its clipping levels match the
+  analysis badge.
+- **Clipping overlay (J):** display only.
+
+**Differs from the plan:**
+- **Clipping levels:** 254–255 and 0–1, to match the ◐ badge, rather than exactly 255 and 0.
+
+**Not verified:**
+- the Recycle Bin's permanent-delete warning on real Windows;
+- skipping files on a real memory card. It is covered by tests only.
+
+See the [M09 brief](milestones/milestone-09-pairs-cleanup-histogram.md) and its completion review.
+
+**Gate:** the M09 brief's acceptance criteria. **Met,** with the two gaps above.
+
 ## Not yet scheduled
 Left out of earlier phases, or suggested by them. None of it is planned or approved.
 - **RAW:** a develop from the sensor data, for highlight and shadow recovery. Other RAW formats and cameras, each
   tested before it is turned on.
 - **Library:** collections or projects.
+- **Pairs:** other combinations (RAW + HEIC, two RAW formats) and XMP sidecar files.
 - **AI culling:**
   - measure face detection, grouping and the suggested pick on a human-reviewed set
   - semantic (text) search

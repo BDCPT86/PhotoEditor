@@ -5,7 +5,7 @@ A Windows-first, local-first photography application focused on photo culling an
 **New here? Read the [user guide](docs/user-guide.md)**: importing, culling, analysis, optional AI, Develop, masks,
 presets and export, in plain steps.
 
-**Status:** Milestone 08 (AI-assisted editing: Auto tools, and masks for local adjustments — Subject, Sky, Background, refined with clicks) is complete, after Milestone 06 (non-destructive editing). Milestone 07 (RAW and professional workflow) has all its phases implemented: photos on an unplugged drive show as Offline, and **Locate folder…** reconnects a folder you moved; exports take file-name patterns, a metadata choice and saved profiles; Canon CR3 RAW files import, show, edit and export through the full-size JPEG the camera stores in them (tested with the Canon EOS R50). Import folders of JPEGs or CR3 files, cull them with the keyboard
+**Status:** Milestone 09 is complete: a camera's RAW + JPEG pair is one photo, decided on once for both files; rejects can be moved to the Recycle Bin after a confirmation that lists what will move; and a histogram (H) with a clipping overlay (J) shows exposure in the viewer and Develop. Milestone 08 (AI-assisted editing: Auto tools, and masks for local adjustments — Subject, Sky, Background, refined with clicks) is complete, after Milestone 06 (non-destructive editing). Milestone 07 (RAW and professional workflow) has all its phases implemented: photos on an unplugged drive show as Offline, and **Locate folder…** reconnects a folder you moved; exports take file-name patterns, a metadata choice and saved profiles; Canon CR3 RAW files import, show, edit and export through the full-size JPEG the camera stores in them (tested with the Canon EOS R50). Import folders of JPEGs or CR3 files, cull them with the keyboard
 (keep/reject/review, ratings, colour labels), filter and sort, compare photos side by side, and export the selection.
 **Analyze** measures sharpness and exposure and finds exact and near-duplicates. These are explainable heuristics,
 not AI. Optional local AI models (face detection and scene similarity, off by default, installed only with your consent)
@@ -159,6 +159,9 @@ Press **F1** (or **?**) on the Library page for the same list in the app.
 | Viewer | F / Shift+F | Zoom to the next / previous face |
 | Develop | Ctrl+Z / Ctrl+Y | Undo / redo an edit |
 | Library | F5 | Re-apply filter and sort |
+| Rejected view | Delete | Move the rejects shown to the Recycle Bin (asks first) |
+| Viewer | H | Show or hide the histogram (Develop always shows it) |
+| Viewer / Develop | J | Show or hide clipping on the photo (display only) |
 | Library | Ctrl+I | Import folder |
 | Grid | Ctrl+− / Ctrl+= | Smaller / larger thumbnails (three sizes) |
 | Grid | Right-click, Menu key | Actions for the selected photos |

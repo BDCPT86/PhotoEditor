@@ -1,7 +1,9 @@
 # Milestone 09 — RAW + JPEG pairs, clearing out rejects, histogram
 
-> **Status (2026-11-26):** Approved with the recommended answers: the JPEG is the cover of a pair; moved photos leave
-> the library; files on drives without a Recycle Bin are refused; H and J for the histogram and overlay.
+> **Status (2026-11-26):** **Complete.** All phases (A1–A6, B1–B4 with an in-app check, C1–C3, D) are implemented,
+> and the completion review is at the end. Approved with the recommended answers: the JPEG is the cover of a pair;
+> moved photos leave the library; files on drives without a Recycle Bin are refused; H and J for the histogram and
+> overlay.
 >
 > - **A1 done:** `PhotoPairing` (Core) finds RAW + JPEG pairs by the rule below, with 14 unit tests. It finds 5,000
 >   pairs among 10,000 photos in under 100 ms (test; the best of five runs, since other test projects run at the
@@ -367,3 +369,57 @@ on, not two. Rejects should be easy to clear away safely. Editing exposure shoul
 3. **Drives without a Recycle Bin** (SD cards, network): **refuse those files** (recommended), or offer to delete them
    permanently after a second confirmation?
 4. **Keys:** **H** for the histogram and **J** for the clipping overlay?
+
+## Phase D and completion review (2026-11-26)
+
+### Documents
+- **Decision records:** [ADR 0021](../decisions/0021-raw-jpeg-pairs.md) (pairs) and
+  [ADR 0022](../decisions/0022-moving-rejects-to-the-recycle-bin.md) (Recycle Bin).
+- **Database schema notes:** no schema change. Removal works through the existing cascades, and two settings were added.
+- **Architecture:** M09 implementation notes.
+- **Design system:** the RAW+JPEG mark, the histogram and the overlay, from C1 and C2.
+- **User guide and its published page (v16):** pairs, Clear out the rejects, the histogram and J, the export choice,
+  the keys and the limits.
+- **README:** the status and the keys.
+- **Roadmap:** Phase 9.
+
+### Acceptance criteria
+| Criterion | Result | Evidence |
+|---|---|---|
+| A RAW+JPEG shoot shows one tile per frame | Met | A6: 24 files gave 12 tiles; workflow tests |
+| One key press decides both files; one undo reverts both | Met | A6 (decision seen on the CR3 with pairs off; Reject + Ctrl+Z); tests |
+| Counts and filters count frames | Met | A6 footer and sidebar; tests |
+| Analyze doesn't group a pair with itself | Met | A6: 0 groups paired, 12 with the setting off; test |
+| Export choices produce exactly the files chosen | Met | A6: 24 / 12 CR3 / 12 JPG; tests |
+| Names from a pattern match within a pair | Met | A6: 12 names with a CR3 and a JPG; copier test with real files |
+| Originals are never changed | Met | A6: all 24 copies byte-identical; test copies' hashes unchanged |
+| Files go only to the Recycle Bin | Met, with a gap | B check: 6 files moved, the bin gained 6, log per file. The permanent-delete warning for a file that slipped past the checks is not verified on real Windows (see B1) |
+| Files on a drive without a Recycle Bin are skipped and listed, never deleted | Met in tests | Rule tests over a fake Windows layer; a real network path is refused. Not tried on a real memory card (you chose not to use D:) |
+| Nothing moves before confirmation | Met | B2 look (Cancel, Esc); B check; tests |
+| The library and counts are right afterwards | Met | B check: Rejected view 0, All photos 9, footer matched; tests |
+| Histogram matches the image on screen | Met | Reference-count tests; Develop test against the rendered pixels; seen in the app |
+| The overlay never appears in an export | Met | Exports render from the recipe and never read the display image; test that the recipe is unchanged with J on |
+| Pairing 10,000 photos adds under 100 ms | Met | Test: 5,000 pairs among 10,000 photos, best of five under 100 ms |
+| Histogram updates within 100 ms of an edit at screen size | Met | 26 ms at 2560 × 1440 in Release (36 ms in Debug), off the UI thread; test under 100 ms |
+| Build clean, tests pass, in-app checks documented | Met | `dotnet build -m:1` and `-c Release`: 0 warnings, 0 errors; `dotnet test --no-build`: 979 total, 0 failed, 2 skipped (opt-in Recycle Bin tests, run and passed once with your consent) in Debug and Release; checks A6, B, C1 and C2 above |
+
+### Known limitations
+- **Recycle Bin:**
+  - The permanent-delete warning, the last line of defence, is unverified on real Windows.
+  - A real memory card was never tried.
+  - A nearly full Recycle Bin can make the count check stop moving early, which errs on the safe side.
+  - There is no in-app undo.
+- **Pairs:**
+  - Only a RAW file and a JPEG with the same name in the same folder pair up; there is no XMP.
+  - An edit made to a RAW file before M09 isn't shown while pairs are on.
+- **Histogram:** in the viewer, the clipped shares have no tooltip, because the panel lets clicks through for panning.
+- **Tests:**
+  - `MaskTests.AtMostEightMasks` failed once in about 20 runs and is unexplained.
+  - B1's unexplained failure was probably the F5 race fixed in C1.
+
+### Test files left on your PC
+In your Recycle Bin:
+- the 6 B-check files (`IMG_9001`–`IMG_9003`, .JPG and .CR3)
+- B1's `ff-recycle-test-….tmp`
+
+They can be deleted there. The test copies and libraries are in the scratchpad.

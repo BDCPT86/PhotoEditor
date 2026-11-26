@@ -454,6 +454,30 @@ See [ADR 0007](decisions/0007-auto-editing-tools.md) and [visual-review-m08.md](
   `sheet.json`, outside the page. Scoring is pure (`SheetScoring`) and reuses `AutoCrop`. See
   [evaluation-m08.md](evaluation-m08.md).
 
+## Implementation notes (Milestone 09: pairs, Recycle Bin, histogram)
+- **Pairs** (ADR 0021):
+  - `PhotoPairing` (Core) runs at every library load. `LibraryViewModel.BuildTiles` keeps the RAW file of a pair as
+    the cover tile's hidden `Partner`.
+  - `DecisionController` registers partners and passes them to `DecisionService.Plan`, which writes one undo step
+    for both files.
+  - Everything else gets photos from the grid's tiles, so it sees covers only.
+  - Export carries `ExportItem.Cover`, and `ExportFrames` and `ExportNamePlanner.PlanFrames` hold the pair rules.
+- **Recycle Bin** (ADR 0022):
+  - **The service:** `IRecycleBin` (Application), with `RecycleBinService` holding the rules over
+    `WindowsRecycleBinPlatform` (Infrastructure: `SHFileOperation`, `SHQueryRecycleBin`, the BitBucket registry
+    keys). Tests replace the platform with a fake.
+  - **The UI:** `RecycleRejectsViewModel` and `RecycleRejectsPanel` check first and move only on confirmation.
+  - **Afterwards:** `LibraryViewModel` removes the moved photos (`IPhotoLibraryService.RemoveAsync`) and calls
+    `DecisionHistory.Forget`.
+- **Histogram and clipping:**
+  - **The pure parts** live in Analysis: `ImageHistogram`, and `ClippingPainter` with the badge's levels.
+  - **The source:** `ViewerViewModel.OnScreenSource` picks what is on screen. In Develop that is
+    `DevelopViewModel.RenderedPixels`, the edit before the mask overlay.
+  - **The work:** `HistogramViewModel` and the overlay painting both run off the UI thread, with newer images
+    replacing pending ones.
+  - **The drawing:** `HistogramView` draws once per histogram from frozen geometry.
+  - **The overlay is display only:** the viewer shows a painted copy, and exports render from the recipe.
+
 ## Dependency direction
 
 - `Core`: depends on no application/UI/infrastructure projects.

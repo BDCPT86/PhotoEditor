@@ -116,3 +116,10 @@ _Implemented in Milestone 06._
 - Define delete behavior explicitly.
 - Consider path changes, removable drives, and duplicate files before finalising identity strategy.
 - Do not create future-phase tables prematurely unless needed.
+- **M09, no schema change:**
+  - **RAW + JPEG pairs** are worked out in memory at every load (ADR 0021); nothing about them is stored.
+  - **Moving rejects to the Recycle Bin** removes the moved photos' `Photos` rows (`IPhotoRepository.RemoveAsync`,
+    one `ExecuteDelete`). Their `PhotoDecisions`, `AnalysisResults` and `PhotoEdits` rows go through the cascades
+    above, and a database test checks it (ADR 0022).
+  - **New settings:** `library.pairRawJpeg` (default true) and `viewer.showHistogram` (default false), stored in
+    `AppSettings` like the others.
