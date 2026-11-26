@@ -97,3 +97,55 @@ Evaluate and integrate RAW decoding and harden the app for professional use.
 
 ## Prompt
 Implement only Milestone 07. Begin with a technical spike and compatibility report before integrating LibRaw. Verify native library deployment, architecture, licensing, and sample camera support. Do not promise universal RAW compatibility. Add tests and document supported formats and known limitations.
+
+## Completion review (2026-11-26)
+
+### Acceptance criteria
+| Criterion | Met? | Evidence |
+|---|---|---|
+| RAW files decode on supported test cameras | ✅ | Canon EOS R50 CR3, the one camera tested. 12 of 12 samples decode in the spike, the tests and the app (import, thumbnails, viewer, Analyze, export), and in the release build. [ADR 0020](../decisions/0020-raw-through-libraw-previews.md) |
+| Unsupported/corrupt files fail gracefully | ✅ with a gap | Corrupt CR3 files (zeroed header, cut-off copy, a text file named `.CR3`) are read errors, never crashes, and import lists them as Unreadable (tests). A wrong LibRaw version, a missing DLL or a missing VC++ runtime turns RAW off with a reason (tests, ADR 0019/0020). **Gap:** unsupported formats (`.NEF`, `.CR2`, `.ARW`, …) are skipped by import without being mentioned in its result. |
+| Source RAW files remain untouched | ✅ | Export tests compare the RAW file's bytes before and after. After the A5 check (import, viewer, Analyze, export), all 24 copies still had the same SHA-256 as the user's originals. |
+| Export metadata behaviour is documented | ✅ | [ADR 0017](../decisions/0017-export-naming-and-metadata.md) (JPEGs), ADR 0020 (RAW files), user guide § Export |
+| Performance/memory benchmarks are recorded | ✅ | [m07-performance.md](../benchmarks/m07-performance.md) (before and after phase D), [m07-raw-spike.md](../benchmarks/m07-raw-spike.md), RAW viewer and export timings in ADR 0020 |
+| Distribution licence checklist completed | ✅ for own use; 2 steps before sharing | [licence-checklist.md](../licence-checklist.md). Before FrameForge goes to anyone else: ship LibRaw 0.22.3's source (or a written offer), and confirm the Visual Studio licence that allows redistributing `vc_redist.x64.exe`. |
+
+### Deliverables
+| Deliverable | Where |
+|---|---|
+| LibRaw spike and compatibility report | `raw-spike` tool; [m07-raw-spike.md](../benchmarks/m07-raw-spike.md) |
+| Supported formats and camera limits documented | ADR 0020; user guide § RAW files and § Limits |
+| RAW thumbnail/preview workflow | ADR 0020 (A3): every decode uses the embedded full-size JPEG |
+| Metadata preservation strategy | ADR 0017; ADR 0020 (A4) |
+| Export profiles and naming templates | ADR 0017 (phase B) |
+| Relocation/missing-drive handling | [ADR 0016](../decisions/0016-moved-folders-and-offline-drives.md) (phase C) |
+| Performance profiling and memory improvements | m07-performance.md (phase D) |
+| Installer and update strategy | [ADR 0019](../decisions/0019-installer-updates-crash-reports.md) (phase E) |
+| Diagnostics/crash reporting design | ADR 0019: reports stay on the computer and are never sent; any future upload must be opt-in |
+| Dependency/model licence audit | [ADR 0018](../decisions/0018-licences-and-no-telemetry.md), licence checklist, `THIRD-PARTY-NOTICES.md` (phase F) |
+
+### Build, tests and release (run for this review)
+- `dotnet clean` then `dotnet build -m:1`: 0 warnings, 0 errors.
+- `dotnet test --no-build` with `FRAMEFORGE_TEST_RAW` and `FRAMEFORGE_TEST_MODELS` set: 864 passed, 0 skipped. Without
+  them: 855 passed, 9 skipped (the opt-in tests on the user's files).
+- `build/publish.ps1`: the first run stopped with "Tests failed" (the Release test run inside it), without saying
+  which test. A Release test run on its own and a second publish both passed: 864, 0 failed, 9 skipped. The first
+  failure was not reproduced and is unexplained.
+- The release (`artifacts/`, version 0.1.0): `libraw.dll` matches the tested SHA-256; the LibRaw licence and copyright
+  are in `licenses\`; the portable ZIP contains them; the installer bundles the VC++ runtime.
+- The release build, on the A5 test library with its thumbnails deleted, made all 24 thumbnails and opened a CR3
+  upright with its details, with nothing in the log beyond start and exit.
+
+### Known limitations
+- RAW: Canon CR3 only, tested with the Canon EOS R50 only. Edited through the embedded 8-bit JPEG (no sensor-data
+  develop), and exported JPEGs of RAW files carry no GPS or other camera EXIF beyond the basic details.
+- Import doesn't say when it skipped files in formats it doesn't support.
+- LibRaw runs inside the app process. No sample crashed it, but a native crash on some future file would close the app
+  (the local crash report would record it).
+- Before sharing the app: the two licence steps above.
+- The intermittent "Tests failed" in the first publish run.
+
+### Recommended next
+- Say in the import result how many files were skipped as unsupported, by extension.
+- Find the intermittent Release test failure, by keeping the publish script's test output.
+- Then the next milestone, which the roadmap decides.

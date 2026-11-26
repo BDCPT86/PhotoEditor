@@ -1,19 +1,19 @@
 # Distribution licence checklist
 
 The Milestone 07 checklist for shipping FrameForge. The **Status** column is for the build at Milestone 07, phase F
-(2026-11-25). Redo the checks marked "every release" before each build that leaves this machine. See ADR 0018.
+(2026-11-25); 1.1–1.3 were checked again for the M07 completion review (2026-11-26), with LibRaw added. Redo the checks marked "every release" before each build that leaves this machine. See ADR 0018.
 
 ## 1. Before every release
 | # | Check | How | Status |
 |---|---|---|---|
-| 1.1 | Every package the app uses is in `THIRD-PARTY-NOTICES.md` at its current version | `dotnet list src/FrameForge.App package --include-transitive`, compared with the notices table | ✅ 49 packages, all listed |
+| 1.1 | Every package the app uses is in `THIRD-PARTY-NOTICES.md` at its current version | `dotnet list src/FrameForge.App package --include-transitive`, compared with the notices table | ✅ 50 NuGet packages, all listed (unchanged since phase F); LibRaw, a vendored DLL, listed too |
 | 1.2 | Every licence is one we can ship (no copyleft, no fees, no non-commercial or field-of-use terms) | the package's `<license>` in its `.nuspec` (`%USERPROFILE%\.nuget\packages\<id>\<version>\`) | ✅ MIT, Apache-2.0, or public domain (SQLite) |
 | 1.3 | Full licence texts for each, and the packages' own notice files, are in `licenses/` and copied next to the exe | `licenses/README.md` index; look in `bin\…\licenses\` | ✅ |
 | 1.4 | Apache-2.0 packages: any NOTICE file is included | look in the package folder for `NOTICE*` | ✅ none of SQLitePCLRaw 2.1.13 or Serilog 4.3.0 / 10.0.0 / 7.0.0 ships one |
 | 1.5 | ONNX Runtime telemetry is off | `OnnxPrivacy`; after an ONNX Runtime upgrade, reread its `Privacy.md` for the switches | ✅ 1.31.1 |
 | 1.6 | No network connections except model downloads the user starts | run the app (or `FrameForge.Evaluation benchmark`) with models installed while watching `Get-NetTCPConnection -OwningProcess` | ✅ none seen (ADR 0018, with its limits) |
 | 1.7 | About shows the notices and the licence folder | open About | ✅ |
-| 1.8 | No product names, logos or assets of others in the app | review new assets | ✅ none (FrameForge has no image assets yet) |
+| 1.8 | No product names, logos or assets of others in the app | review new assets | ✅ none; the only image asset is FrameForge's own logo (phase F2) |
 
 ## 2. Optional AI models (downloaded by the user, not shipped)
 The app shows each model's licence and source and asks before downloading (ADR 0005). The files come from the
