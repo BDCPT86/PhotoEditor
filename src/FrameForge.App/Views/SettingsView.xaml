@@ -75,7 +75,12 @@
 
             <TextBlock Text="Culling" Style="{StaticResource SettingsSection}" />
             <CheckBox Content="_Advance to the next photo after Keep / Reject / Review / Unset in the viewer"
-                      IsChecked="{Binding ViewerAutoAdvance}" Margin="0,0,0,20" />
+                      IsChecked="{Binding ViewerAutoAdvance}" Margin="0,0,0,12" />
+            <CheckBox Content="Show RAW + JPEG _pairs as one photo"
+                      IsChecked="{Binding PairRawJpeg}" Margin="0,0,0,4"
+                      AutomationProperties.AutomationId="SettingPairRawJpeg" />
+            <TextBlock Style="{StaticResource Text.Secondary}" FontSize="12" Margin="24,0,0,20" TextWrapping="Wrap"
+                       Text="A RAW file and the JPEG the camera saved with it (same folder, same name, same time) share one tile, and a decision applies to both. Turn off to see each file on its own; decisions already made stay as they are." />
 
             <TextBlock Text="Analysis (heuristics, not AI)" Style="{StaticResource SettingsSection}" />
             <TextBlock Style="{StaticResource Text.Secondary}" FontSize="12" Margin="0,0,0,8"

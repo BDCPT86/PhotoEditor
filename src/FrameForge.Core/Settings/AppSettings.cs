@@ -27,6 +27,10 @@ public static class AppSettings
     public static readonly SettingDefinition<GridDensity> LibraryGridDensity =
         new("library.gridDensity", GridDensity.Medium, density => Enum.IsDefined(density));
 
+    /// <summary>Show a RAW file and the JPEG saved with it as one photo (M09). Changes only the display; nothing is stored per photo.</summary>
+    public static readonly SettingDefinition<bool> LibraryPairRawJpeg =
+        new("library.pairRawJpeg", true);
+
     // ---- Analysis: computation (changing it makes stored results stale) ----
 
     /// <summary>Longest side, in pixels, of the decoded image that metrics are computed on.</summary>

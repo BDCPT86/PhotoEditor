@@ -39,6 +39,7 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
     private List<PhotoTileViewModel> _all = [];
     private List<PhotoTileViewModel> _selection = [];
     private bool _autoAdvance = true;
+    private bool _pairRawJpeg = true;
     private bool _loaded;
 
     public LibraryViewModel(
@@ -333,6 +334,21 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
             // Settings may have changed while on another page: thresholds re-evaluate instantly from cached results.
             _autoAdvance = await _settings.GetAsync(AppSettings.ViewerAutoAdvance, cancellationToken).ConfigureAwait(true);
             await Analysis.Controller.RefreshSettingsAsync(cancellationToken).ConfigureAwait(true);
+
+            // Showing pairs as one photo or as two files changes which tiles exist: rebuild them.
+            var pair = await _settings.GetAsync(AppSettings.LibraryPairRawJpeg, cancellationToken).ConfigureAwait(true);
+            if (pair != _pairRawJpeg)
+            {
+                _pairRawJpeg = pair;
+                if (IsViewerOpen)
+                {
+                    await CloseViewerAsync().ConfigureAwait(true);
+                }
+
+                CloseCompare();
+                await ReloadAsync(cancellationToken).ConfigureAwait(true);
+            }
+
             return;
         }
 
@@ -341,6 +357,7 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
         {
             IncludeSubfolders = await _settings.GetAsync(AppSettings.ImportIncludeSubfolders, cancellationToken).ConfigureAwait(true);
             Density = await _settings.GetAsync(AppSettings.LibraryGridDensity, cancellationToken).ConfigureAwait(true);
+            _pairRawJpeg = await _settings.GetAsync(AppSettings.LibraryPairRawJpeg, cancellationToken).ConfigureAwait(true);
             _autoAdvance = await _settings.GetAsync(AppSettings.ViewerAutoAdvance, cancellationToken).ConfigureAwait(true);
             await ReloadAsync(cancellationToken).ConfigureAwait(true);
         }
@@ -726,7 +743,7 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
     /// </summary>
     private List<PhotoTileViewModel> BuildTiles(IReadOnlyList<Photo> photos, IReadOnlyDictionary<Guid, PhotoDecision> decisions)
     {
-        var pairs = PhotoPairing.Find(photos);
+        var pairs = _pairRawJpeg ? PhotoPairing.Find(photos) : PhotoPairs.None;
         var tiles = new List<PhotoTileViewModel>(photos.Count - pairs.Count);
         foreach (var photo in photos)
         {

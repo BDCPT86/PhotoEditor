@@ -35,6 +35,14 @@
 >   - **Counts:** the panel counts photos, plus files when a pair gives two ("2 photo(s) · 3 files"). The result line
 >     says "Copied 3 files (2 photos)". The name preview shows both names of a pair.
 >   - **Tests:** 9 rule tests, 1 copier test with real files, and 8 panel tests.
+> - **A5 done:** **Settings → Culling → "Show RAW + JPEG pairs as one photo"** (`library.pairRawJpeg`, on by
+>   default), with a line saying what it does.
+>   - **Off:** each file has its own tile and its own decisions, as in M07.
+>   - **Changing it:** the Library rebuilds its tiles when you go back to it. It closes the viewer or compare first, if
+>     either was left open. Returning with the setting unchanged doesn't reload.
+>   - **Decisions** made while pairs were shown separately are kept. When pairs are shown again, the tile shows the
+>     JPEG's decision, as for any pair whose files disagree.
+>   - **Tests:** 4 workflow tests.
 >   - **An edit made to a RAW file before this milestone** isn't shown, since the tile is the JPEG.
 
 ## Goal

@@ -4,6 +4,7 @@ using FrameForge.Application.Editing;
 using FrameForge.Application.Export;
 using FrameForge.Core.Decisions;
 using FrameForge.Core.Editing;
+using FrameForge.Core.Settings;
 
 namespace FrameForge.App.Tests;
 
@@ -201,6 +202,74 @@ public sealed class PairWorkflowTests
 
         Assert.False(f.Export.HasPairs);
         Assert.Equal("2 photo(s)", f.Export.CountText);
+    }
+
+    // ------------------------------------------------------------------ A5: the setting
+
+    [Fact]
+    public async Task WithTheSettingOff_EachFileHasItsOwnTile_AndDecisionsStaySeparate()
+    {
+        using var f = new CullingFixture(photoCount: 2, pairedRaws: [1]);
+        await f.Settings.SetAsync(AppSettings.LibraryPairRawJpeg, false, TestContext.Current.CancellationToken);
+        await f.LoadAsync();
+
+        Assert.Equal(3, f.Library.Photos.Count);
+        Assert.All(f.Library.Photos, t => Assert.False(t.IsPaired));
+
+        f.Select(1);
+        f.Library.TryHandle(CullingAction.Keep);
+
+        Assert.Equal(CullState.Keep, (await f.StoredAsync(1, d => d.State == CullState.Keep)).State);
+        Assert.Equal(PhotoDecision.Unset, f.Decisions.Get(f.Raws[1].Id));
+    }
+
+    [Fact]
+    public async Task ChangingTheSetting_RebuildsTheGrid_WhenTheLibraryIsShownAgain()
+    {
+        using var f = new CullingFixture(photoCount: 2, pairedRaws: [1]);
+        await f.LoadAsync();
+        Assert.Equal(2, f.Library.Photos.Count);
+
+        await f.Settings.SetAsync(AppSettings.LibraryPairRawJpeg, false, TestContext.Current.CancellationToken);
+        await f.LoadAsync(); // back from Settings
+        Assert.Equal(3, f.Library.Photos.Count);
+        Assert.Contains(f.Library.Photos, t => t.FileName == "IMG_01.CR3");
+
+        await f.Settings.SetAsync(AppSettings.LibraryPairRawJpeg, true, TestContext.Current.CancellationToken);
+        await f.LoadAsync();
+        Assert.Equal(2, f.Library.Photos.Count);
+        Assert.True(f.Tile(1).IsPaired);
+    }
+
+    [Fact]
+    public async Task ReturningWithTheSettingUnchanged_DoesNotReload()
+    {
+        using var f = new CullingFixture(photoCount: 2, pairedRaws: [1]);
+        await f.LoadAsync();
+        var tile = f.Tile(1);
+
+        await f.LoadAsync();
+
+        Assert.Same(tile, f.Tile(1));
+    }
+
+    [Fact]
+    public async Task DecisionsMadeWhileSeparate_AreKept_AndTheJpegsDecisionShowsWhenPairedAgain()
+    {
+        using var f = new CullingFixture(photoCount: 1, pairedRaws: [0]);
+        await f.Settings.SetAsync(AppSettings.LibraryPairRawJpeg, false, TestContext.Current.CancellationToken);
+        await f.LoadAsync();
+        var raw = f.Library.Photos.Single(t => t.FileName == "IMG_00.CR3");
+        f.Library.SelectedPhoto = raw;
+        ((Controls.ISelectedItemsSink)f.Library).UpdateSelection([raw]);
+        f.Library.TryHandle(CullingAction.Reject);
+        await StoredAsync(f, f.Raws[0].Id, d => d.State == CullState.Reject);
+
+        await f.Settings.SetAsync(AppSettings.LibraryPairRawJpeg, true, TestContext.Current.CancellationToken);
+        await f.LoadAsync();
+
+        Assert.Equal(PhotoDecision.Unset, f.Tile(0).Decision);
+        Assert.Equal(CullState.Reject, f.Tile(0).Partner!.Decision.State);
     }
 
     private static async Task<CullingFixture> OpenExportAsync()

@@ -50,6 +50,9 @@ public sealed partial class SettingsViewModel(ISettingsService settings, AiModel
     [ObservableProperty]
     private bool _viewerAutoAdvance = true;
 
+    [ObservableProperty]
+    private bool _pairRawJpeg = true;
+
     // Analysis — computation (changing re-analyses on the next Analyze run)
     [ObservableProperty]
     private AnalysisResolution _analysisResolution = AnalysisResolution.Standard;
@@ -85,6 +88,7 @@ public sealed partial class SettingsViewModel(ISettingsService settings, AiModel
             var days = await settings.GetAsync(AppSettings.LogRetentionDays, cancellationToken).ConfigureAwait(true);
             LogRetentionDaysText = days.ToString(culture);
             ViewerAutoAdvance = await settings.GetAsync(AppSettings.ViewerAutoAdvance, cancellationToken).ConfigureAwait(true);
+            PairRawJpeg = await settings.GetAsync(AppSettings.LibraryPairRawJpeg, cancellationToken).ConfigureAwait(true);
 
             AnalysisResolution = (AnalysisResolution)await settings.GetAsync(AppSettings.AnalysisMaxPixelSize, cancellationToken).ConfigureAwait(true);
             BlurThresholdText = (await settings.GetAsync(AppSettings.AnalysisBlurThreshold, cancellationToken).ConfigureAwait(true)).ToString(culture);
@@ -165,13 +169,14 @@ public sealed partial class SettingsViewModel(ISettingsService settings, AiModel
             await settings.SetAsync(AppSettings.StartPage, StartPage, cancellationToken).ConfigureAwait(true);
             await settings.SetAsync(AppSettings.LogRetentionDays, days, cancellationToken).ConfigureAwait(true);
             await settings.SetAsync(AppSettings.ViewerAutoAdvance, ViewerAutoAdvance, cancellationToken).ConfigureAwait(true);
+            await settings.SetAsync(AppSettings.LibraryPairRawJpeg, PairRawJpeg, cancellationToken).ConfigureAwait(true);
             await settings.SetAsync(AppSettings.AnalysisMaxPixelSize, (int)AnalysisResolution, cancellationToken).ConfigureAwait(true);
             await settings.SetAsync(AppSettings.AnalysisBlurThreshold, blur, cancellationToken).ConfigureAwait(true);
             await settings.SetAsync(AppSettings.AnalysisHighlightClipPercent, highlights, cancellationToken).ConfigureAwait(true);
             await settings.SetAsync(AppSettings.AnalysisShadowClipPercent, shadows, cancellationToken).ConfigureAwait(true);
             await settings.SetAsync(AppSettings.AnalysisMaxHashDistance, distance, cancellationToken).ConfigureAwait(true);
             await settings.SetAsync(AppSettings.AnalysisBurstWindowSeconds, window, cancellationToken).ConfigureAwait(true);
-            SetStatus("Settings saved. Analysis thresholds apply when you return to the Library; start page and log retention apply at next start.", isError: false);
+            SetStatus("Settings saved. Analysis thresholds and RAW + JPEG pairs apply when you return to the Library; start page and log retention apply at next start.", isError: false);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
