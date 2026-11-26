@@ -123,6 +123,74 @@ public sealed class HistogramWorkflowTests
         await WaitUntil(() => f.SettingsStore.GetValueJsonAsync(AppSettings.ViewerShowHistogram.Key, Ct).Result == "true");
     }
 
+    // ------------------------------------------------------------------ C2: the clipping overlay (J)
+
+    [Fact]
+    public async Task J_PaintsTheClippedPixels_OnScreenOnly_AndJAgainTakesItAway()
+    {
+        using var f = new CullingFixture(photoCount: 1);
+        await f.LoadAsync();
+        Assert.False(f.Library.TryHandle(CullingAction.ToggleClipping)); // nothing to paint in the grid
+        f.Library.OpenViewerCommand.Execute(f.Library.Photos[0]);
+        await WaitUntil(() => f.Viewer.Image is not null);
+        var photo = f.Viewer.Image!;
+
+        Assert.True(f.Library.TryHandle(CullingAction.ToggleClipping));
+        await f.Viewer.ClippingWork;
+
+        var shown = f.Viewer.DisplayImage!;
+        Assert.NotSame(photo, shown);
+        Assert.Equal((photo.PixelWidth, photo.PixelHeight), (shown.PixelWidth, shown.PixelHeight)); // zoom and pan stay put
+        var pixels = new byte[4];
+        new FormatConvertedBitmap(shown, PixelFormats.Bgra32, null, 0).CopyPixels(new System.Windows.Int32Rect(0, 0, 1, 1), pixels, 4, 0);
+        Assert.Equal(ClippingPainter.ShadowColour, (pixels[0], pixels[1], pixels[2])); // the black test photo is all clipped shadow
+        Assert.Same(photo, f.Viewer.Image); // the photo itself is untouched
+
+        f.Library.TryHandle(CullingAction.ToggleClipping);
+        Assert.Same(photo, f.Viewer.DisplayImage);
+    }
+
+    [Fact]
+    public async Task TheHistogram_CountsThePhoto_NotThePaintedOverlay()
+    {
+        using var f = new CullingFixture(photoCount: 1);
+        await f.LoadAsync();
+        f.Library.OpenViewerCommand.Execute(f.Library.Photos[0]);
+        await WaitUntil(() => f.Viewer.Image is not null);
+        f.Library.TryHandle(CullingAction.ToggleHistogram);
+        f.Library.TryHandle(CullingAction.ToggleClipping);
+        await f.Viewer.ClippingWork;
+        await f.Viewer.Histogram.Work;
+
+        var photo = f.Viewer.Image!;
+        Assert.Equal(photo.PixelWidth * photo.PixelHeight, f.Viewer.Histogram.Histogram!.Luminance[0]); // still all black
+    }
+
+    [Fact]
+    public async Task InDevelop_TheOverlayPaintsTheEdit_AndTheEditItselfIsUnchanged()
+    {
+        using var f = new CullingFixture(photoCount: 1);
+        await f.LoadAsync();
+        f.Select(0);
+        f.Library.TryHandle(CullingAction.ToggleDevelop);
+        await WaitUntil(() => f.Viewer.Develop.RenderedPixels is not null);
+        await f.Viewer.Develop.RenderLoop;
+        var recipe = f.Viewer.Develop.CurrentRecipe;
+
+        f.Library.TryHandle(CullingAction.ToggleClipping);
+        await f.Viewer.ClippingWork;
+
+        var rendered = f.Viewer.Develop.RenderedPixels!;
+        Assert.NotSame(f.Viewer.Develop.DisplayImage, f.Viewer.DisplayImage);
+        Assert.Equal((rendered.Width, rendered.Height), (f.Viewer.DisplayImage!.PixelWidth, f.Viewer.DisplayImage.PixelHeight));
+        Assert.Equal(recipe, f.Viewer.Develop.CurrentRecipe); // display only: nothing an export reads has changed
+        Assert.True(f.Tile(0).Recipe.IsNeutral);
+    }
+
+    [Fact]
+    public void JIsListedInHelp() =>
+        Assert.Contains(CullingShortcuts.Help.SelectMany(g => g.Items), i => i.Keys == "J");
+
     [Fact]
     public async Task TheRememberedChoice_IsUsedNextTime()
     {

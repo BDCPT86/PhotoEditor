@@ -454,6 +454,9 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
             case CullingAction.Compare:
                 OpenCompare();
                 return true;
+            case CullingAction.ToggleClipping when IsViewerOpen:
+                Viewer.ShowClipping = !Viewer.ShowClipping;
+                return true;
             case CullingAction.ToggleHistogram when IsViewerOpen:
                 Viewer.ShowHistogram = !Viewer.ShowHistogram;
                 _ = SaveSettingAsync(AppSettings.ViewerShowHistogram, Viewer.ShowHistogram);

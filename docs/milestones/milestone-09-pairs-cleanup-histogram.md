@@ -205,7 +205,23 @@
 >   - **A test race fixed:** `Filters_AreDeterministic_AcrossRebuilds` pressed F5, whose background folder recheck
 >     (from M07) can rebuild the grid on another thread in tests, which have no UI thread. It failed once with a null
 >     tile. It now rebuilds directly, and 8 runs in a row passed. This may be what caused B1's unexplained failure.
->     `MaskTests.AtMostEightMasks` also failed once and didn't again in 8 runs; it remains unexplained. The runner kept no results file, so I couldn't identify
+>     `MaskTests.AtMostEightMasks` also failed once and didn't again in 8 runs; it remains unexplained.
+> - **C2 done:** **J** turns on the clipping overlay in the viewer and in Develop (not remembered).
+>   - **What it paints:** `ClippingPainter` (Analysis) paints a copy of the image on screen, highlights solid red and
+>     shadows solid blue, at the histogram's levels. A test shows it paints exactly what the histogram counts.
+>   - **How it shows:** the viewer shows the painted copy in place of the image, at the same size, so zoom and pan stay
+>     put. It is painted off the UI thread, and newer images replace pending ones, as for the histogram.
+>   - **What it is painted from:** the same unpainted source as the histogram (in Develop, the edit without the mask
+>     overlay). So the histogram never counts the painted copy, and while J is on it takes the mask overlay's place.
+>   - **The legend:** the header names both colours while the overlay is on, so they aren't read as part of the photo.
+>   - **Display only:** exports render from the recipe, so they never see the overlay. A test confirms the recipe is
+>     unchanged.
+>   - **Seen in the app** on IMG_9008, with no files changed:
+>     - the clipped wall was red and the legend showed, and highlights read 0.7 %;
+>     - at +1.5 EV in Develop, about half the photo was red and the histogram read highlights 47 %;
+>     - the smoothed histogram from C1 now reads as a shape.
+>   - **Tests:** 3 painter tests, 4 workflow tests and a help test.
+> - **C3 done:** H and J are in F1. The user guide gets them in phase D. The runner kept no results file, so I couldn't identify
 >     the test. The next 5 full runs passed (933 tests).
 >   - **An edit made to a RAW file before this milestone** isn't shown, since the tile is the JPEG.
 

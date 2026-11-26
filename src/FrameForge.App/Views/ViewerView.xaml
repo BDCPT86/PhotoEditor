@@ -51,6 +51,16 @@
                     Visibility="{Binding Current.IsEdited, Converter={StaticResource BoolToVisibility}}" ToolTip="Edited (the original file is unchanged)">
                 <TextBlock Text="✎ Edited" FontSize="{StaticResource FontSize.Meta}" Foreground="{StaticResource Brush.Accent.Hover}" AutomationProperties.AutomationId="ViewerEdited" />
             </Border>
+            <!-- Clipping overlay on (J): says what the colours mean, so they are never read as part of the photo -->
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0"
+                        Visibility="{Binding ShowClipping, Converter={StaticResource BoolToVisibility}}"
+                        ToolTip="Clipping (J): pixels with any channel at 254–255 are painted red, pixels with every channel at 0–1 blue. On screen only; never exported."
+                        AutomationProperties.AutomationId="ClippingLegend" AutomationProperties.Name="Clipping shown: highlights red, shadows blue">
+                <Rectangle Width="9" Height="9" Fill="#FFFF3B30" VerticalAlignment="Center" Margin="0,0,5,0" />
+                <TextBlock Text="Highlights" Style="{StaticResource Text.Count}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                <Rectangle Width="9" Height="9" Fill="#FF2F7BFF" VerticalAlignment="Center" Margin="0,0,5,0" />
+                <TextBlock Text="Shadows clipped" Style="{StaticResource Text.Count}" VerticalAlignment="Center" />
+            </StackPanel>
             <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center" Style="{StaticResource Text.Count}" MinWidth="40" TextAlignment="Right"
                        Text="{Binding ZoomText, ElementName=Zoom}" AutomationProperties.AutomationId="ZoomLevel" ToolTip="Zoom (Z: fit ↔ 100%)"
                        Visibility="{Binding Develop.IsCropMode, Converter={StaticResource InverseBoolToVisibility}}" />

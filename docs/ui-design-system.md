@@ -56,6 +56,9 @@ FrameForge is where photographs are judged, so the interface behaves like a neut
 - **Histogram (M09):** red, green and blue lines over a grey luminance fill, smoothed for drawing only, with the
   clipped shadows (left) and highlights (right) written beneath. At the top of Develop's panel, under its header;
   in the viewer, **H** shows it on a scrim in the canvas's top-right corner (hidden while Develop shows its own).
+- **Clipping overlay (M09, J):** clipped highlights painted solid red (`#FF3B30`), clipped shadows solid blue
+  (`#2F7BFF`), on a display copy of the image; the header names both colours while it is on, so they are never read
+  as part of the photo. Same levels as the histogram and the ◐ badge (254–255 any channel, 0–1 every channel).
 
 ## Colour tokens
 | Token | Value | Use |

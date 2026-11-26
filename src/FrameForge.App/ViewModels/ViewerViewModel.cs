@@ -4,6 +4,7 @@ using System.IO;
 using System.Windows.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using FrameForge.Analysis;
 using FrameForge.App.Services;
 using FrameForge.Application.Editing;
 using FrameForge.Application.Editing.Auto;
@@ -52,6 +53,11 @@ public sealed partial class ViewerViewModel : ObservableObject, IDisposable
             if (e.PropertyName is nameof(DisplayImage) or nameof(ShowHistogram))
             {
                 UpdateHistogram();
+            }
+
+            if (e.PropertyName is nameof(DisplayImage) or nameof(ShowClipping))
+            {
+                UpdateClipping();
             }
         };
     }
@@ -172,7 +178,21 @@ public sealed partial class ViewerViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>What the image area shows: the Develop preview while developing, otherwise the full-size photo.</summary>
-    public BitmapSource? DisplayImage => Develop.IsOpen ? Develop.DisplayImage : Image;
+    public BitmapSource? DisplayImage => ShowClipping && _clippingImage is { } painted ? painted : UnpaintedImage;
+
+    /// <summary>The image on screen before the clipping overlay: the Develop preview while developing, otherwise the photo.</summary>
+    private BitmapSource? UnpaintedImage => Develop.IsOpen ? Develop.DisplayImage : Image;
+
+    /// <summary>
+    /// What the histogram counts and the overlay paints: the image on screen, but in Develop the edit without the mask
+    /// overlay (so its red tint is never counted or painted over), or the original or an Auto option while one of those
+    /// is shown instead.
+    /// </summary>
+    private object? OnScreenSource() => Develop.IsOpen
+        ? Develop.ShowOriginal || Develop.FocusedSuggestion is not null
+            ? Develop.DisplayImage
+            : (object?)Develop.RenderedPixels ?? Develop.DisplayImage
+        : Image;
 
     /// <summary>The histogram of the image on screen: in Develop's panel, and over the photo when <see cref="ShowHistogram"/> (H).</summary>
     public HistogramViewModel Histogram { get; }
@@ -185,25 +205,88 @@ public sealed partial class ViewerViewModel : ObservableObject, IDisposable
     /// <summary>The histogram over the photo: on request, and not while Develop shows its own.</summary>
     public bool ShowFloatingHistogram => ShowHistogram && !Develop.IsOpen;
 
+    /// <summary>Counts what is on screen, only while a histogram is shown.</summary>
+    private void UpdateHistogram() => Histogram.Show(Develop.IsOpen || ShowHistogram ? OnScreenSource() : null);
+
     /// <summary>
-    /// Counts what is on screen, only while a histogram is shown. In Develop that is the edit without the mask overlay
-    /// (so the red tint isn't counted), or the original or an Auto option while one of those is shown instead.
+    /// The clipping overlay (J): highlights painted red, shadows blue, on a copy of the image on screen. Display only;
+    /// never part of an export. Not remembered: it is a quick look, and starts off each time FrameForge starts.
     /// </summary>
-    private void UpdateHistogram()
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DisplayImage))]
+    private bool _showClipping;
+
+    private BitmapSource? _clippingImage;
+    private object? _clippingFor;
+    private object? _clippingPending;
+    private bool _painting;
+
+    /// <summary>The painting in progress, if any (for tests).</summary>
+    internal Task ClippingWork { get; private set; } = Task.CompletedTask;
+
+    /// <summary>Paints the overlay for what is on screen; while one paints, newer images replace each other.</summary>
+    private void UpdateClipping()
     {
-        object? source = null;
-        if (Develop.IsOpen)
+        var source = ShowClipping ? OnScreenSource() : null;
+        if (ReferenceEquals(source, _clippingFor))
         {
-            source = Develop.ShowOriginal || Develop.FocusedSuggestion is not null
-                ? Develop.DisplayImage
-                : (object?)Develop.RenderedPixels ?? Develop.DisplayImage;
-        }
-        else if (ShowHistogram)
-        {
-            source = Image;
+            return;
         }
 
-        Histogram.Show(source);
+        _clippingFor = source;
+        if (source is null)
+        {
+            _clippingPending = null;
+            SetClippingImage(null);
+            return;
+        }
+
+        _clippingPending = source;
+        if (!_painting)
+        {
+            ClippingWork = PaintClippingAsync();
+        }
+    }
+
+    private async Task PaintClippingAsync()
+    {
+        _painting = true;
+        try
+        {
+            while (_clippingPending is { } source)
+            {
+                _clippingPending = null;
+                BitmapSource? painted;
+                try
+                {
+                    painted = await Task.Run(() => BitmapConversions.ToBitmap(ClippingPainter.Paint(
+                        source as AnalysisImage ?? BitmapConversions.ToBuffer((BitmapSource)source)))).ConfigureAwait(true);
+                }
+                catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or InvalidCastException)
+                {
+                    LogClippingFailed(ex);
+                    painted = null;
+                }
+
+                if (ReferenceEquals(source, _clippingFor))
+                {
+                    SetClippingImage(painted);
+                }
+            }
+        }
+        finally
+        {
+            _painting = false;
+        }
+    }
+
+    private void SetClippingImage(BitmapSource? image)
+    {
+        if (!ReferenceEquals(image, _clippingImage))
+        {
+            _clippingImage = image;
+            OnPropertyChanged(nameof(DisplayImage));
+        }
     }
 
     public string PositionText => _items.Count == 0
@@ -540,6 +623,9 @@ public sealed partial class ViewerViewModel : ObservableObject, IDisposable
             cts.Dispose();
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The clipping overlay could not be painted for the image on screen.")]
+    private partial void LogClippingFailed(Exception exception);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Viewer could not load {FilePath}")]
     private partial void LogLoadFailed(Exception exception, string filePath);
