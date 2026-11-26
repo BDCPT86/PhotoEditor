@@ -423,3 +423,22 @@ In your Recycle Bin:
 - B1's `ff-recycle-test-….tmp`
 
 They can be deleted there. The test copies and libraries are in the scratchpad.
+
+### Release 0.2.0 (2026-11-26, after the merge to main)
+- **Version:** `Directory.Build.props` goes from 0.1.0 to **0.2.0**. 0.1.0 was the M07 release, and 0.1.1 and 0.1.2
+  were M07's upgrade-test builds.
+- **The build:** `./build/publish.ps1` ran the build and the Release tests (979 total, 0 failed, 2 opt-in skipped).
+  It wrote:
+  - `artifacts\FrameForge-0.2.0-setup.exe` (78.6 MB, with the Visual C++ runtime 14.44.35211.0);
+  - `FrameForge-0.2.0-win-x64-portable.zip` (79.2 MB).
+- **The installer script needed no change:** it packages the whole publish folder, and M09 adds no native files.
+- **Checked without installing:**
+  - **Version:** `FrameForge.exe` reads 0.2.0 (`+a4ee08d`), and so does the setup's.
+  - **Contents:** the M09 types are in the binaries.
+  - **LibRaw:** `libraw.dll` matches the SHA-256 tested in M07.
+  - **Licences:** 15 files ship.
+- **A test race fixed:** the first release run stopped on `AutoSuggestionTests.Accept_AppliesOneUndoStep_AndClosesTheTray`
+  (about 1 in 8 runs in Release). It read Develop's message before the Accept command had set it, because it waited
+  for the save rather than for the command. It now waits for the command itself, and 12 Release runs in a row passed.
+  This was likely M07's unexplained failure in its first release run.
+- **Not done:** installing 0.2.0 and starting it. The installer writes to your user profile, so that's your call.

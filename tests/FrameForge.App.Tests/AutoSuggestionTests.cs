@@ -64,7 +64,10 @@ public sealed class AutoSuggestionTests
 
         stack.Develop.HandleSuggestionKey(Key.Right);
         Assert.True(stack.Develop.HandleSuggestionKey(Key.Enter));
-        await stack.Develop.FlushAsync();
+
+        // Wait for Accept itself, not just the save: its message comes after its own wait for the save, and with no UI
+        // thread in tests this test's continuation could otherwise run first and read the message too early.
+        await stack.Develop.AcceptSuggestionCommand.ExecutionTask!;
 
         Assert.False(stack.Develop.IsSuggesting);
         Assert.Equal(chosen, tile.Recipe);
