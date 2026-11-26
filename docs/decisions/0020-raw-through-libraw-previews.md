@@ -1,7 +1,7 @@
 # 0020 — RAW files through LibRaw and their embedded previews
 
 **Date:** 2026-11-25
-**Status:** Accepted for M07 phase A; A1 (the library) is in place, A2–A6 follow (see the M07 brief)
+**Status:** Accepted for M07 phase A; A1–A4 are in place, A5 and A6 follow (see the M07 brief)
 
 ## Context
 - FrameForge reads JPEGs only. Windows has no CR3 decoder installed (no WIC codec).
@@ -75,6 +75,24 @@
 - **What this means for RAW files:** editing works on the camera's 8-bit rendering. Blown highlights in the preview stay
   blown, exactly as with the camera's JPEG. The latitude the sensor data holds needs the RAW develop of a later
   milestone.
+
+### Exporting edited JPEGs (A4)
+- **Originals** export as the CR3 file itself, copied unchanged, as for any photo.
+- **Edited JPEGs of a RAW file** get their EXIF from the RAW file's header (`RawExif`), not from the embedded JPEG.
+  - **Why not copy the embedded JPEG's EXIF:** LibRaw gives that JPEG a small block of its own, which says "dcraw v9.26"
+    as the software and "EOS R50" as the model, and has no lens or original capture time.
+  - **Written:** make, model the EXIF way ("Canon EOS R50"), orientation 1, capture time (original, digitised and file
+    time), exposure, f-number, ISO, focal length and lens. With the metadata choice "None", nothing is written, as for a
+    JPEG.
+  - **Not written:** GPS, copyright, owner and the other EXIF, XMP and IPTC a camera JPEG carries, which LibRaw doesn't
+    give. So "All" and "All except location" give the same result for a RAW file, with no location. The colour space is
+    left out, because the embedded JPEG doesn't state it.
+  - **Rating and label** are written as for a JPEG (ADR 0017).
+  - **A RAW file whose details can't be read** still exports. Its JPEG gets only the rating and label, and the export
+    counts it as "without metadata".
+- **Checked on the 12 R50 samples (test):** each edited JPEG's make, model, lens, capture time, ISO, exposure, f-number
+  and focal length equal what import read from the RAW file. Its model, ISO and exposure equal the camera's own JPEG
+  of the same moment, and the RAW file is unchanged.
 
 ### Plan for the rest of phase A (approved)
 - **Previews:** every RAW file is shown, analysed and edited through its embedded JPEG. A true RAW develop waits for a

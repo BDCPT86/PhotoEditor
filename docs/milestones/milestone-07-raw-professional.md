@@ -63,7 +63,8 @@
 >     the app turns AI off instead of crashing when the runtime can't load (ADR 0019). A1 is done: LibRaw 0.22.3 (LGPL-2.1)
 >     is vendored and wrapped in `FrameForge.Raw`, checked on the R50 samples ([ADR 0020](../decisions/0020-raw-through-libraw-previews.md)).
 >     A2 is done: .CR3 files import with their details (camera, lens, exposure, capture time, orientation). A3 is done:
->     RAW files show, analyse and edit through their embedded full-size JPEG. Next: A4 (export), then A5 and A6 (plan approved:
+>     RAW files show, analyse and edit through their embedded full-size JPEG. A4 is done: edited JPEGs of RAW files carry
+>     the camera details read from the RAW file (no GPS). Next: A5 (in-app check) and A6 (docs) (plan approved:
 >     embedded previews, LibRaw under LGPL-2.1, RAW and JPEG as separate photos, CR3 only).
 
 ## Goal

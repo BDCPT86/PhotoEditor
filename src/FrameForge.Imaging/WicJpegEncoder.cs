@@ -3,7 +3,9 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using FrameForge.Analysis;
 using FrameForge.Application.Editing;
+using FrameForge.Application.Photos;
 using FrameForge.Core.Decisions;
+using FrameForge.Core.Photos;
 
 namespace FrameForge.Imaging;
 
@@ -18,6 +20,7 @@ namespace FrameForge.Imaging;
 /// multi-picture (MPF) index, which points at data that isn't in the new file.</item>
 /// <item>Optionally GPS and place names are removed, and the FrameForge rating and label are written.</item>
 /// </list>
+/// For a RAW original the EXIF is written from the RAW file's header instead (<see cref="RawExif"/>, ADR 0020).
 /// If the metadata cannot be carried over the image is still written, without it (see ADR 0017).
 /// </summary>
 public sealed class WicJpegEncoder : IJpegEncoder
@@ -59,7 +62,30 @@ public sealed class WicJpegEncoder : IJpegEncoder
         var bitmap = BitmapSource.Create(image.Width, image.Height, 96, 96, PixelFormats.Bgr32, null, image.Bgra, image.Width * 4);
         bitmap.Freeze();
 
-        if (metadata.SourcePath is { } sourcePath)
+        if (metadata.SourcePath is { } rawPath && SupportedPhotoFormats.IsRaw(rawPath))
+        {
+            try
+            {
+                // A RAW file has no JPEG metadata to copy: write the camera details LibRaw reads (RawExif). It holds no
+                // location, so "all except location" needs nothing removed.
+                var raw = RawExif.Create(RawPreviews.ReadInfo(rawPath));
+                if (metadata.Decision is { } rawDecision)
+                {
+                    WriteDecision(raw, rawDecision);
+                }
+
+                using var buffer = new MemoryStream();
+                Encode(bitmap, raw, buffer, quality);
+                buffer.Position = 0;
+                buffer.CopyTo(destination);
+                return true;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or PhotoReadException)
+            {
+                // Fall through to writing without the camera details.
+            }
+        }
+        else if (metadata.SourcePath is { } sourcePath)
         {
             try
             {

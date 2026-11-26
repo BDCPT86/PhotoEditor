@@ -25,4 +25,19 @@ internal static class RawPreviews
             throw new PhotoReadException($"'{Path.GetFileName(path)}' can't be shown: {ex.Message}", ex);
         }
     }
+
+    /// <summary>The RAW file's header details, for the EXIF of an edited JPEG (<see cref="RawExif"/>).</summary>
+    /// <exception cref="FileNotFoundException">The file isn't there.</exception>
+    /// <exception cref="PhotoReadException">It can't be read, or RAW is unavailable here.</exception>
+    public static RawPhotoInfo ReadInfo(string path)
+    {
+        try
+        {
+            return Reader.ReadInfo(path);
+        }
+        catch (RawReadException ex)
+        {
+            throw new PhotoReadException($"'{Path.GetFileName(path)}' details can't be read: {ex.Message}", ex);
+        }
+    }
 }
