@@ -23,6 +23,7 @@ public sealed partial class DecisionController(IDecisionService service, ILogger
 {
     private readonly DecisionHistory _history = new();
     private Dictionary<Guid, PhotoTileViewModel> _tiles = [];
+    private Dictionary<Guid, Guid> _coverOf = [];
 
     /// <summary>Raised after tiles change locally (apply, undo, redo, or revert).</summary>
     public event EventHandler<DecisionChange>? DecisionsChanged;
@@ -31,11 +32,31 @@ public sealed partial class DecisionController(IDecisionService service, ILogger
 
     public bool CanRedo => _history.CanRedo;
 
-    /// <summary>Replaces the set of tiles that changes are applied to (after a library reload).</summary>
+    /// <summary>
+    /// Replaces the set of tiles that changes are applied to (after a library reload). The hidden RAW file of each pair
+    /// (<see cref="PhotoTileViewModel.Partner"/>) is registered with its cover, and every change to the cover reaches it.
+    /// </summary>
     public void Register(IEnumerable<PhotoTileViewModel> tiles)
     {
         ArgumentNullException.ThrowIfNull(tiles);
-        _tiles = tiles.ToDictionary(t => t.Id);
+        _tiles = [];
+        _coverOf = [];
+        foreach (var tile in tiles)
+        {
+            _tiles[tile.Id] = tile;
+            if (tile.Partner is { } partner)
+            {
+                _tiles[partner.Id] = partner;
+                _coverOf[partner.Id] = tile.Id;
+            }
+        }
+    }
+
+    /// <summary>How many photos a change touched, counting a RAW + JPEG pair once.</summary>
+    public int PhotoCount(DecisionChange change)
+    {
+        ArgumentNullException.ThrowIfNull(change);
+        return change.Deltas.Select(d => _coverOf.GetValueOrDefault(d.PhotoId, d.PhotoId)).Distinct().Count();
     }
 
     public async Task<DecisionOutcome> ApplyAsync(IReadOnlyList<PhotoTileViewModel> targets, DecisionEdit edit)
@@ -43,7 +64,11 @@ public sealed partial class DecisionController(IDecisionService service, ILogger
         ArgumentNullException.ThrowIfNull(targets);
         ArgumentNullException.ThrowIfNull(edit);
 
-        var change = service.Plan(targets.Select(t => (t.Id, t.Decision)).ToList(), edit);
+        var partners = targets
+            .Where(t => t.Partner is not null)
+            .Select(t => new PartnerDecision(t.Id, t.Partner!.Id, t.Partner.Decision))
+            .ToList();
+        var change = service.Plan(targets.Select(t => (t.Id, t.Decision)).ToList(), edit, partners);
         if (change is null)
         {
             return DecisionOutcome.Nothing;

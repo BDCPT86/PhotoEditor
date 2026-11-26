@@ -504,7 +504,7 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
         }
         else if (outcome.Change is { } change)
         {
-            var count = change.Deltas.Count;
+            var count = Decisions.PhotoCount(change);
             var what = verb is null ? change.Description : $"{verb}: {change.Description.ToLower(CultureInfo.CurrentCulture)}";
             SetStatus(count == 1 ? what : string.Create(CultureInfo.CurrentCulture, $"{what} · {count:N0} photos"), warning: false);
         }
@@ -706,9 +706,7 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
         {
             var photos = await _library.GetPhotosAsync(cancellationToken).ConfigureAwait(true);
             var decisions = await _decisionService.LoadAsync(cancellationToken).ConfigureAwait(true);
-            _all = photos
-                .Select(p => new PhotoTileViewModel(p, _thumbnails, decisions.GetValueOrDefault(p.Id)))
-                .ToList();
+            _all = BuildTiles(photos, decisions);
             Decisions.Register(_all);
             await Edits.LoadAsync(_all, cancellationToken).ConfigureAwait(true);
             await Analysis.Controller.LoadAsync(_all, cancellationToken).ConfigureAwait(true);
@@ -720,6 +718,30 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
         }
 
         await CheckFoldersAsync(cancellationToken).ConfigureAwait(true);
+    }
+
+    /// <summary>
+    /// One tile per photo, except that a RAW + JPEG pair (<see cref="PhotoPairing"/>) is one tile: the JPEG, with the RAW
+    /// file as its hidden <see cref="PhotoTileViewModel.Partner"/>. The tile shows the JPEG's decision.
+    /// </summary>
+    private List<PhotoTileViewModel> BuildTiles(IReadOnlyList<Photo> photos, IReadOnlyDictionary<Guid, PhotoDecision> decisions)
+    {
+        var pairs = PhotoPairing.Find(photos);
+        var tiles = new List<PhotoTileViewModel>(photos.Count - pairs.Count);
+        foreach (var photo in photos)
+        {
+            if (pairs.IsHiddenRaw(photo.Id))
+            {
+                continue;
+            }
+
+            var partner = pairs.ByCover(photo.Id) is { } pair
+                ? new PhotoTileViewModel(pair.Raw, _thumbnails, decisions.GetValueOrDefault(pair.Raw.Id))
+                : null;
+            tiles.Add(new PhotoTileViewModel(photo, _thumbnails, decisions.GetValueOrDefault(photo.Id)) { Partner = partner });
+        }
+
+        return tiles;
     }
 
     /// <summary>Finds folders that can't be reached (a drive unplugged, a folder moved) and marks their photos Offline.</summary>
@@ -942,7 +964,10 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
         scope => (scope == ExportScope.Keep
                 ? LibraryQuery.Apply(_all, t => t.Photo, t => t.Decision, new LibraryFilter { States = new HashSet<CullState> { CullState.Keep } }, Filter.Sort)
                 : Photos.ToList())
-            .Select(t => new ExportItem(t.Photo, t.Decision, t.Recipe))
+            // Both files of a pair, as before pairs were shown as one photo; A4 of M09 adds the choice.
+            .SelectMany(t => t.Partner is { } raw
+                ? new[] { new ExportItem(t.Photo, t.Decision, t.Recipe), new ExportItem(raw.Photo, t.Decision, raw.Recipe) }
+                : [new ExportItem(t.Photo, t.Decision, t.Recipe)])
             .ToList(),
         _all.Select(t => t.Photo.FolderPath).Distinct(StringComparer.OrdinalIgnoreCase).ToList());
 

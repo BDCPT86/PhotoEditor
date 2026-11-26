@@ -154,11 +154,29 @@ public sealed partial class PhotoTileViewModel : ObservableObject, IThumbnailReq
                 parts.Add("edited");
             }
 
+            if (IsPaired)
+            {
+                parts.Add("RAW + JPEG");
+            }
+
             return string.Join(", ", parts);
         }
     }
 
     public Photo Photo { get; }
+
+    /// <summary>
+    /// The RAW file shown through this tile when it is the cover (JPEG) of a RAW + JPEG pair (M09); null otherwise. The
+    /// partner has its own tile object, never shown, that holds its decision.
+    /// </summary>
+    public PhotoTileViewModel? Partner { get; init; }
+
+    public bool IsPaired => Partner is not null;
+
+    /// <summary>Tooltip of the RAW+JPEG mark.</summary>
+    public string? PairToolTip => Partner is { } raw
+        ? $"RAW + JPEG: {raw.FileName} and {FileName} are shown and decided on as one photo."
+        : null;
 
     public Guid Id => Photo.Id;
 
@@ -217,7 +235,7 @@ public sealed partial class PhotoTileViewModel : ObservableObject, IThumbnailReq
     }
 
     /// <summary>One-line metadata summary for the viewer.</summary>
-    public string DetailsText => _details ??= BuildDetails(Photo);
+    public string DetailsText => _details ??= IsPaired ? "RAW + JPEG  ·  " + BuildDetails(Photo) : BuildDetails(Photo);
 
     void IThumbnailRequester.OnThumbnailLoaded()
     {

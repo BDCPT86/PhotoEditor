@@ -545,6 +545,11 @@
                                 <TextBlock DockPanel.Dock="Left" Text="✎" Margin="0,0,5,0" FontSize="{StaticResource FontSize.Caption}" VerticalAlignment="Center"
                                            Foreground="{StaticResource Brush.Accent.Hover}" ToolTip="Edited (the original file is unchanged)"
                                            Visibility="{Binding IsEdited, Converter={StaticResource BoolToVisibility}}" />
+                                <!-- A RAW + JPEG pair shown as one photo: a quiet word, like the file name it qualifies -->
+                                <TextBlock DockPanel.Dock="Left" Text="RAW+JPEG" Margin="0,0,6,0" FontSize="{StaticResource FontSize.Caption}" VerticalAlignment="Center"
+                                           Foreground="{StaticResource Brush.Text.Tertiary}" ToolTip="{Binding PairToolTip}"
+                                           AutomationProperties.AutomationId="TilePairMark"
+                                           Visibility="{Binding IsPaired, Converter={StaticResource BoolToVisibility}}" />
                                 <TextBlock x:Name="Name" Text="{Binding FileName}" TextTrimming="CharacterEllipsis" FontSize="{StaticResource FontSize.Caption}"
                                            VerticalAlignment="Center" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}"
                                            Visibility="{Binding DataContext.ShowFileNames, RelativeSource={RelativeSource AncestorType=ListBox}, Converter={StaticResource BoolToVisibility}}" />

@@ -68,6 +68,50 @@ public sealed class DecisionRulesTests
     }
 
     [Fact]
+    public void Plan_GivesAPartnerTheDecisionItsCoverEndsUpWith()
+    {
+        using var service = new DecisionService(new InMemoryDecisionRepository());
+        var cover = Guid.NewGuid();
+        var raw = Guid.NewGuid();
+
+        var change = service.Plan([(cover, new PhotoDecision(CullState.Keep))], DecisionEdit.SetRating(4), [new PartnerDecision(cover, raw, PhotoDecision.Unset)]);
+
+        Assert.Equal(2, change!.Deltas.Count);
+        var partner = change.Deltas.Single(d => d.PhotoId == raw);
+        Assert.Equal(PhotoDecision.Unset, partner.Before);
+        Assert.Equal(new PhotoDecision(CullState.Keep, 4), partner.After);
+    }
+
+    [Fact]
+    public void Plan_BringsADisagreeingPartnerIntoStep_EvenWhenTheCoverIsUnchanged()
+    {
+        using var service = new DecisionService(new InMemoryDecisionRepository());
+        var cover = Guid.NewGuid();
+        var raw = Guid.NewGuid();
+        var keep = new PhotoDecision(CullState.Keep, 3);
+
+        var change = service.Plan([(cover, keep)], DecisionEdit.SetState(CullState.Keep), [new PartnerDecision(cover, raw, new PhotoDecision(CullState.Reject))]);
+
+        var delta = Assert.Single(change!.Deltas);
+        Assert.Equal(raw, delta.PhotoId);
+        Assert.Equal(new PhotoDecision(CullState.Reject), delta.Before);
+        Assert.Equal(keep, delta.After);
+    }
+
+    [Fact]
+    public void Plan_IgnoresPartnersOfPhotosNotTargeted_AndPartnersAlreadyInStep()
+    {
+        using var service = new DecisionService(new InMemoryDecisionRepository());
+        var cover = Guid.NewGuid();
+        var keep = new PhotoDecision(CullState.Keep);
+
+        Assert.Null(service.Plan(
+            [(cover, keep)],
+            DecisionEdit.SetState(CullState.Keep),
+            [new PartnerDecision(cover, Guid.NewGuid(), keep), new PartnerDecision(Guid.NewGuid(), Guid.NewGuid(), PhotoDecision.Unset)]));
+    }
+
+    [Fact]
     public async Task Saves_AreSerialised_AndLoadWaitsForThem()
     {
         var repository = new InMemoryDecisionRepository { SaveDelay = TimeSpan.FromMilliseconds(30) };

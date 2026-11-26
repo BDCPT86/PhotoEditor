@@ -4,7 +4,22 @@
 > the library; files on drives without a Recycle Bin are refused; H and J for the histogram and overlay.
 >
 > - **A1 done:** `PhotoPairing` (Core) finds RAW + JPEG pairs by the rule below, with 14 unit tests. It finds 5,000
->   pairs among 10,000 photos in under 100 ms (test). Nothing uses it yet; A2 puts it in the grid.
+>   pairs among 10,000 photos in under 100 ms (test; the best of five runs, since other test projects run at the
+>   same time).
+> - **A2 done:** the library builds one tile per pair (the JPEG). The RAW file is the tile's hidden partner and holds
+>   its own decision.
+>   - **The tile:** a quiet **RAW+JPEG** word in the caption, with both file names in its tooltip. The viewer's info
+>     line starts "RAW + JPEG".
+>   - **Counts, filters and sorting** see one photo per pair.
+>   - **Decisions** reach both files as one undo step. The status line counts a pair once.
+>   - **Files that disagree:** the tile shows the JPEG's decision. The next change writes the result to both, even
+>     when the JPEG is already in that state. Undo gives the RAW file its own earlier decision back.
+>   - **Analyze** already works on the tiles only, so it skips the RAW file; A3 confirms this with tests.
+>   - **Tests:** 7 workflow tests and 3 planning tests.
+>   - **Until A4:**
+>     - Export still writes both files of a pair, and its panel counts them as two photos.
+>     - Edited JPEGs are made from both files. The one from the RAW file has no edit.
+>     - An edit made to a RAW file before this milestone isn't shown, since the tile is the JPEG.
 
 ## Goal
 Make culling a real shoot fast from card to keepers. A camera that saves RAW and JPEG should give one photo to decide

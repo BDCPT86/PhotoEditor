@@ -16,13 +16,23 @@ namespace FrameForge.App.Tests;
 /// <summary>A real LibraryViewModel wired to real decision/filter/viewer/compare logic, with in-memory storage.</summary>
 internal sealed class CullingFixture : IDisposable
 {
-    public CullingFixture(int photoCount = 6, bool autoAdvance = true)
+    /// <param name="pairedRaws">Indexes of JPEGs that get a RAW file of the same name and time (IMG_nn.CR3), added after the JPEGs.</param>
+    public CullingFixture(int photoCount = 6, bool autoAdvance = true, IReadOnlyCollection<int>? pairedRaws = null)
     {
         Photos = Enumerable.Range(0, photoCount).Select(i => TestPhotos.Create($"IMG_{i:00}.jpg")).ToList();
         for (var i = 0; i < Photos.Count; i++)
         {
             Photos[i].CaptureLocalTime = new DateTime(2026, 5, 1, 10, 0, 0, DateTimeKind.Unspecified).AddSeconds(i);
         }
+
+        foreach (var i in pairedRaws ?? [])
+        {
+            var raw = TestPhotos.Create($"IMG_{i:00}.CR3");
+            raw.CaptureLocalTime = Photos[i].CaptureLocalTime;
+            Raws[i] = raw;
+            Photos.Add(raw);
+        }
+
         Settings = new SettingsService(SettingsStore, NullLogger<SettingsService>.Instance);
         Settings.SetAsync(AppSettings.ViewerAutoAdvance, autoAdvance).GetAwaiter().GetResult();
 
@@ -79,6 +89,9 @@ internal sealed class CullingFixture : IDisposable
     public LibraryAnalysisViewModel AnalysisPanel { get; }
 
     public List<Photo> Photos { get; }
+
+    /// <summary>The RAW file paired with the JPEG at each index given to the constructor.</summary>
+    public Dictionary<int, Photo> Raws { get; } = [];
 
     public MemorySettingsStore SettingsStore { get; } = new();
 
