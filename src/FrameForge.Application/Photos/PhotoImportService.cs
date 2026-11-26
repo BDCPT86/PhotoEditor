@@ -52,6 +52,11 @@ public sealed partial class PhotoImportService(
                 LogFolderSkipped(skipped);
             }
 
+            foreach (var (extension, count) in scan.UnsupportedFiles)
+            {
+                LogUnsupportedSkipped(count, extension);
+            }
+
             var existing = await repository.GetFileStatesAsync(cancellationToken).ConfigureAwait(false);
             var existingByPath = BuildPathIndex(existing);
 
@@ -95,6 +100,7 @@ public sealed partial class PhotoImportService(
             MarkedMissing = tally.MarkedMissing,
             MissingCheckSkipped = tally.MissingCheckSkipped,
             SkippedFolders = scan?.SkippedFolders ?? [],
+            UnsupportedFiles = scan?.UnsupportedFiles ?? new Dictionary<string, int>(),
             WasCancelled = cancelled,
             Duration = timeProvider.GetElapsedTime(startedAt),
         };
@@ -319,6 +325,9 @@ public sealed partial class PhotoImportService(
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Folder could not be read and was skipped: {FolderPath}")]
     private partial void LogFolderSkipped(string folderPath);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Skipped {Count} {Extension} file(s): format not supported")]
+    private partial void LogUnsupportedSkipped(int count, string extension);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Photo could not be read: {FilePath}")]
     private partial void LogFileFailed(Exception exception, string filePath);

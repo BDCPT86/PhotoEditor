@@ -251,4 +251,25 @@ public sealed class PhotoTileAndLoaderTests
         Assert.Contains("could not be read", text, StringComparison.Ordinal);
         Assert.Contains("continue", text, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void LibrarySummary_SaysWhichFormatsWereNotImported_MostFirst()
+    {
+        var text = LibraryViewModel.DescribeSummary(new ImportSummary
+        {
+            FolderPath = @"C:\Photos\Trip",
+            Added = 5,
+            UnsupportedFiles = new Dictionary<string, int> { [".HEIC"] = 1, [".NEF"] = 3 },
+        });
+
+        Assert.Contains("4 not imported because the format isn't supported (3 .NEF, 1 .HEIC)", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void LibrarySummary_WithoutUnsupportedFiles_SaysNothingAboutThem()
+    {
+        var text = LibraryViewModel.DescribeSummary(new ImportSummary { FolderPath = @"C:\Photos\Trip", Added = 5 });
+
+        Assert.DoesNotContain("not imported", text, StringComparison.Ordinal);
+    }
 }

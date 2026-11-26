@@ -38,13 +38,15 @@ Press **F1** in the app for the keyboard list at any time.
 3. You can cancel at any time. Importing the same folder again continues where it stopped, picks up new files, and
    never creates duplicates.
 
+Photos in formats FrameForge doesn't import (other RAW formats such as NEF or DNG, HEIC, TIFF, PNG) are left out, and
+the import result says how many of each, for example "3 not imported because the format isn't supported (3 .NEF)".
 Files that can't be read are listed as **Unreadable**. Files deleted since the last import show as **Missing** the next
 time that folder is imported. If an import finds no photos at all in a folder that has some in the library (an empty
 card reader or network share, say), nothing is marked Missing, and the result says so.
 
 ### RAW files (Canon CR3)
 - **Which files:** `.CR3` files import alongside JPEGs. They have been tested with the Canon EOS R50. Other RAW formats
-  (CR2, NEF, ARW, DNG and so on) aren't imported yet.
+  (CR2, NEF, ARW, DNG and so on) aren't imported yet; the import result counts them.
 - **What you see and edit:** the camera's own full-size JPEG, which every CR3 file carries inside it. Thumbnails, the
   viewer, Analyze, AI, masks and edits all use it, so a RAW file looks like the camera's JPEG of the same shot.
 - **RAW + JPEG:** when the camera saves both, they import as two separate photos side by side. Analyze puts each pair

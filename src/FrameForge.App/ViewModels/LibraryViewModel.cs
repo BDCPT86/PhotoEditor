@@ -678,7 +678,7 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
         try
         {
             var summary = await _importer.ImportFolderAsync(folder, IncludeSubfolders, progress, cancellationToken).ConfigureAwait(true);
-            SetStatus(DescribeSummary(summary), warning: summary.Failed > 0 || summary.SkippedFolders.Count > 0);
+            SetStatus(DescribeSummary(summary), warning: summary.Failed > 0 || summary.SkippedFolders.Count > 0 || summary.UnsupportedFiles.Count > 0);
         }
         catch (Exception ex) when (ex is DirectoryNotFoundException or UnauthorizedAccessException or IOException)
         {
@@ -835,6 +835,16 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
         if (summary.SkippedFolders.Count > 0)
         {
             parts.Add(string.Create(culture, $"{summary.SkippedFolders.Count:N0} folder(s) could not be read"));
+        }
+
+        if (summary.UnsupportedFiles.Count > 0)
+        {
+            var total = summary.UnsupportedFiles.Values.Sum();
+            var byFormat = string.Join(", ", summary.UnsupportedFiles
+                .OrderByDescending(pair => pair.Value)
+                .ThenBy(pair => pair.Key, StringComparer.Ordinal)
+                .Select(pair => string.Create(culture, $"{pair.Value:N0} {pair.Key}")));
+            parts.Add(string.Create(culture, $"{total:N0} not imported because the format isn't supported ({byFormat})"));
         }
 
         var tail = summary.WasCancelled ? " Run the import again to continue where it stopped." : string.Empty;

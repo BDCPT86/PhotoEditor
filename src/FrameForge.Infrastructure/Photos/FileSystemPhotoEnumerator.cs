@@ -30,6 +30,7 @@ public sealed class FileSystemPhotoEnumerator : IPhotoFileEnumerator
 
         var files = new List<PhotoFileInfo>();
         var skipped = new List<string>();
+        var unsupported = new Dictionary<string, int>(StringComparer.Ordinal);
         var pending = new Stack<DirectoryInfo>();
         pending.Push(root);
 
@@ -46,6 +47,11 @@ public sealed class FileSystemPhotoEnumerator : IPhotoFileEnumerator
                     if (SupportedPhotoFormats.IsSupported(file.Name))
                     {
                         files.Add(new PhotoFileInfo(file.FullName, file.Length, file.LastWriteTimeUtc));
+                    }
+                    else if (SupportedPhotoFormats.IsKnownUnsupported(file.Name))
+                    {
+                        var extension = file.Extension.ToUpperInvariant();
+                        unsupported[extension] = unsupported.GetValueOrDefault(extension) + 1;
                     }
                 }
 
@@ -68,6 +74,6 @@ public sealed class FileSystemPhotoEnumerator : IPhotoFileEnumerator
         }
 
         files.Sort((a, b) => string.Compare(a.FilePath, b.FilePath, StringComparison.OrdinalIgnoreCase));
-        return new PhotoFolderScan(files, skipped);
+        return new PhotoFolderScan(files, skipped) { UnsupportedFiles = unsupported };
     }
 }

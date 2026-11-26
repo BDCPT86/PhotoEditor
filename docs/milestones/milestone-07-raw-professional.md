@@ -104,7 +104,7 @@ Implement only Milestone 07. Begin with a technical spike and compatibility repo
 | Criterion | Met? | Evidence |
 |---|---|---|
 | RAW files decode on supported test cameras | ✅ | Canon EOS R50 CR3, the one camera tested. 12 of 12 samples decode in the spike, the tests and the app (import, thumbnails, viewer, Analyze, export), and in the release build. [ADR 0020](../decisions/0020-raw-through-libraw-previews.md) |
-| Unsupported/corrupt files fail gracefully | ✅ with a gap | Corrupt CR3 files (zeroed header, cut-off copy, a text file named `.CR3`) are read errors, never crashes, and import lists them as Unreadable (tests). A wrong LibRaw version, a missing DLL or a missing VC++ runtime turns RAW off with a reason (tests, ADR 0019/0020). **Gap:** unsupported formats (`.NEF`, `.CR2`, `.ARW`, …) are skipped by import without being mentioned in its result. |
+| Unsupported/corrupt files fail gracefully | ✅ | Corrupt CR3 files (zeroed header, cut-off copy, a text file named `.CR3`) are read errors, never crashes, and import lists them as Unreadable (tests). A wrong LibRaw version, a missing DLL or a missing VC++ runtime turns RAW off with a reason (tests, ADR 0019/0020). Photos in unsupported formats (`.NEF`, `.CR2`, `.HEIC`, …) are left out, and the import result counts them by extension (fixed after the review, see below). |
 | Source RAW files remain untouched | ✅ | Export tests compare the RAW file's bytes before and after. After the A5 check (import, viewer, Analyze, export), all 24 copies still had the same SHA-256 as the user's originals. |
 | Export metadata behaviour is documented | ✅ | [ADR 0017](../decisions/0017-export-naming-and-metadata.md) (JPEGs), ADR 0020 (RAW files), user guide § Export |
 | Performance/memory benchmarks are recorded | ✅ | [m07-performance.md](../benchmarks/m07-performance.md) (before and after phase D), [m07-raw-spike.md](../benchmarks/m07-raw-spike.md), RAW viewer and export timings in ADR 0020 |
@@ -139,13 +139,18 @@ Implement only Milestone 07. Begin with a technical spike and compatibility repo
 ### Known limitations
 - RAW: Canon CR3 only, tested with the Canon EOS R50 only. Edited through the embedded 8-bit JPEG (no sensor-data
   develop), and exported JPEGs of RAW files carry no GPS or other camera EXIF beyond the basic details.
-- Import doesn't say when it skipped files in formats it doesn't support.
 - LibRaw runs inside the app process. No sample crashed it, but a native crash on some future file would close the app
   (the local crash report would record it).
 - Before sharing the app: the two licence steps above.
 - The intermittent "Tests failed" in the first publish run.
 
 ### Recommended next
-- Say in the import result how many files were skipped as unsupported, by extension.
 - Find the intermittent Release test failure, by keeping the publish script's test output.
 - Then the next milestone, which the roadmap decides.
+
+### After the review
+- **Import counts unsupported formats (2026-11-26).** The scan counts photos in formats FrameForge recognises but
+  doesn't import (other RAW formats, HEIC, TIFF, PNG, WebP), by extension. The import result says so, for example
+  "3 not imported because the format isn't supported (3 .NEF)", shown as a warning, and the log lists them. Other
+  files (sidecars, videos, text) are still ignored without comment. Build: 0 warnings, 0 errors; tests: 868 passed,
+  none skipped (4 new).

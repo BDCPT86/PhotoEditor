@@ -31,6 +31,9 @@ public sealed record ImportSummary
     /// <summary>Sub-folders that could not be read (permissions, I/O errors). Their photos are left untouched.</summary>
     public IReadOnlyList<string> SkippedFolders { get; init; } = [];
 
+    /// <summary>Photos left out because FrameForge doesn't import their format, by extension (".NEF" → 3).</summary>
+    public IReadOnlyDictionary<string, int> UnsupportedFiles { get; init; } = new Dictionary<string, int>();
+
     public bool WasCancelled { get; init; }
 
     public TimeSpan Duration { get; init; }

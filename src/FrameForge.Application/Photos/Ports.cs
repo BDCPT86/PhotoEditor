@@ -7,7 +7,14 @@ public sealed record PhotoFileInfo(string FilePath, long FileSizeBytes, DateTime
 
 /// <summary>Result of scanning a folder for supported files.</summary>
 /// <param name="SkippedFolders">Sub-folders that could not be read; scanning continued without them.</param>
-public sealed record PhotoFolderScan(IReadOnlyList<PhotoFileInfo> Files, IReadOnlyList<string> SkippedFolders);
+public sealed record PhotoFolderScan(IReadOnlyList<PhotoFileInfo> Files, IReadOnlyList<string> SkippedFolders)
+{
+    /// <summary>
+    /// Photos in formats FrameForge doesn't import (<see cref="SupportedPhotoFormats.IsKnownUnsupported"/>), counted by
+    /// extension in upper case (".NEF" → 3).
+    /// </summary>
+    public IReadOnlyDictionary<string, int> UnsupportedFiles { get; init; } = new Dictionary<string, int>();
+}
 
 /// <summary>Finds supported photo files on the file system.</summary>
 public interface IPhotoFileEnumerator

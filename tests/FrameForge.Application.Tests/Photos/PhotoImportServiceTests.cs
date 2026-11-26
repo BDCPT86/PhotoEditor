@@ -256,6 +256,21 @@ public sealed class PhotoImportServiceTests
     }
 
     [Fact]
+    public async Task UnsupportedFormats_AreCountedInTheSummary_AndNothingIsAddedForThem()
+    {
+        AddFiles(2, Root);
+        _files.UnsupportedFiles[".NEF"] = 3;
+        _files.UnsupportedFiles[".HEIC"] = 1;
+
+        var summary = await CreateService().ImportFolderAsync(Root, true, null, Ct);
+
+        Assert.Equal(2, summary.Added);
+        Assert.Equal(3, summary.UnsupportedFiles[".NEF"]);
+        Assert.Equal(1, summary.UnsupportedFiles[".HEIC"]);
+        Assert.Equal(2, _repository.All.Count);
+    }
+
+    [Fact]
     public async Task PhotosInUnreadableSubfolder_AreNotMarkedMissing()
     {
         var locked = $@"{Root}\Locked";

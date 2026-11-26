@@ -38,6 +38,26 @@ public sealed class FileSystemPhotoEnumeratorTests : IDisposable
     }
 
     [Fact]
+    public void OtherPhotoFormats_AreCountedByExtension_OtherFilesAreNot()
+    {
+        Touch("a.CR3");
+        Touch("b.nef");
+        Touch("c.NEF");
+        Touch("d.heic");
+        Touch(@"sub\e.dng");
+        Touch("a.xmp");
+        Touch("clip.mp4");
+        Touch("notes.txt");
+
+        var flat = _enumerator.Scan(_temp.Path, includeSubfolders: false, Ct);
+        var recursive = _enumerator.Scan(_temp.Path, includeSubfolders: true, Ct);
+
+        Assert.Equal(["a.CR3"], flat.Files.Select(f => Path.GetFileName(f.FilePath)));
+        Assert.Equal(new Dictionary<string, int> { [".NEF"] = 2, [".HEIC"] = 1 }, flat.UnsupportedFiles);
+        Assert.Equal(1, recursive.UnsupportedFiles[".DNG"]);
+    }
+
+    [Fact]
     public void Recursive_IncludesNestedFolders_NonRecursive_DoesNot()
     {
         Touch("top.jpg");

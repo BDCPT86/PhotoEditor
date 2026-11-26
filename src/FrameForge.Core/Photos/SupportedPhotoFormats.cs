@@ -10,7 +10,23 @@ public static class SupportedPhotoFormats
 
     private static readonly HashSet<string> Extensions = new([".jpg", ".jpeg", .. RawExtensions], StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Photo formats FrameForge recognises but doesn't import: other cameras' RAW files and image formats without a
+    /// tested path. Import counts these so it can say what it skipped; other files (videos, sidecars, …) are ignored.
+    /// </summary>
+    private static readonly HashSet<string> KnownUnsupported = new(
+        [
+            ".cr2", ".crw", ".nef", ".nrw", ".arw", ".srf", ".sr2", ".raf", ".orf", ".rw2", ".pef", ".dng", ".srw",
+            ".3fr", ".iiq", ".erf", ".mrw", ".x3f", ".rwl", ".kdc", ".dcr",
+            ".heic", ".heif", ".hif", ".tif", ".tiff", ".png", ".webp",
+        ],
+        StringComparer.OrdinalIgnoreCase);
+
     public static IReadOnlyCollection<string> FileExtensions => Extensions;
+
+    /// <summary>A photo FrameForge recognises as one but doesn't import (another RAW format, HEIC, TIFF, …).</summary>
+    public static bool IsKnownUnsupported(string path) =>
+        !string.IsNullOrEmpty(path) && KnownUnsupported.Contains(Path.GetExtension(path));
 
     public static bool IsSupported(string path) =>
         !string.IsNullOrEmpty(path) && Extensions.Contains(Path.GetExtension(path));

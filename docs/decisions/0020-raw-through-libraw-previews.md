@@ -46,7 +46,7 @@
 
 ### Import and details (A2)
 - **Which files import:** `.CR3` is a supported format (`SupportedPhotoFormats.IsRaw`). Other RAW formats stay off until
-  they are tested.
+  they are tested. Import counts photos in other RAW and image formats by extension and says so in its result.
 - **How details are read:** `IPhotoMetadataReader` is now `PhotoMetadataReader`, which sends RAW files to
   `RawPhotoMetadataReader` (LibRaw) and everything else to WIC as before.
   - A RAW file LibRaw can't read, or RAW being unavailable on this computer, becomes `PhotoReadException`. Import lists

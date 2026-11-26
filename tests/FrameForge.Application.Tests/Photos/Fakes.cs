@@ -10,6 +10,9 @@ internal sealed class FakeEnumerator : IPhotoFileEnumerator
 
     public List<string> UnreadableFolders { get; } = [];
 
+    /// <summary>What the scan reports as photos in formats that aren't imported, by extension.</summary>
+    public Dictionary<string, int> UnsupportedFiles { get; } = new(StringComparer.Ordinal);
+
     public void AddFile(string path, long size = 1000, DateTime? modifiedUtc = null) =>
         _files[path] = new PhotoFileInfo(path, size, modifiedUtc ?? new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc));
 
@@ -33,7 +36,7 @@ internal sealed class FakeEnumerator : IPhotoFileEnumerator
             .OrderBy(f => f.FilePath, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        return new PhotoFolderScan(files, UnreadableFolders.ToList());
+        return new PhotoFolderScan(files, UnreadableFolders.ToList()) { UnsupportedFiles = new Dictionary<string, int>(UnsupportedFiles) };
     }
 }
 
