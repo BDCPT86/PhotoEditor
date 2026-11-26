@@ -1,10 +1,15 @@
 using FrameForge.App.Shortcuts;
 using FrameForge.App.ViewModels;
+using FrameForge.Application.Editing;
 using FrameForge.Core.Decisions;
+using FrameForge.Core.Editing;
 
 namespace FrameForge.App.Tests;
 
-/// <summary>M09 A2: a RAW + JPEG pair is one tile, and a decision on it reaches both files as one undo step.</summary>
+/// <summary>
+/// M09 A2: a RAW + JPEG pair is one tile, and a decision on it reaches both files as one undo step. A3: analysis and
+/// edits work on the cover (the JPEG) only.
+/// </summary>
 public sealed class PairWorkflowTests
 {
     private static readonly int[] Both = [0, 2];
@@ -127,6 +132,64 @@ public sealed class PairWorkflowTests
 
         var items = Assert.Single(f.Exporter.Calls);
         Assert.Equal(["IMG_00.jpg", "IMG_01.jpg", "IMG_01.CR3"], items.Select(i => i.Photo.FileName));
+    }
+
+    // ------------------------------------------------------------------ A3: the cover only
+
+    [Fact]
+    public async Task Analyze_IsGivenTheCovers_NotTheirRawFiles()
+    {
+        using var f = new CullingFixture(photoCount: 3, pairedRaws: [0, 1]);
+        await f.LoadAsync();
+
+        await f.AnalysisPanel.AnalyzeCommand.ExecuteAsync(null);
+
+        Assert.Equal(["IMG_00.jpg", "IMG_01.jpg", "IMG_02.jpg"], f.AnalysisService.LastAnalyzed.Select(p => p.FileName).Order(StringComparer.Ordinal));
+        Assert.DoesNotContain(f.AiService.LastAnalyzed, p => f.Raws.ContainsValue(p));
+    }
+
+    [Fact]
+    public async Task APair_IsNotGroupedAsSimilarToItself()
+    {
+        // The RAW file's preview is the camera's JPEG, so their hashes match. Before pairs, that made every pair a "similar" group.
+        using var f = new CullingFixture(photoCount: 2, pairedRaws: [0]);
+        f.AnalysisService.Set(f.Photos[0], 0b0000);
+        f.AnalysisService.Set(f.Raws[0], 0b0000);
+        f.AnalysisService.Set(f.Photos[1], ulong.MaxValue);
+        await f.LoadAsync();
+
+        Assert.True(f.Tile(0).Insight.IsAnalysed);
+        Assert.Null(f.Tile(0).GroupBadgeText);
+        Assert.False(f.Tile(0).ShowExactBadge);
+    }
+
+    [Fact]
+    public async Task APreset_IsAppliedToTheCover_AndNotToItsRawFile()
+    {
+        using var f = new CullingFixture(photoCount: 2, pairedRaws: [1]);
+        f.Edit.Presets.Stored.Add(new EditPreset(Guid.NewGuid(), "Warm", EditRecipe.Neutral with { Temperature = 40 }, PresetGroups.WhiteBalance));
+        await f.LoadAsync();
+        f.Select(1);
+
+        f.Library.OpenPresetsCommand.Execute(null);
+        Assert.Equal(1, f.PresetPanel.TargetCount);
+        f.PresetPanel.SelectedPreset = f.PresetPanel.Presets.Single();
+        await f.PresetPanel.ApplyCommand.ExecuteAsync(null);
+
+        Assert.Equal(40, f.Edit.Edits.Stored[f.Photos[1].Id].Temperature);
+        Assert.False(f.Edit.Edits.Stored.ContainsKey(f.Raws[1].Id));
+        Assert.True(f.Tile(1).Partner!.Recipe.IsNeutral);
+    }
+
+    [Fact]
+    public async Task AnEarlierEditOfTheRawFile_StaysStored_ButTheTileShowsTheCoversEdit()
+    {
+        using var f = new CullingFixture(photoCount: 1, pairedRaws: [0]);
+        f.Edit.Edits.Stored[f.Raws[0].Id] = EditRecipe.Neutral with { Exposure = 1 };
+        await f.LoadAsync();
+
+        Assert.False(f.Tile(0).IsEdited);
+        Assert.True(f.Edit.Edits.Stored.ContainsKey(f.Raws[0].Id));
     }
 
     private static async Task<PhotoDecision> StoredAsync(CullingFixture f, Guid id, Func<PhotoDecision, bool> until)

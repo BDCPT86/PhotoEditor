@@ -14,8 +14,13 @@
 >   - **Decisions** reach both files as one undo step. The status line counts a pair once.
 >   - **Files that disagree:** the tile shows the JPEG's decision. The next change writes the result to both, even
 >     when the JPEG is already in that state. Undo gives the RAW file its own earlier decision back.
->   - **Analyze** already works on the tiles only, so it skips the RAW file; A3 confirms this with tests.
 >   - **Tests:** 7 workflow tests and 3 planning tests.
+> - **A3 done, with no change to the app:** only the library loads photos, and every other part (Analyze, AI, Develop,
+>   Auto, presets, masks, compare) gets the tiles from it. Since A2 those hold the cover only. 4 tests confirm it:
+>   - Analyze and AI are given the covers.
+>   - A pair with matching hashes isn't grouped as similar.
+>   - A preset reaches the cover and not its RAW file.
+>   - An edit stored for a RAW file before this milestone stays stored but isn't shown.
 >   - **Until A4:**
 >     - Export still writes both files of a pair, and its panel counts them as two photos.
 >     - Edited JPEGs are made from both files. The one from the RAW file has no edit.

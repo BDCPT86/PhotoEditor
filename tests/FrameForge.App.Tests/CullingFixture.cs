@@ -206,6 +206,9 @@ internal sealed class FakeAnalysisService : IPhotoAnalysisService
 
     public int LoadCalls { get; private set; }
 
+    /// <summary>The photos the last run was given.</summary>
+    public IReadOnlyList<Photo> LastAnalyzed { get; private set; } = [];
+
     /// <summary>Gives a photo a full analysis with the given perceptual hash and sharpness.</summary>
     public void Set(Photo photo, ulong hash, double sharpness = 200, string? content = null) =>
         Results[photo.Id] = new PhotoAnalysis
@@ -225,6 +228,7 @@ internal sealed class FakeAnalysisService : IPhotoAnalysisService
     public Task<AnalysisRunSummary> AnalyzeAsync(IReadOnlyList<Photo> photos, FrameForge.Analysis.AnalysisSettings settings, IProgress<AnalysisProgress>? progress, CancellationToken cancellationToken)
     {
         AnalyzeCalls++;
+        LastAnalyzed = photos;
         return Task.FromResult(new AnalysisRunSummary { Analysed = photos.Count - Results.Count, Cached = Results.Count });
     }
 }
@@ -236,6 +240,9 @@ internal sealed class FakeAiAnalysisService : FrameForge.Application.Ai.IAiAnaly
 
     public bool ModelsAvailable { get; set; }
 
+    /// <summary>The photos the last run was given.</summary>
+    public IReadOnlyList<Photo> LastAnalyzed { get; private set; } = [];
+
     public int AnalyzeCalls { get; private set; }
 
     public Task<IReadOnlyDictionary<Guid, FrameForge.Application.Ai.AiPhotoAnalysis>> LoadAsync(IReadOnlyList<Photo> photos, FrameForge.Application.Ai.AiCapabilities capabilities, FrameForge.Analysis.AnalysisSettings settings, CancellationToken cancellationToken = default) =>
@@ -245,6 +252,7 @@ internal sealed class FakeAiAnalysisService : FrameForge.Application.Ai.IAiAnaly
     public Task<AnalysisRunSummary> AnalyzeAsync(IReadOnlyList<Photo> photos, FrameForge.Application.Ai.AiCapabilities capabilities, FrameForge.Analysis.AnalysisSettings settings, IProgress<AnalysisProgress>? progress, CancellationToken cancellationToken)
     {
         AnalyzeCalls++;
+        LastAnalyzed = photos;
         return Task.FromResult(ModelsAvailable
             ? new AnalysisRunSummary { Analysed = photos.Count - Results.Count, Cached = Results.Count }
             : new AnalysisRunSummary { NotEligible = photos.Count });
