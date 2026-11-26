@@ -64,7 +64,8 @@
 >     is vendored and wrapped in `FrameForge.Raw`, checked on the R50 samples ([ADR 0020](../decisions/0020-raw-through-libraw-previews.md)).
 >     A2 is done: .CR3 files import with their details (camera, lens, exposure, capture time, orientation). A3 is done:
 >     RAW files show, analyse and edit through their embedded full-size JPEG. A4 is done: edited JPEGs of RAW files carry
->     the camera details read from the RAW file (no GPS). Next: A5 (in-app check) and A6 (docs) (plan approved:
+>     the camera details read from the RAW file (no GPS). A5 is done: checked in the app on the 12 + 12 R50 samples
+>     (import, grid, viewer, analysis, export). Next: A6 (user guide and supported formats) (plan approved:
 >     embedded previews, LibRaw under LGPL-2.1, RAW and JPEG as separate photos, CR3 only).
 
 ## Goal

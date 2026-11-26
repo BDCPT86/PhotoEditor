@@ -1,7 +1,7 @@
 # 0020 — RAW files through LibRaw and their embedded previews
 
 **Date:** 2026-11-25
-**Status:** Accepted for M07 phase A; A1–A4 are in place, A5 and A6 follow (see the M07 brief)
+**Status:** Accepted for M07 phase A; A1–A5 are in place, A6 follows (see the M07 brief)
 
 ## Context
 - FrameForge reads JPEGs only. Windows has no CR3 decoder installed (no WIC codec).
@@ -93,6 +93,26 @@
 - **Checked on the 12 R50 samples (test):** each edited JPEG's make, model, lens, capture time, ISO, exposure, f-number
   and focal length equal what import read from the RAW file. Its model, ISO and exposure equal the camera's own JPEG
   of the same moment, and the RAW file is unchanged.
+
+### Checked in the app (A5, 2026-11-26)
+Debug build, on copies of the 12 R50 CR3 files and their 12 camera JPEGs, in an isolated data folder, driven by UI
+Automation:
+- **Import:** 24 new photos in 4.3 s, none unreadable, no warnings or errors in the log.
+- **Grid:** every RAW tile shows its thumbnail upright and matches its JPEG's; none says "Can't display".
+- **Viewer:** RAW files show upright with their details (size, camera, lens, ISO, exposure, aperture, focal length,
+  time).
+  - Stepping through all 24 photos takes a median 317 ms per photo with no pause, and 380 ms after a 1 s look.
+  - The same script gives 331 ms on the JPEG-only test library. Most of it is the script searching the automation tree
+    (about 0.3 s per search, see the [performance report](../benchmarks/m07-performance.md)). So RAW files take at most
+    about 50 ms more than JPEGs by this measure; the app's own timing was not repeated.
+- **Analyze:** 24 analysed in about 1.3 s. Each RAW file and its JPEG form a similar group (12 groups), with the usual
+  marks.
+- **Export:** all 24 as full-size edited JPEGs (Full-size JPEG profile) in 10.2 s.
+  - Each RAW file's export has the same upright size and the same model, lens, capture time, ISO, exposure and f-number
+    as its camera JPEG's export.
+- **Found and fixed during the check:** the earlier fix for the view model's name behind grid tiles also hid the
+  tiles' analysis marks. Those tile parts now get an empty template by default instead of being collapsed. The check
+  found the marks back and no view model text (the grid before either fix showed 48 such elements on these 24 tiles).
 
 ### Plan for the rest of phase A (approved)
 - **Previews:** every RAW file is shown, analysed and edited through its embedded JPEG. A true RAW develop waits for a
