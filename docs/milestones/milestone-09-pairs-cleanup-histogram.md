@@ -68,6 +68,38 @@
 >       and shows only while the tile is hovered or selected. It is built only then, so the grid stays light.
 >     - **The design system** lists it.
 >     - **Seen in the app:** only the selected tile showed it. The caption no longer has it, so file names don't move.
+> - **B1 done:** `IRecycleBin` (Application) and `RecycleBinService` over `WindowsRecycleBinPlatform` (Infrastructure).
+>   Nothing in the app uses it yet; B2 adds the command.
+>   - **Why three layers:** Microsoft's documentation doesn't say what Windows does with a file it can't recycle when
+>     told not to ask. So nothing relies on Windows getting it right.
+>     1. **Before each file** (checked again just before its move), it's refused unless:
+>        - it is on a local fixed drive (drive letter, `DriveType.Fixed`, ready);
+>        - Windows has Recycle Bin settings for the drive (`BitBucket\Volume\{guid}`), with `NukeOnDelete` off and the
+>          `NoRecycleFiles` policy not set;
+>        - it is smaller than the bin's `MaxCapacity`.
+>
+>        A network share, a removable drive or a SUBST drive is refused.
+>     2. **The move:** the shell's file operation, one file at a time, with allow-undo and no confirmation. It also
+>        asks for the shell's "will be deleted permanently" warning, which Microsoft documents as overriding "no
+>        confirmation" (`FOF_WANTNUKEWARNING`).
+>     3. **After each file:** the file must be gone and the drive's Recycle Bin must hold one more item. Otherwise
+>        moving stops, and the rest are not tried.
+>   - **Results per file:** moved, skipped (with the reason), failed (still there), not confirmed, or not tried. Every
+>     file is logged.
+>   - **Tests:**
+>     - 14 rule tests over a fake Windows layer.
+>     - A network path is refused (always runs).
+>     - Opt-in with `FRAMEFORGE_TEST_RECYCLE=1`: this PC's drive settings, and a real move of a 1 KB temp file into
+>       the Recycle Bin. Run once, with your consent: passed, file gone, bin count up.
+>   - **Not verified on real Windows:** whether the permanent-delete warning appears for a file that slipped past the
+>     checks (in silent mode). The test through `\\localhost\C$` couldn't run without admin rights. You chose not to
+>     use the removable D:. The checks keep such files from reaching Windows, and the count check stops moving if
+>     one ever vanishes.
+>   - **Known side effects:**
+>     - When the Recycle Bin is nearly full, Windows removes its oldest items to make room, as it does for any delete.
+>     - The count check can then see no gain and stop moving, which errs on the safe side.
+>   - **Unexplained:** one full test run reported 1 failure. The runner kept no results file, so I couldn't identify
+>     the test. The next 5 full runs passed (933 tests).
 >   - **An edit made to a RAW file before this milestone** isn't shown, since the tile is the JPEG.
 
 ## Goal

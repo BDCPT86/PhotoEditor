@@ -48,6 +48,13 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IPhotoDecisionRepository, SqliteDecisionRepository>();
         services.AddSingleton<IExportService, FileSystemExportService>();
 
+        // M09: the only way FrameForge removes a photo. Windows only, like the rest of the app.
+        if (OperatingSystem.IsWindows())
+        {
+            services.AddSingleton<Cleanup.IRecycleBinPlatform, Cleanup.WindowsRecycleBinPlatform>();
+            services.AddSingleton<Application.Cleanup.IRecycleBin, Cleanup.RecycleBinService>();
+        }
+
         services.AddSingleton<IAnalysisResultRepository, SqliteAnalysisRepository>();
         services.AddSingleton<IFileHasher, Sha256FileHasher>();
 
