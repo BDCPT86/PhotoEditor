@@ -56,6 +56,13 @@ public interface IPhotoRepository
 
     /// <summary>All photos ordered by folder, then file name.</summary>
     Task<IReadOnlyList<Photo>> GetAllAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Removes photos from the library, with their decisions, edits and analysis (M09: after their files went to the
+    /// Recycle Bin). Never touches a file. Unknown ids are ignored.
+    /// </summary>
+    /// <returns>The number of photos removed.</returns>
+    Task<int> RemoveAsync(IReadOnlyCollection<Guid> photoIds, CancellationToken cancellationToken = default);
 }
 
 /// <summary>Creates a small JPEG preview of an image.</summary>

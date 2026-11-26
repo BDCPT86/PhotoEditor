@@ -6,4 +6,7 @@ public sealed class PhotoLibraryService(IPhotoRepository repository) : IPhotoLib
 {
     public Task<IReadOnlyList<Photo>> GetPhotosAsync(CancellationToken cancellationToken = default) =>
         repository.GetAllAsync(cancellationToken);
+
+    public Task<int> RemoveAsync(IReadOnlyCollection<Guid> photoIds, CancellationToken cancellationToken = default) =>
+        repository.RemoveAsync(photoIds, cancellationToken);
 }

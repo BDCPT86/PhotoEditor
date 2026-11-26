@@ -122,11 +122,94 @@ public sealed class RecycleWorkflowTests
         Assert.Equal("1 photo  ·  2 files  ·  50 MB", f.Recycle.SummaryText);
         Assert.Equal("Move 2 files to Recycle Bin", f.Recycle.ConfirmText);
 
-        await f.Recycle.ConfirmCommand.ExecuteAsync(null);
+        await ConfirmAsync(f);
 
         Assert.Equal([@"C:\Shoot\IMG_02.jpg", @"C:\Shoot\IMG_02.CR3"], Assert.Single(f.RecycleBin.Moves));
         Assert.False(f.Recycle.IsOpen);
-        Assert.StartsWith("Moved 2 files to the Recycle Bin.", f.Library.StatusMessage, StringComparison.Ordinal);
+        Assert.Equal("Moved 2 files (1 photo) to the Recycle Bin. 1 not moved (1 no Recycle Bin on the drive). The log lists every file.", f.Library.StatusMessage);
+        Assert.True(f.Library.StatusIsWarning);
+    }
+
+    // ------------------------------------------------------------------ B3: afterwards
+
+    /// <summary>Presses the move button and waits until the library has dropped the moved photos and said so.</summary>
+    private static async Task ConfirmAsync(CullingFixture f)
+    {
+        await f.Recycle.ConfirmCommand.ExecuteAsync(null);
+        for (var i = 0; i < 200 && f.Library.StatusMessage?.Contains("The log lists every file", StringComparison.Ordinal) != true; i++)
+        {
+            await Task.Delay(10, Ct);
+        }
+    }
+
+    [Fact]
+    public async Task MovedPhotos_LeaveTheLibrary_AndTheCountsFollow()
+    {
+        using var f = await RejectedViewAsync();
+        await OpenAsync(f);
+
+        await ConfirmAsync(f);
+
+        Assert.Equal("Moved 3 files (2 photos) to the Recycle Bin. The log lists every file.", f.Library.StatusMessage);
+        Assert.False(f.Library.StatusIsWarning);
+        Assert.Empty(f.Library.Photos); // the Rejected view is empty now
+        Assert.DoesNotContain(f.Photos, p => p.FileName is "IMG_00.jpg" or "IMG_02.jpg" or "IMG_02.CR3");
+        Assert.Contains("0 reject", f.Library.DecisionSummaryText, StringComparison.Ordinal);
+        Assert.False(f.Library.CanRecycleRejects);
+    }
+
+    [Fact]
+    public async Task ARawFileWindowsLeftInPlace_StaysAsItsOwnPhoto_StillRejected()
+    {
+        using var f = await RejectedViewAsync();
+        f.RecycleBin.FailMoves.Add(@"C:\Shoot\IMG_02.CR3");
+        await OpenAsync(f);
+
+        await ConfirmAsync(f);
+
+        Assert.Equal("Moved 2 photos to the Recycle Bin. 1 not moved (1 in use or not allowed). The log lists every file.", f.Library.StatusMessage);
+        Assert.True(f.Library.StatusIsWarning);
+        var raw = Assert.Single(f.Library.Photos);
+        Assert.Equal("IMG_02.CR3", raw.FileName);
+        Assert.False(raw.IsPaired);
+        Assert.Equal(CullState.Reject, raw.Decision.State);
+    }
+
+    [Fact]
+    public async Task Undo_ForgetsDecisionsOnMovedPhotos_ButKeepsTheRest()
+    {
+        using var f = new CullingFixture(photoCount: 3);
+        await f.LoadAsync();
+        f.Select(1);
+        f.Library.TryHandle(CullingAction.Rate4);
+        f.Select(0);
+        f.Library.TryHandle(CullingAction.Reject);
+        await f.StoredAsync(0, d => d.State == CullState.Reject);
+        ShowRejected(f);
+        await OpenAsync(f);
+
+        await ConfirmAsync(f);
+
+        Assert.True(f.Controller.CanUndo); // the rating of IMG_01 can still be undone
+        f.Library.TryHandle(CullingAction.Undo);
+        Assert.Equal(PhotoDecision.Unset, await f.StoredAsync(1, d => d.Rating is null));
+        Assert.False(f.Controller.CanUndo); // the Reject of the moved IMG_00 is forgotten
+    }
+
+    [Fact]
+    public void TheResultLine_NamesWhatStoppedIt()
+    {
+        var files = new List<RecycleFileResult>
+        {
+            new(@"C:\Shoot\a.jpg", RecycleOutcome.Moved),
+            new(@"C:\Shoot\b.jpg", RecycleOutcome.NotConfirmed),
+            new(@"C:\Shoot\c.jpg", RecycleOutcome.NotTried),
+        };
+        var completed = new RecycleCompleted(new RecycleSummary(files, Cancelled: false), [], [new RecycleCheck(@"E:\d.jpg", 1, RecycleRefusal.NoRecycleBinOnDrive)]);
+
+        var text = LibraryViewModel.RecycleResultText(completed, photos: 1);
+
+        Assert.StartsWith("Moved 1 photo to the Recycle Bin. 1 not moved (1 no Recycle Bin on the drive). Stopped:", text, StringComparison.Ordinal);
     }
 
     [Fact]

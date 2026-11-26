@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.Input;
 using FrameForge.App.Controls;
 using FrameForge.App.Services;
 using FrameForge.App.Shortcuts;
+using FrameForge.Application.Cleanup;
 using FrameForge.Application.Decisions;
 using FrameForge.Application.Export;
 using FrameForge.Application.Photos;
@@ -1043,27 +1044,75 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
         _ = Recycle.OpenAsync(rejects);
     }
 
-    /// <summary>After a move: says what happened. (B3 removes the moved photos from the library.)</summary>
-    private void OnRecycleCompleted(RecycleCompleted completed)
+    private void OnRecycleCompleted(RecycleCompleted completed) => _ = OnRecycleCompletedAsync(completed);
+
+    /// <summary>
+    /// After a move: the photos whose files went to the Recycle Bin leave the library, with their decisions, edits and
+    /// analysis, and the status line says what happened. A file that wasn't moved keeps its photo (a pair whose RAW
+    /// file stayed becomes that RAW file on its own, still marked Reject).
+    /// </summary>
+    private async Task OnRecycleCompletedAsync(RecycleCompleted completed)
     {
-        var summary = completed.Summary;
-        var culture = CultureInfo.CurrentCulture;
-        var text = string.Create(culture, $"Moved {summary.Moved:N0} file{(summary.Moved == 1 ? string.Empty : "s")} to the Recycle Bin.");
-        if (summary.Skipped + summary.Failed > 0)
+        var moved = completed.Summary.Files.Where(f => f.Outcome == RecycleOutcome.Moved).Select(f => f.Path).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var photos = completed.Photos.SelectMany(t => t.Partner is { } raw ? new[] { t, raw } : [t]).ToList();
+        var removed = photos.Where(t => moved.Contains(t.FilePath)).Select(t => t.Id).ToHashSet();
+        var frames = completed.Photos.Count(t => moved.Contains(t.FilePath) || (t.Partner is { } raw && moved.Contains(raw.FilePath)));
+        var text = RecycleResultText(completed, frames);
+        var warning = completed.Summary.StoppedForSafety || completed.Summary.Cancelled || completed.NotSent.Count > 0
+            || completed.Summary.Files.Any(f => f.Outcome is RecycleOutcome.Skipped or RecycleOutcome.Failed);
+
+        if (removed.Count > 0)
         {
-            text += string.Create(culture, $" {summary.Skipped + summary.Failed:N0} not moved (see the log).");
+            try
+            {
+                await _library.RemoveAsync(removed, CancellationToken.None).ConfigureAwait(true);
+                Decisions.Forget(removed);
+                await ReloadAsync(CancellationToken.None).ConfigureAwait(true);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                LogRemoveFailed(ex, removed.Count);
+                SetStatus(text + " The library could not be updated; restart FrameForge to see the change.", warning: true);
+                return;
+            }
+        }
+
+        SetStatus(text, warning);
+    }
+
+    /// <summary>"Moved 48 files (31 photos) to the Recycle Bin. 3 not moved (3 no Recycle Bin on the drive). The log lists every file."</summary>
+    internal static string RecycleResultText(RecycleCompleted completed, int photos)
+    {
+        var culture = CultureInfo.CurrentCulture;
+        var summary = completed.Summary;
+        var files = summary.Moved;
+        var text = files == photos
+            ? string.Create(culture, $"Moved {files:N0} {(files == 1 ? "photo" : "photos")} to the Recycle Bin.")
+            : string.Create(culture, $"Moved {files:N0} {(files == 1 ? "file" : "files")} ({photos:N0} {(photos == 1 ? "photo" : "photos")}) to the Recycle Bin.");
+
+        // Why the others stayed: refused at the check, refused just before the move, or left in place by Windows.
+        var reasons = completed.NotSent.Select(c => RecycleRejectsViewModel.ShortReason(c.Refusal))
+            .Concat(summary.Files.Where(f => f.Outcome == RecycleOutcome.Skipped).Select(f => RecycleRejectsViewModel.ShortReason(f.Refusal)))
+            .Concat(summary.Files.Where(f => f.Outcome == RecycleOutcome.Failed).Select(_ => "in use or not allowed"))
+            .GroupBy(r => r)
+            .Select(g => string.Create(culture, $"{g.Count():N0} {g.Key}"))
+            .ToList();
+        var notMoved = completed.NotSent.Count + summary.Skipped + summary.Failed;
+        if (notMoved > 0)
+        {
+            text += string.Create(culture, $" {notMoved:N0} not moved ({string.Join(", ", reasons)}).");
         }
 
         if (summary.StoppedForSafety)
         {
-            text += " Stopped: a file left its folder without reaching the Recycle Bin. Check the Recycle Bin and the log.";
+            text += " Stopped: a file left its folder without reaching the Recycle Bin, so nothing else was moved. Check the Recycle Bin.";
         }
         else if (summary.Cancelled)
         {
-            text += " Cancelled; the rest were not moved.";
+            text += " Stopped on request; the rest were not moved.";
         }
 
-        SetStatus(text, warning: summary.StoppedForSafety || summary.Skipped + summary.Failed > 0 || summary.Cancelled);
+        return text + " The log lists every file.";
     }
 
     /// <summary>After a rebuild hides the previously current photo, select the photo that now occupies its place.</summary>
@@ -1108,6 +1157,9 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Checking whether library folders can be reached failed.")]
     private partial void LogFolderCheckFailed(Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Removing {Count} photo(s) moved to the Recycle Bin from the library failed.")]
+    private partial void LogRemoveFailed(Exception exception, int count);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Import of {FolderPath} failed.")]
     private partial void LogImportFailed(Exception exception, string folderPath);

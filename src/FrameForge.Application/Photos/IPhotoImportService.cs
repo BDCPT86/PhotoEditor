@@ -21,4 +21,7 @@ public interface IPhotoImportService
 public interface IPhotoLibraryService
 {
     Task<IReadOnlyList<Photo>> GetPhotosAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Removes photos from the library with everything stored for them. Their files are not touched.</summary>
+    Task<int> RemoveAsync(IReadOnlyCollection<Guid> photoIds, CancellationToken cancellationToken = default);
 }

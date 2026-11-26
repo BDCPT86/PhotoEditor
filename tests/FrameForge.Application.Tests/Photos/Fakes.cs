@@ -144,6 +144,13 @@ internal sealed class InMemoryPhotoRepository : IPhotoRepository
     public Task<IReadOnlyList<Photo>> GetAllAsync(CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<Photo>>(All.OrderBy(p => p.FilePath, StringComparer.OrdinalIgnoreCase).ToList());
 
+    public Task<int> RemoveAsync(IReadOnlyCollection<Guid> photoIds, CancellationToken cancellationToken = default)
+    {
+        var gone = _byPath.Where(p => photoIds.Contains(p.Value.Id)).Select(p => p.Key).ToList();
+        gone.ForEach(path => _byPath.Remove(path));
+        return Task.FromResult(gone.Count);
+    }
+
     public Task<int> RelocateAsync(IReadOnlyCollection<PhotoMove> moves, CancellationToken cancellationToken = default)
     {
         lock (_gate)

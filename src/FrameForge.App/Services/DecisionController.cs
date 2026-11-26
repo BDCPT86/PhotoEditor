@@ -52,6 +52,13 @@ public sealed partial class DecisionController(IDecisionService service, ILogger
         }
     }
 
+    /// <summary>Forgets undo and redo steps that touched photos which left the library.</summary>
+    public void Forget(IReadOnlySet<Guid> photoIds)
+    {
+        _history.Forget(photoIds);
+        NotifyHistory();
+    }
+
     /// <summary>How many photos a change touched, counting a RAW + JPEG pair once.</summary>
     public int PhotoCount(DecisionChange change)
     {

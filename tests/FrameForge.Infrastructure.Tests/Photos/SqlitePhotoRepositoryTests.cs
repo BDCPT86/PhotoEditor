@@ -55,6 +55,44 @@ public sealed class SqlitePhotoRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task Remove_TakesThePhotosDecisionEditAndAnalysisWithIt_AndLeavesOthersAlone()
+    {
+        await using var services = await TestServices.BuildMigratedAsync(_paths, Ct);
+        var photos = services.GetRequiredService<IPhotoRepository>();
+        var decisions = services.GetRequiredService<Application.Decisions.IPhotoDecisionRepository>();
+        var edits = services.GetRequiredService<Application.Editing.IEditRepository>();
+        var analysis = services.GetRequiredService<Application.Analysis.IAnalysisResultRepository>();
+        var gone = CreatePhoto(@"C:\Shoot\IMG_0001.JPG");
+        var kept = CreatePhoto(@"C:\Shoot\IMG_0002.JPG");
+        await photos.UpsertAsync([gone, kept], Ct);
+        foreach (var photo in new[] { gone, kept })
+        {
+            await decisions.SaveAsync([(photo.Id, new Core.Decisions.PhotoDecision(Core.Decisions.CullState.Reject))], Ct);
+            await edits.SaveAsync([(photo.Id, Core.Editing.EditRecipe.Neutral with { Exposure = 1 })], Ct);
+            await analysis.SaveAsync(
+                [new Application.Analysis.StoredAnalysis(photo.Id, Application.Analysis.AnalysisKind.ContentHash, "1", "s", 100, photo.LastModifiedUtc, "\"abc\"", photo.ImportedUtc)],
+                Ct);
+        }
+
+        var removed = await photos.RemoveAsync([gone.Id, Guid.NewGuid()], Ct);
+
+        Assert.Equal(1, removed);
+        Assert.Equal(kept.Id, Assert.Single(await photos.GetAllAsync(Ct)).Id);
+        Assert.Equal([kept.Id], (await decisions.GetAllAsync(Ct)).Keys);
+        Assert.Equal([kept.Id], (await edits.GetAllAsync(Ct)).Recipes.Keys);
+        Assert.Equal([kept.Id], (await analysis.GetAllAsync(Ct)).Select(a => a.PhotoId).Distinct());
+    }
+
+    [Fact]
+    public async Task Remove_WithNothingToRemove_DoesNothing()
+    {
+        await using var services = await TestServices.BuildMigratedAsync(_paths, Ct);
+        var photos = services.GetRequiredService<IPhotoRepository>();
+
+        Assert.Equal(0, await photos.RemoveAsync([], Ct));
+    }
+
+    [Fact]
     public async Task RoundTripsMetadata_AndTimeKinds()
     {
         await using var services = await TestServices.BuildMigratedAsync(_paths, Ct);

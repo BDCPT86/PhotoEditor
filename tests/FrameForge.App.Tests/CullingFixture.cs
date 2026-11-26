@@ -161,6 +161,9 @@ internal sealed class CullingFixture : IDisposable
     {
         public Task<IReadOnlyList<Photo>> GetPhotosAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<Photo>>(photos);
+
+        public Task<int> RemoveAsync(IReadOnlyCollection<Guid> photoIds, CancellationToken cancellationToken = default) =>
+            Task.FromResult(photos.RemoveAll(p => photoIds.Contains(p.Id)));
     }
 
     private sealed class UnusedImporter : IPhotoImportService
@@ -367,6 +370,9 @@ internal sealed class FakeRecycleBin : FrameForge.Application.Cleanup.IRecycleBi
 
     public List<IReadOnlyList<string>> Moves { get; } = [];
 
+    /// <summary>Paths Windows "leaves in place" during the move.</summary>
+    public HashSet<string> FailMoves { get; } = new(StringComparer.OrdinalIgnoreCase);
+
     public Task<IReadOnlyList<FrameForge.Application.Cleanup.RecycleCheck>> CheckAsync(IReadOnlyList<string> paths, CancellationToken cancellationToken)
     {
         Checked.Add(paths);
@@ -378,6 +384,6 @@ internal sealed class FakeRecycleBin : FrameForge.Application.Cleanup.IRecycleBi
     {
         Moves.Add(paths);
         return Task.FromResult(new FrameForge.Application.Cleanup.RecycleSummary(
-            paths.Select(p => new FrameForge.Application.Cleanup.RecycleFileResult(p, FrameForge.Application.Cleanup.RecycleOutcome.Moved)).ToList(), Cancelled: false));
+            paths.Select(p => new FrameForge.Application.Cleanup.RecycleFileResult(p, FailMoves.Contains(p) ? FrameForge.Application.Cleanup.RecycleOutcome.Failed : FrameForge.Application.Cleanup.RecycleOutcome.Moved)).ToList(), Cancelled: false));
     }
 }

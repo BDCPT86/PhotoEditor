@@ -66,6 +66,21 @@ public sealed class SqlitePhotoRepository(IDbContextFactory<FrameForgeDbContext>
             cancellationToken);
     }
 
+    public Task<int> RemoveAsync(IReadOnlyCollection<Guid> photoIds, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(photoIds);
+        if (photoIds.Count == 0)
+        {
+            return Task.FromResult(0);
+        }
+
+        // Decisions, edits and analysis go with each photo: their foreign keys cascade (see the migrations).
+        var ids = photoIds.Distinct().ToList();
+        return RunAsync(
+            async context => await context.Photos.Where(p => ids.Contains(p.Id)).ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false),
+            cancellationToken);
+    }
+
     public Task MarkMissingAsync(IReadOnlyCollection<Guid> photoIds, string reason, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(photoIds);

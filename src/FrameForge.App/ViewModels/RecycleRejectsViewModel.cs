@@ -16,7 +16,8 @@ public sealed record RecycleLine(string Text, string? Hint);
 /// <summary>What was moved, for the library to drop those photos (M09 B3).</summary>
 /// <param name="Summary">Every file's result.</param>
 /// <param name="Photos">The photos (frames) the panel was opened for.</param>
-public sealed record RecycleCompleted(RecycleSummary Summary, IReadOnlyList<PhotoTileViewModel> Photos);
+/// <param name="NotSent">Files the check refused, which were never handed to the Recycle Bin.</param>
+public sealed record RecycleCompleted(RecycleSummary Summary, IReadOnlyList<PhotoTileViewModel> Photos, IReadOnlyList<RecycleCheck> NotSent);
 
 /// <summary>
 /// The "Move rejects to Recycle Bin" side panel (M09 B2). Opening it only checks the files; nothing moves until
@@ -178,6 +179,18 @@ public sealed partial class RecycleRejectsViewModel(IRecycleBin recycleBin, ILog
         _ => "that can't be moved",
     };
 
+    /// <summary>A few words for the result line: "3 not moved (2 no Recycle Bin on the drive, 1 in use)".</summary>
+    internal static string ShortReason(RecycleRefusal refusal) => refusal switch
+    {
+        RecycleRefusal.Missing => "not found",
+        RecycleRefusal.NoRecycleBinOnDrive => "no Recycle Bin on the drive",
+        RecycleRefusal.DriveUnavailable => "drive not reachable",
+        RecycleRefusal.RecycleBinOff => "Recycle Bin turned off",
+        RecycleRefusal.RecycleBinUnknown => "Recycle Bin not confirmed",
+        RecycleRefusal.TooLarge => "too large for the Recycle Bin",
+        _ => "not movable",
+    };
+
     private bool CanConfirm() => !IsChecking && !IsMoving && _checks.Any(c => c.CanMove);
 
     [RelayCommand(CanExecute = nameof(CanConfirm))]
@@ -199,7 +212,7 @@ public sealed partial class RecycleRejectsViewModel(IRecycleBin recycleBin, ILog
             });
             var summary = await recycleBin.MoveAsync(paths, progress, cts.Token).ConfigureAwait(true);
             IsOpen = false;
-            Completed?.Invoke(this, new RecycleCompleted(summary, _photos));
+            Completed?.Invoke(this, new RecycleCompleted(summary, _photos, _checks.Where(c => !c.CanMove).ToList()));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

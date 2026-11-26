@@ -76,6 +76,34 @@ public sealed class DecisionHistory
         return change;
     }
 
+    /// <summary>
+    /// Forgets every change that touched one of these photos (M09: they left the library), so undo never tries to
+    /// restore a decision for a photo that no longer exists. Changes to other photos keep their order.
+    /// </summary>
+    public void Forget(IReadOnlySet<Guid> photoIds)
+    {
+        ArgumentNullException.ThrowIfNull(photoIds);
+        bool Touches(DecisionChange change) => change.Deltas.Any(d => photoIds.Contains(d.PhotoId));
+
+        for (var node = _undo.First; node is not null;)
+        {
+            var next = node.Next;
+            if (Touches(node.Value))
+            {
+                _undo.Remove(node);
+            }
+
+            node = next;
+        }
+
+        var redo = _redo.Reverse().Where(c => !Touches(c)).ToList(); // oldest first
+        _redo.Clear();
+        foreach (var change in redo)
+        {
+            _redo.Push(change);
+        }
+    }
+
     /// <summary>Removes a change that could not be persisted, so undo never refers to an unsaved state.</summary>
     public void Discard(DecisionChange change)
     {

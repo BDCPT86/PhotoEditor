@@ -112,6 +112,28 @@ public sealed class DecisionRulesTests
     }
 
     [Fact]
+    public void History_ForgetsChangesToRemovedPhotos_AndKeepsTheRestInOrder()
+    {
+        var history = new DecisionHistory();
+        var (gone, kept) = (Guid.NewGuid(), Guid.NewGuid());
+        DecisionChange Change(string name, Guid id) => new(name, [new DecisionDelta(id, PhotoDecision.Unset, new PhotoDecision(CullState.Keep))]);
+        history.Record(Change("a", kept));
+        history.Record(Change("b", gone));
+        history.Record(Change("c", kept));
+        history.Record(Change("d", gone));
+        history.Undo(); // d → redo
+        history.Undo(); // c → redo
+
+        history.Forget(new HashSet<Guid> { gone });
+
+        Assert.Equal("c", history.Redo()!.Description); // d was forgotten
+        Assert.Null(history.Redo());
+        Assert.Equal("c", history.Undo()!.Description);
+        Assert.Equal("a", history.Undo()!.Description); // b was forgotten
+        Assert.Null(history.Undo());
+    }
+
+    [Fact]
     public async Task Saves_AreSerialised_AndLoadWaitsForThem()
     {
         var repository = new InMemoryDecisionRepository { SaveDelay = TimeSpan.FromMilliseconds(30) };

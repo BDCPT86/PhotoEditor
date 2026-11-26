@@ -124,6 +124,24 @@
 >     Esc didn't close it when it was opened from the grid. The fix (focus on Cancel) is built but not yet seen in the
 >     app.
 >   - **Tests:** 12 workflow tests, with the Recycle Bin faked.
+> - **B3 done:** photos whose files went to the Recycle Bin leave the library.
+>   - **The removal:** `IPhotoRepository.RemoveAsync` (also on `IPhotoLibraryService`) takes each photo's decision,
+>     edit and analysis with it, through the cascading foreign keys of the existing migrations. A database test
+>     confirms it, so no migration was needed. Then the library reloads.
+>   - **What stays:**
+>     - A file that wasn't moved keeps its photo. If a pair's RAW file stayed, it becomes a photo of its own, still
+>       marked Reject.
+>     - A file that vanished without reaching the Recycle Bin (moving stopped) keeps its photo too, so it isn't lost
+>       from view.
+>   - **Undo:** forgets only the steps that touched removed photos (`DecisionHistory.Forget`). Other decisions can
+>     still be undone.
+>   - **Caches:** thumbnails and masks are keyed by hashes and age out under the existing cache limit.
+>   - **The result line:** for example "Moved 48 files (31 photos) to the Recycle Bin. 3 not moved (3 no Recycle Bin
+>     on the drive). The log lists every file." It's a warning when anything stayed, moving stopped, or Stop was
+>     pressed. The log has one line per file (from B1).
+>   - **Tests:** 2 database tests, 4 workflow tests and 1 history test.
+>   - **Not seen in the app yet,** nor is the B2 Esc fix. A real move of test copies belongs in phase B's in-app
+>     check, with your consent, since the files land in your Recycle Bin.
 >   - **Unexplained (B1):** one full test run reported 1 failure. The runner kept no results file, so I couldn't identify
 >     the test. The next 5 full runs passed (933 tests).
 >   - **An edit made to a RAW file before this milestone** isn't shown, since the tile is the JPEG.
