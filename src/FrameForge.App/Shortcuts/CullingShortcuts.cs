@@ -34,6 +34,7 @@ public enum CullingAction
     ToggleRefine,
     NextFace,
     PreviousFace,
+    RecycleRejects,
 }
 
 public sealed record ShortcutHelpItem(string Keys, string Description);
@@ -104,6 +105,7 @@ public static class CullingShortcuts
             Key.OemBackslash or Key.Oem5 => CullingAction.BeforeAfter,
             Key.O => CullingAction.ToggleMaskOverlay,
             Key.M => CullingAction.ToggleRefine,
+            Key.Delete => CullingAction.RecycleRejects,
             Key.F5 => CullingAction.Refresh,
             Key.F1 => CullingAction.ToggleHelp,
             _ => null,
@@ -148,6 +150,7 @@ public static class CullingShortcuts
             new("6 7 8 9", "Label red / yellow / green / blue"),
             new("Shift+0", "Clear label"),
             new("Ctrl+Z / Ctrl+Y", "Undo / redo"),
+            new("Delete", "Rejected view: move the rejects shown to the Recycle Bin (asks first)"),
         ]),
         new("Navigate",
         [

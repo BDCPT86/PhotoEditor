@@ -46,6 +46,7 @@ internal sealed class CullingFixture : IDisposable
         AnalysisPanel = new LibraryAnalysisViewModel(AnalysisController, NullLogger<LibraryAnalysisViewModel>.Instance);
 
         Locate = new LocateFolderViewModel(new UnusedRelocation(), new FolderAvailabilityChecker(FolderProbe), new NullFolderPicker(), NullLogger<LocateFolderViewModel>.Instance);
+        Recycle = new RecycleRejectsViewModel(RecycleBin, NullLogger<RecycleRejectsViewModel>.Instance);
 
         Library = new LibraryViewModel(
             new FixedLibrary(Photos),
@@ -62,10 +63,15 @@ internal sealed class CullingFixture : IDisposable
             AnalysisPanel,
             PresetPanel,
             Locate,
+            Recycle,
             NullLogger<LibraryViewModel>.Instance);
     }
 
     public LocateFolderViewModel Locate { get; }
+
+    public FakeRecycleBin RecycleBin { get; } = new();
+
+    public RecycleRejectsViewModel Recycle { get; }
 
     /// <summary>Every folder is there unless a test lists it as gone.</summary>
     public TestFolderProbe FolderProbe { get; } = new();
@@ -349,5 +355,29 @@ internal sealed class RecordingExporter : IExportService
     {
         Calls.Add(items);
         return Task.FromResult(new ExportSummary { Destination = manifestPath, Requested = items.Count, Exported = items.Count });
+    }
+}
+
+/// <summary>Moves nothing: refuses the paths listed in <see cref="Refused"/> and reports the rest as moved.</summary>
+internal sealed class FakeRecycleBin : FrameForge.Application.Cleanup.IRecycleBin
+{
+    public Dictionary<string, FrameForge.Application.Cleanup.RecycleRefusal> Refused { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    public List<IReadOnlyList<string>> Checked { get; } = [];
+
+    public List<IReadOnlyList<string>> Moves { get; } = [];
+
+    public Task<IReadOnlyList<FrameForge.Application.Cleanup.RecycleCheck>> CheckAsync(IReadOnlyList<string> paths, CancellationToken cancellationToken)
+    {
+        Checked.Add(paths);
+        return Task.FromResult<IReadOnlyList<FrameForge.Application.Cleanup.RecycleCheck>>(
+            paths.Select(p => new FrameForge.Application.Cleanup.RecycleCheck(p, 25L << 20, Refused.GetValueOrDefault(p))).ToList());
+    }
+
+    public Task<FrameForge.Application.Cleanup.RecycleSummary> MoveAsync(IReadOnlyList<string> paths, IProgress<FrameForge.Application.Cleanup.RecycleProgress>? progress, CancellationToken cancellationToken)
+    {
+        Moves.Add(paths);
+        return Task.FromResult(new FrameForge.Application.Cleanup.RecycleSummary(
+            paths.Select(p => new FrameForge.Application.Cleanup.RecycleFileResult(p, FrameForge.Application.Cleanup.RecycleOutcome.Moved)).ToList(), Cancelled: false));
     }
 }

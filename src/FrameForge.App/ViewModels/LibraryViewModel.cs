@@ -57,12 +57,15 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
         LibraryAnalysisViewModel analysis,
         PresetPanelViewModel presets,
         LocateFolderViewModel locate,
+        RecycleRejectsViewModel recycle,
         ILogger<LibraryViewModel> logger)
     {
         Analysis = analysis;
         Presets = presets;
         Locate = locate;
         Locate.Relocated += (_, moved) => _ = OnRelocatedAsync(moved);
+        Recycle = recycle;
+        Recycle.Completed += (_, completed) => OnRecycleCompleted(completed);
         _library = library;
         _importer = importer;
         _decisionService = decisionService;
@@ -110,6 +113,12 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
 
     /// <summary>Offline folders and Locate folder… for a folder that moved.</summary>
     public LocateFolderViewModel Locate { get; }
+
+    /// <summary>The "Move rejects to Recycle Bin" panel (M09).</summary>
+    public RecycleRejectsViewModel Recycle { get; }
+
+    /// <summary>The Rejected view is shown and has photos: the Recycle Bin command applies.</summary>
+    public bool CanRecycleRejects => Filter.SelectedScope.Scope == LibraryScope.Rejected && Photos.Count > 0;
 
     /// <summary>Preset batch panel; its controller also owns every tile's edit recipe.</summary>
     public PresetPanelViewModel Presets { get; }
@@ -443,6 +452,9 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
             case CullingAction.Compare:
                 OpenCompare();
                 return true;
+            case CullingAction.RecycleRejects:
+                OpenRecycleRejects();
+                return true;
             case CullingAction.Refresh:
                 RebuildView();
                 _ = RecheckFoldersAsync(); // a drive plugged back in shows up without a restart
@@ -616,6 +628,7 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
 
         SelectedPhoto = Photos.Count == 0 ? null : Photos[Math.Min(nextIndex, Photos.Count - 1)];
         OnPropertyChanged(nameof(IsFilteredEmpty));
+        OnPropertyChanged(nameof(CanRecycleRejects));
         OnPropertyChanged(nameof(CountText));
         Export.RefreshCounts();
     }
@@ -643,6 +656,7 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
         Locate.UpdateBanner(Filter.Folder?.Path, _all);
         OnPropertyChanged(nameof(ViewTitle));
         OnPropertyChanged(nameof(ShownCountText));
+        OnPropertyChanged(nameof(CanRecycleRejects));
         if (Export.IsOpen)
         {
             Export.RefreshCounts();
@@ -987,6 +1001,70 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
                 : [new ExportItem(t.Photo, t.Decision, t.Recipe)])
             .ToList(),
         _all.Select(t => t.Photo.FolderPath).Distinct(StringComparer.OrdinalIgnoreCase).ToList());
+
+    /// <summary>
+    /// Opens the "Move rejects to Recycle Bin" panel for the rejects shown (a chosen folder narrows them). It only
+    /// checks the files; nothing moves until the panel's button is pressed. Grid and Rejected view only.
+    /// </summary>
+    [RelayCommand]
+    private void OpenRecycleRejects()
+    {
+        if (IsViewerOpen || IsCompareOpen)
+        {
+            return;
+        }
+
+        if (Filter.SelectedScope.Scope != LibraryScope.Rejected)
+        {
+            SetStatus("To move rejects to the Recycle Bin, open the Rejected view first.", warning: false);
+            return;
+        }
+
+        // Only photos still marked Reject, whatever else the toolbar filters show.
+        var rejects = Photos.Where(t => t.Decision.State == CullState.Reject).ToList();
+        if (rejects.Count == 0)
+        {
+            SetStatus("There are no rejected photos here.", warning: false);
+            return;
+        }
+
+        IsHelpOpen = false;
+        Analysis.IsDetailsOpen = false;
+        if (Export.IsOpen)
+        {
+            Export.CloseCommand.Execute(null);
+        }
+
+        if (Presets.IsOpen)
+        {
+            Presets.CloseCommand.Execute(null);
+        }
+
+        _ = Recycle.OpenAsync(rejects);
+    }
+
+    /// <summary>After a move: says what happened. (B3 removes the moved photos from the library.)</summary>
+    private void OnRecycleCompleted(RecycleCompleted completed)
+    {
+        var summary = completed.Summary;
+        var culture = CultureInfo.CurrentCulture;
+        var text = string.Create(culture, $"Moved {summary.Moved:N0} file{(summary.Moved == 1 ? string.Empty : "s")} to the Recycle Bin.");
+        if (summary.Skipped + summary.Failed > 0)
+        {
+            text += string.Create(culture, $" {summary.Skipped + summary.Failed:N0} not moved (see the log).");
+        }
+
+        if (summary.StoppedForSafety)
+        {
+            text += " Stopped: a file left its folder without reaching the Recycle Bin. Check the Recycle Bin and the log.";
+        }
+        else if (summary.Cancelled)
+        {
+            text += " Cancelled; the rest were not moved.";
+        }
+
+        SetStatus(text, warning: summary.StoppedForSafety || summary.Skipped + summary.Failed > 0 || summary.Cancelled);
+    }
 
     /// <summary>After a rebuild hides the previously current photo, select the photo that now occupies its place.</summary>
     private PhotoTileViewModel? FirstAtOrAfter(PhotoTileViewModel? tile)

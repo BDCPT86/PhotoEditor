@@ -98,7 +98,33 @@
 >   - **Known side effects:**
 >     - When the Recycle Bin is nearly full, Windows removes its oldest items to make room, as it does for any delete.
 >     - The count check can then see no gain and stop moving, which errs on the safe side.
->   - **Unexplained:** one full test run reported 1 failure. The runner kept no results file, so I couldn't identify
+> - **B2 done:** the command and its confirmation panel, shaped with the design skill. Your answers: the button
+>   beside the heading, **Delete** opens the panel, and the files that can go are moved while the rest are listed.
+>   - **The command:** "Move to Recycle Bin…" sits beside the heading only in the Rejected view when it has photos.
+>     **Delete** opens the same panel; elsewhere it says to open the Rejected view, and it does nothing in the viewer
+>     or compare.
+>   - **What it acts on:** the rejects shown, so a chosen folder or a toolbar filter narrows them. Only photos still
+>     marked Reject are included, and both files of each pair.
+>   - **The panel** (`RecycleRejectsPanel`, `RecycleRejectsViewModel`) only checks files when it opens:
+>     - **The summary:** "3 photos · 6 files · 111 MB".
+>     - **From:** each folder, with its file count and full path.
+>     - **Skipped:** grouped by reason, with up to three names, and a note that they stay where they are, still marked
+>       Reject.
+>     - **The note:** how to get a photo back.
+>     - **The buttons:** "Move 6 files to Recycle Bin" and Cancel.
+>   - **While moving:** progress, and Stop finishes the current file. When nothing can move, the button is off and the
+>     panel says why. Opening it moves focus to Cancel, so Esc closes it and a stray Enter can't move anything.
+>   - **Afterwards (for now):** the status line says how many files moved. B3 removes the moved photos from the
+>     library.
+>   - **Seen in the app** on the test copies, with nothing moved:
+>     - the button appears only in the Rejected view;
+>     - the summary read "3 photos · 6 files · 111 MB", and the confirm button "Move 6 files to Recycle Bin";
+>     - Cancel closes the panel, and Delete opens it.
+>
+>     Esc didn't close it when it was opened from the grid. The fix (focus on Cancel) is built but not yet seen in the
+>     app.
+>   - **Tests:** 12 workflow tests, with the Recycle Bin faked.
+>   - **Unexplained (B1):** one full test run reported 1 failure. The runner kept no results file, so I couldn't identify
 >     the test. The next 5 full runs passed (933 tests).
 >   - **An edit made to a RAW file before this milestone** isn't shown, since the tile is the JPEG.
 

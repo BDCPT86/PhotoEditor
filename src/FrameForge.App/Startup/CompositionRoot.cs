@@ -60,6 +60,7 @@ internal static class CompositionRoot
         builder.Services.AddSingleton<CompareViewModel>();
         builder.Services.AddSingleton<ExportViewModel>();
         builder.Services.AddSingleton<LocateFolderViewModel>();
+        builder.Services.AddSingleton<RecycleRejectsViewModel>();
         builder.Services.AddSingleton<LibraryAnalysisViewModel>();
         builder.Services.AddSingleton<LibraryViewModel>();
         builder.Services.AddSingleton<AiModelsViewModel>();

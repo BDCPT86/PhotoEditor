@@ -201,6 +201,16 @@
                         <TextBlock Text="{Binding ShownCountText}" Margin="12,4,0,0" FontSize="{StaticResource FontSize.Body}" VerticalAlignment="Center"
                                    Foreground="{StaticResource Brush.Text.Tertiary}" Typography.NumeralAlignment="Tabular"
                                    AutomationProperties.AutomationId="ShownCount" />
+                        <!-- Rejected view only: the way to clear rejects away. Opens a panel that asks first. -->
+                        <Button Style="{StaticResource Button.Quiet}" Margin="20,2,0,0" VerticalAlignment="Center" Command="{Binding OpenRecycleRejectsCommand}"
+                                ToolTip="Move the rejects shown to the Recycle Bin (Delete). Shows what will move and asks first."
+                                AutomationProperties.Name="Move to Recycle Bin…"
+                                Visibility="{Binding CanRecycleRejects, Converter={StaticResource BoolToVisibility}}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Style="{StaticResource ToolbarIcon}" Text="&#xE74D;" />
+                                <TextBlock Text="Move to Recycle Bin…" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <!-- Import, with its one option behind the chevron -->
@@ -704,6 +714,8 @@
                            Visibility="{Binding IsOpen, Converter={StaticResource BoolToVisibility}}" />
         <views:LocateFolderPanel x:Name="LocateSide" Grid.Column="1" DataContext="{Binding Locate}" HorizontalAlignment="Right"
                                  Visibility="{Binding IsOpen, Converter={StaticResource BoolToVisibility}}" />
+        <views:RecycleRejectsPanel x:Name="RecycleSide" Grid.Column="1" DataContext="{Binding Recycle}" HorizontalAlignment="Right"
+                                   Visibility="{Binding IsOpen, Converter={StaticResource BoolToVisibility}}" />
 
         <!-- Analysis details: the numbers, thresholds and method behind every indicator. -->
         <Border x:Name="DetailsSide" Grid.Column="1" Style="{StaticResource SidePanel}" DataContext="{Binding Analysis}"

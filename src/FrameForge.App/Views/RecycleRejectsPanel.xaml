@@ -1,0 +1,146 @@
+<UserControl x:Class="FrameForge.App.Views.RecycleRejectsPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:FrameForge.App.ViewModels"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=vm:RecycleRejectsViewModel}"
+             AutomationProperties.Name="Move rejects to Recycle Bin">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+        <!-- A line with an optional hint under it: a folder and its path, or a reason and some of its files -->
+        <DataTemplate x:Key="LineTemplate" DataType="{x:Type vm:RecycleLine}">
+            <StackPanel Margin="0,0,0,10" ToolTip="{Binding Hint}">
+                <TextBlock x:Name="Line" Text="{Binding Text}" TextWrapping="Wrap" Foreground="{StaticResource Brush.Text.Primary}" Typography.NumeralAlignment="Tabular" />
+                <TextBlock Text="{Binding Hint}" Style="{StaticResource Text.Hint}" TextTrimming="CharacterEllipsis" Margin="0,2,0,0" />
+            </StackPanel>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <UserControl.InputBindings>
+        <KeyBinding Key="Escape" Command="{Binding CloseCommand}" />
+    </UserControl.InputBindings>
+
+    <Border Style="{StaticResource SidePanel}">
+        <DockPanel LastChildFill="True">
+            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,16">
+                <Button DockPanel.Dock="Right" Style="{StaticResource Button.Icon}" Content="&#xE711;" Margin="0,0,-8,0" ToolTip="Close (Esc)"
+                        AutomationProperties.Name="Close" Command="{Binding CloseCommand}" />
+                <TextBlock Text="Move rejects to Recycle Bin" Style="{StaticResource Text.PanelTitle}" TextWrapping="Wrap" />
+            </DockPanel>
+
+            <!-- Bottom: what happens to them, then the one action. Kept in view however long the lists get. -->
+            <StackPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
+                <TextBlock Style="{StaticResource Text.Hint}" TextWrapping="Wrap" Margin="0,0,0,16"
+                           Text="Windows keeps them in the Recycle Bin until you empty it. To get a photo back, restore it there and import its folder again; it returns without its Reject mark." />
+
+                <StackPanel Visibility="{Binding IsMoving, Converter={StaticResource BoolToVisibility}}" Margin="0,0,0,12">
+                    <ProgressBar Value="{Binding ProgressValue, Mode=OneWay}" Maximum="1" Height="3" AutomationProperties.Name="Moving progress" />
+                    <TextBlock Text="{Binding ProgressText}" Style="{StaticResource Text.Hint}" Margin="0,6,0,0" TextTrimming="CharacterEllipsis"
+                               Typography.NumeralAlignment="Tabular" AutomationProperties.AutomationId="RecycleProgress" />
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal">
+                    <Button Style="{StaticResource Button.Primary}" Content="{Binding ConfirmText}" Command="{Binding ConfirmCommand}"
+                            AutomationProperties.AutomationId="RecycleConfirm" />
+                    <Button x:Name="CancelButton" Content="Cancel" Margin="8,0,0,0" Command="{Binding CloseCommand}"
+                            ToolTip="Close without moving anything (Esc)">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource Button.Quiet}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsMoving}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                    <Button Content="Stop" Margin="8,0,0,0" Command="{Binding CancelCommand}" ToolTip="Stop after the file being moved; the rest stay where they are">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource Button.Quiet}">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsMoving}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                </StackPanel>
+            </StackPanel>
+
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                <StackPanel>
+                    <!-- Checking -->
+                    <StackPanel Visibility="{Binding IsChecking, Converter={StaticResource BoolToVisibility}}" Margin="0,0,0,16">
+                        <ProgressBar IsIndeterminate="True" Height="2" AutomationProperties.Name="Checking the files" />
+                        <TextBlock Text="Checking the files…" Style="{StaticResource Text.Secondary}" Margin="0,8,0,0" />
+                    </StackPanel>
+
+                    <!-- What will move: the sentence the button repeats -->
+                    <TextBlock Text="{Binding SummaryText}" FontSize="{StaticResource FontSize.Panel}" Foreground="{StaticResource Brush.Text.Primary}"
+                               TextWrapping="Wrap" Margin="0,0,0,20" Typography.NumeralAlignment="Tabular"
+                               AutomationProperties.AutomationId="RecycleSummary" AutomationProperties.LiveSetting="Polite">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding SummaryText}" Value="{x:Null}">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+
+                    <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Margin="0,0,0,20"
+                               AutomationProperties.AutomationId="RecycleMessage" AutomationProperties.LiveSetting="Polite">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Secondary}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Message}" Value="{x:Null}">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+
+                    <!-- From: the folders, so a wrong folder is caught before anything moves -->
+                    <StackPanel>
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Folders.Count}" Value="0">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
+                        <TextBlock Text="From" Style="{StaticResource Text.SectionLabel}" />
+                        <ItemsControl ItemsSource="{Binding Folders}" ItemTemplate="{StaticResource LineTemplate}" Margin="0,0,0,8"
+                                      AutomationProperties.AutomationId="RecycleFolders" Focusable="False" />
+                    </StackPanel>
+
+                    <!-- Skipped: left where they are, never deleted -->
+                    <StackPanel Visibility="{Binding HasSkipped, Converter={StaticResource BoolToVisibility}}">
+                        <TextBlock Text="Skipped" Style="{StaticResource Text.SectionLabel}" />
+                        <ItemsControl ItemsSource="{Binding Skipped}" Margin="0,0,0,4" AutomationProperties.AutomationId="RecycleSkipped" Focusable="False">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:RecycleLine}">
+                                    <StackPanel Margin="0,0,0,10" ToolTip="{Binding Hint}">
+                                        <TextBlock Text="{Binding Text}" TextWrapping="Wrap" Foreground="{StaticResource Brush.Status.Warning}" Typography.NumeralAlignment="Tabular" />
+                                        <TextBlock Text="{Binding Hint}" Style="{StaticResource Text.Hint}" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Style="{StaticResource Text.Hint}" TextWrapping="Wrap" Margin="0,0,0,8"
+                                   Text="These stay where they are, still marked Reject. FrameForge never deletes a file it can't put in the Recycle Bin." />
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+        </DockPanel>
+    </Border>
+</UserControl>
