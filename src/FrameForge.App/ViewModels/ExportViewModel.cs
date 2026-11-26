@@ -459,9 +459,17 @@ public sealed partial class ExportViewModel(
         var first = _previewItems.Count == 0 ? []
             : _previewItems[0].Cover is { } cover ? _previewItems.TakeWhile(i => i.Cover?.Id == cover.Id).ToList()
             : [_previewItems[0]];
-        NamePreview = first.Count == 0
-            ? null
-            : string.Join(", ", ExportFrames.WantedNames(first, template, Mode == ExportMode.EditedJpegs ? ".jpg" : null).Select(n => n.Name));
+        var names = ExportFrames.WantedNames(first, template, Mode == ExportMode.EditedJpegs ? ".jpg" : null).Select(n => n.Name).ToList();
+        NamePreview = names.Count switch
+        {
+            0 => null,
+            1 => names[0],
+
+            // A pair shares its name, so show it once: "2026-11-14_001.JPG + .CR3" fits the panel where two full names don't.
+            _ when names.Select(Path.GetFileNameWithoutExtension).Distinct(StringComparer.Ordinal).Count() == 1 =>
+                names[0] + string.Concat(names.Skip(1).Select(n => " + " + Path.GetExtension(n))),
+            _ => string.Join(", ", names),
+        };
     }
 
     [RelayCommand]

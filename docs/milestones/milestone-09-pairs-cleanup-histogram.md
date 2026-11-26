@@ -43,6 +43,31 @@
 >   - **Decisions** made while pairs were shown separately are kept. When pairs are shown again, the tile shows the
 >     JPEG's decision, as for any pair whose files disagree.
 >   - **Tests:** 4 workflow tests.
+> - **A6 done (in-app check, 2026-11-26):**
+>   - **Setup:** the Debug build, an isolated data folder, and copies of the 12 R50 pairs renamed `IMG_9001`–`IMG_9012`
+>     by matching capture times (all 12 matched). Driven through UI Automation.
+>   - **Results:**
+>     - **Import:** 24 files gave 12 tiles, each marked RAW + JPEG.
+>     - **Decisions:** Keep and 3 stars on IMG_9001, then with the setting off the CR3 tile read "Keep, 3 stars". A
+>       Reject followed by Ctrl+Z reverted both files ("Undid: marked reject").
+>     - **Viewer:** the info line starts "RAW + JPEG · 6000 × 4000 · Canon EOS R50 …".
+>     - **Analyze:** 0 similar groups with pairs shown as one photo. With the setting off it found 12 groups (every
+>       pair with itself), and with it back on, 0 again.
+>     - **Copy files** with `{date:yyyy-MM-dd}_{seq:3}`:
+>       - Both files gave 24 (12 names with a CR3 and a JPG, such as `2023-01-24_001.CR3` and `.JPG`).
+>       - RAW only gave 12 CR3 files, and JPEG only 12 JPG files.
+>       - All 24 copies match an original byte for byte.
+>     - **Edited JPEGs:** 12. **Manifest:** 24 rows, 12 of them CR3.
+>     - **Panel counts:** "12 photo(s) · 24 files", and "Copied 24 files (12 photos)".
+>     - **Originals and log:** the test copies are unchanged, and the log has no errors or warnings.
+>   - **Fixed after the check:** the name preview cut off the second name of a pair. It now reads
+>     `2023-01-24_001.JPG + .CR3`. This fix is covered by a test but hasn't been seen in the app.
+>   - **Changed after the check (your choice):** when a whole shoot was pairs, every tile repeated "RAW+JPEG" in its
+>     caption.
+>     - **Now:** the mark is an informational mark like ◐ and ▣. It sits on the photo's bottom-right corner on the scrim
+>       and shows only while the tile is hovered or selected. It is built only then, so the grid stays light.
+>     - **The design system** lists it.
+>     - **Seen in the app:** only the selected tile showed it. The caption no longer has it, so file names don't move.
 >   - **An edit made to a RAW file before this milestone** isn't shown, since the tile is the JPEG.
 
 ## Goal

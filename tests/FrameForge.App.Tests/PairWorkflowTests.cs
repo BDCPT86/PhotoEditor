@@ -164,7 +164,7 @@ public sealed class PairWorkflowTests
 
         f.Export.NameTemplateText = "{seq:3}-shoot";
 
-        Assert.Equal("001-shoot.jpg, 001-shoot.CR3", f.Export.NamePreview);
+        Assert.Equal("001-shoot.jpg + .CR3", f.Export.NamePreview);
     }
 
     [Fact]

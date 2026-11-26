@@ -156,8 +156,8 @@ the only system dialogs are the folder and file pickers and the fatal start-up e
   one tone. No transitions: culling never waits on animation.
 - **Decision** = a ✓ ? ✕ chip on a scrim, top right, in the decision colour. Rejected photos also dim to 35 %.
 - **Judgement marks** (always shown, top left, on a scrim): AI pick, ◆ sharpest, ≈ blur, = dup, ☺ soft.
-  **Informational marks** (clipping ◐, group size ▣ n, faces ☺ n) appear only on hover or selection, so scanning stays
-  quiet. Every mark has a tooltip; **I** gives the numbers.
+  **Informational marks** (clipping ◐, group size ▣ n, faces ☺ n, and RAW+JPEG bottom right for a pair) appear only on
+  hover or selection, so scanning stays quiet. Every mark has a tooltip; **I** gives the numbers.
 - **Caption:** ✎ (edited) and the file name on the left, stars and the label swatch (with its letter) on the right. The
   smallest density hides the name but keeps ✎, stars and label.
 - **Loading:** a cell without its thumbnail shows a flat placeholder of the same size (no spinners in the grid).

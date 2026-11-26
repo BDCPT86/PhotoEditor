@@ -140,6 +140,12 @@
                 </TextBlock.Style>
             </TextBlock>
         </DataTemplate>
+        <!-- RAW + JPEG pair (M09): an informational mark, so only built while the tile is hovered or selected -->
+        <DataTemplate x:Key="TilePairMark" DataType="{x:Type vm:PhotoTileViewModel}">
+            <Border Style="{StaticResource AnalysisBadge}" Margin="0,0,4,1" ToolTip="{Binding PairToolTip}" AutomationProperties.AutomationId="TilePairMark">
+                <TextBlock Style="{StaticResource Text.AnalysisBadge}" Text="RAW+JPEG" Foreground="{StaticResource Brush.Text.Secondary}" />
+            </Border>
+        </DataTemplate>
         <DataTemplate x:Key="TileProblemBadge" DataType="{x:Type vm:PhotoTileViewModel}">
             <Border Margin="4,0,0,1">
                 <Border.Style>
@@ -522,6 +528,31 @@
                                         </ContentPresenter.Style>
                                     </ContentPresenter>
 
+                                    <!-- RAW + JPEG pair, bottom-right, on hover or selection like the other informational marks -->
+                                    <ContentPresenter Content="{Binding}" HorizontalAlignment="Right" VerticalAlignment="Bottom">
+                                        <ContentPresenter.Style>
+                                            <Style TargetType="ContentPresenter">
+                                                <Setter Property="ContentTemplate" Value="{StaticResource TileNothing}" />
+                                                <Style.Triggers>
+                                                    <MultiDataTrigger>
+                                                        <MultiDataTrigger.Conditions>
+                                                            <Condition Binding="{Binding IsPaired}" Value="True" />
+                                                            <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True" />
+                                                        </MultiDataTrigger.Conditions>
+                                                        <Setter Property="ContentTemplate" Value="{StaticResource TilePairMark}" />
+                                                    </MultiDataTrigger>
+                                                    <MultiDataTrigger>
+                                                        <MultiDataTrigger.Conditions>
+                                                            <Condition Binding="{Binding IsPaired}" Value="True" />
+                                                            <Condition Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True" />
+                                                        </MultiDataTrigger.Conditions>
+                                                        <Setter Property="ContentTemplate" Value="{StaticResource TilePairMark}" />
+                                                    </MultiDataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </ContentPresenter.Style>
+                                    </ContentPresenter>
+
                                     <!-- Decision, top-right: the mark the cull is scanning for -->
                                     <Border x:Name="StateChip" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,4,4,0" Width="20" Height="20"
                                             CornerRadius="10" Background="{StaticResource Brush.Scrim}" Visibility="Collapsed">
@@ -545,11 +576,6 @@
                                 <TextBlock DockPanel.Dock="Left" Text="✎" Margin="0,0,5,0" FontSize="{StaticResource FontSize.Caption}" VerticalAlignment="Center"
                                            Foreground="{StaticResource Brush.Accent.Hover}" ToolTip="Edited (the original file is unchanged)"
                                            Visibility="{Binding IsEdited, Converter={StaticResource BoolToVisibility}}" />
-                                <!-- A RAW + JPEG pair shown as one photo: a quiet word, like the file name it qualifies -->
-                                <TextBlock DockPanel.Dock="Left" Text="RAW+JPEG" Margin="0,0,6,0" FontSize="{StaticResource FontSize.Caption}" VerticalAlignment="Center"
-                                           Foreground="{StaticResource Brush.Text.Tertiary}" ToolTip="{Binding PairToolTip}"
-                                           AutomationProperties.AutomationId="TilePairMark"
-                                           Visibility="{Binding IsPaired, Converter={StaticResource BoolToVisibility}}" />
                                 <TextBlock x:Name="Name" Text="{Binding FileName}" TextTrimming="CharacterEllipsis" FontSize="{StaticResource FontSize.Caption}"
                                            VerticalAlignment="Center" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}"
                                            Visibility="{Binding DataContext.ShowFileNames, RelativeSource={RelativeSource AncestorType=ListBox}, Converter={StaticResource BoolToVisibility}}" />
