@@ -626,7 +626,7 @@
                 <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE8B9;" FontSize="40" Foreground="{StaticResource Brush.Text.Disabled}" Margin="0,0,0,20" />
                 <TextBlock Text="Import a folder to start culling" Style="{StaticResource Text.PageTitle}" HorizontalAlignment="Center" Margin="0,0,0,8" />
                 <TextBlock Style="{StaticResource Text.Secondary}" TextAlignment="Center" LineHeight="19"
-                           Text="FrameForge reads JPEGs where they are. Originals are never moved or changed; only paths, metadata and your decisions are stored." />
+                           Text="FrameForge reads your photos where they are and never changes them; only paths, metadata and your decisions are stored." />
                 <Button Style="{StaticResource Button.Primary}" HorizontalAlignment="Center" Margin="0,24,0,10" Command="{Binding ImportCommand}"
                         Content="Import folder…" AutomationProperties.Name="Import folder" />
                 <TextBlock HorizontalAlignment="Center" Style="{StaticResource Text.Count}" Text="or drop a folder here  ·  Ctrl+I" />

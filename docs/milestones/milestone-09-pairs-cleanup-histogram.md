@@ -142,6 +142,22 @@
 >   - **Tests:** 2 database tests, 4 workflow tests and 1 history test.
 >   - **Not seen in the app yet,** nor is the B2 Esc fix. A real move of test copies belongs in phase B's in-app
 >     check, with your consent, since the files land in your Recycle Bin.
+> - **B4 done:** the promise now reads "FrameForge never changes your photos. It moves rejects to the Recycle Bin only
+>   when you ask, and only after you confirm."
+>   - **Where it changed:**
+>     - **About** (in the app).
+>     - **README:** the old "never … moved, or deleted" line, which also says files on drives without a Recycle Bin are
+>       skipped, never deleted.
+>     - **User guide:** the first of its three promises, and the published page (v15).
+>     - **The empty library's hint,** which said originals are "never moved".
+>   - **Kept as they are:** "never changed" elsewhere stays true, since moving a file to the Recycle Bin doesn't change
+>     it.
+>   - **Not changed (yours to decide):**
+>     - `PRODUCT.md` still says "Originals are sacred: read-only, always".
+>     - `CLAUDE.md` says "Keep original image files read-only".
+>
+>     Both stay true of the files' contents.
+>   - **Phase D** adds the full guide sections for pairs and the Recycle Bin.
 >   - **Unexplained (B1):** one full test run reported 1 failure. The runner kept no results file, so I couldn't identify
 >     the test. The next 5 full runs passed (933 tests).
 >   - **An edit made to a RAW file before this milestone** isn't shown, since the tile is the JPEG.

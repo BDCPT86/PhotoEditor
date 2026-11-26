@@ -76,8 +76,9 @@ analysis finding and to choose the sort and thumbnail size, and a **footer** wit
    Edits are stored separately and the original file is never written to. JPEGs (and RAW files, edited through their embedded JPEG) are 8-bit, so highlights that are
    already blown cannot be recovered.
 
-Originals are opened read-only and are never modified, moved, or deleted. Export never replaces an existing file: a
-clashing name is saved as `name (2).jpg`. Unreadable files are listed as **Unreadable**, and files deleted since the
+FrameForge never changes your photos: originals are opened read-only. It moves rejects to the Recycle Bin only
+when you ask, and only after you confirm; a file on a drive without a Recycle Bin (memory card, USB drive, network) is
+skipped, never deleted. Export never replaces an existing file: a clashing name is saved as `name (2).jpg`. Unreadable files are listed as **Unreadable**, and files deleted since the
 last import are listed as **Missing** the next time that folder is imported. Decisions are saved as you make them and
 survive restarts; undo history does not.
 

@@ -4,8 +4,9 @@ FrameForge takes you from a card full of photos to a finished, edited selection,
 folder, cull it with the keyboard, use analysis as hints, edit, and export.
 
 **Three promises hold everywhere in the app:**
-- **Your originals never change.** Photos are only ever read. Edits, decisions and analysis are stored separately, and
-  export writes new files.
+- **Your photos never change.** They are only ever read. Edits, decisions and analysis are stored separately, and
+  export writes new files. FrameForge moves rejects to the Recycle Bin only when you ask, and only after you confirm;
+  it never deletes a file.
 - **Nothing leaves your computer.** There is no cloud and no usage tracking. Optional AI models run locally and are
   downloaded only when you say so. The AI runtime's own telemetry is switched off. **About** lists the third-party
   licences and the folder with their full texts.
