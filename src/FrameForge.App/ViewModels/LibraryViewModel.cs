@@ -368,6 +368,7 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
             IncludeSubfolders = await _settings.GetAsync(AppSettings.ImportIncludeSubfolders, cancellationToken).ConfigureAwait(true);
             Density = await _settings.GetAsync(AppSettings.LibraryGridDensity, cancellationToken).ConfigureAwait(true);
             _pairRawJpeg = await _settings.GetAsync(AppSettings.LibraryPairRawJpeg, cancellationToken).ConfigureAwait(true);
+            Viewer.ShowHistogram = await _settings.GetAsync(AppSettings.ViewerShowHistogram, cancellationToken).ConfigureAwait(true);
             _autoAdvance = await _settings.GetAsync(AppSettings.ViewerAutoAdvance, cancellationToken).ConfigureAwait(true);
             await ReloadAsync(cancellationToken).ConfigureAwait(true);
         }
@@ -452,6 +453,10 @@ public sealed partial class LibraryViewModel : PageViewModel, ICullingShortcutHa
                 return false;
             case CullingAction.Compare:
                 OpenCompare();
+                return true;
+            case CullingAction.ToggleHistogram when IsViewerOpen:
+                Viewer.ShowHistogram = !Viewer.ShowHistogram;
+                _ = SaveSettingAsync(AppSettings.ViewerShowHistogram, Viewer.ShowHistogram);
                 return true;
             case CullingAction.RecycleRejects:
                 OpenRecycleRejects();

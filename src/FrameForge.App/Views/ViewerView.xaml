@@ -100,6 +100,14 @@
                                    IsPointMode="{Binding Develop.Masks.IsRefining}" PointCommand="{Binding Develop.AddPointCommand}"
                                    Visibility="{Binding Develop.IsCropMode, Converter={StaticResource InverseBoolToVisibility}}" />
 
+            <!-- Histogram over the photo (H), top-right, clear of the Auto tray below and the Refine hint. Hidden in Develop,
+                 whose panel shows its own. -->
+            <Border Grid.Column="0" Grid.Row="0" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,12,12,0" Width="248"
+                    Background="{StaticResource Brush.Scrim}" CornerRadius="4" Padding="10,10,10,8" IsHitTestVisible="False"
+                    Visibility="{Binding ShowFloatingHistogram, Converter={StaticResource BoolToVisibility}}">
+                <views:HistogramBox DataContext="{Binding Histogram}" CurveHeight="64" />
+            </Border>
+
             <!-- Refine: what a click does, said on the photo where the clicking happens -->
             <Border HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,8,0,0" Padding="12,6" CornerRadius="6"
                     Background="{StaticResource Brush.Scrim}"

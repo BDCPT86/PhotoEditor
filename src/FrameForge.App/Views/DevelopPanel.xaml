@@ -5,6 +5,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:FrameForge.App.ViewModels"
              xmlns:conv="clr-namespace:FrameForge.App.Converters"
+             xmlns:views="clr-namespace:FrameForge.App.Views"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance Type=vm:DevelopViewModel}"
              AutomationProperties.Name="Develop">
@@ -118,6 +119,10 @@
                                ToolTip="Edits are stored separately; the photo file is only read." />
                 </StackPanel>
             </DockPanel>
+
+            <!-- Histogram of the edit as it is now (owned by the viewer, which knows what is on screen) -->
+            <views:HistogramBox DockPanel.Dock="Top" Margin="16,0,16,10" CurveHeight="64"
+                                DataContext="{Binding DataContext.Histogram, RelativeSource={RelativeSource AncestorType=views:ViewerView}}" />
 
             <!-- Message -->
             <TextBlock DockPanel.Dock="Bottom" Margin="16,8,16,12" TextWrapping="Wrap" FontSize="12" AutomationProperties.AutomationId="DevelopMessage"

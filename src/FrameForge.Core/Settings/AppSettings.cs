@@ -23,6 +23,10 @@ public static class AppSettings
     public static readonly SettingDefinition<bool> ViewerAutoAdvance =
         new("viewer.autoAdvance", true);
 
+    /// <summary>Show the histogram over the photo in the viewer (H). Develop always shows its own.</summary>
+    public static readonly SettingDefinition<bool> ViewerShowHistogram =
+        new("viewer.showHistogram", false);
+
     /// <summary>Thumbnail size in the library grid.</summary>
     public static readonly SettingDefinition<GridDensity> LibraryGridDensity =
         new("library.gridDensity", GridDensity.Medium, density => Enum.IsDefined(density));

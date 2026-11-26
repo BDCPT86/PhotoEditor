@@ -1,0 +1,26 @@
+<UserControl x:Class="FrameForge.App.Views.HistogramBox"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:FrameForge.App.ViewModels"
+             xmlns:controls="clr-namespace:FrameForge.App.Controls"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=vm:HistogramViewModel}"
+             AutomationProperties.Name="{Binding AccessibleText}"
+             AutomationProperties.AutomationId="Histogram">
+    <!-- The histogram and, under it, how much is clipped at each end: shadows left, highlights right, like the curve -->
+    <StackPanel>
+        <Border Background="{StaticResource Brush.Surface.Sunken}" CornerRadius="3" Padding="1,4,1,0" Height="{Binding CurveHeight, RelativeSource={RelativeSource AncestorType=UserControl}}">
+            <controls:HistogramView Histogram="{Binding Histogram}" SnapsToDevicePixels="True"
+                                    LuminanceBrush="{StaticResource Brush.Histogram.Luminance}" RedBrush="{StaticResource Brush.Histogram.Red}"
+                                    GreenBrush="{StaticResource Brush.Histogram.Green}" BlueBrush="{StaticResource Brush.Histogram.Blue}" />
+        </Border>
+        <DockPanel Margin="0,4,0,0">
+            <TextBlock DockPanel.Dock="Right" Text="{Binding HighlightText}" Style="{StaticResource Text.Hint}" Typography.NumeralAlignment="Tabular"
+                       ToolTip="Pixels with any channel at 254–255: detail there is gone in this image" AutomationProperties.AutomationId="HistogramHighlights" />
+            <TextBlock Text="{Binding ShadowText}" Style="{StaticResource Text.Hint}" Typography.NumeralAlignment="Tabular"
+                       ToolTip="Pixels with every channel at 0–1: detail there is gone in this image" AutomationProperties.AutomationId="HistogramShadows" />
+        </DockPanel>
+    </StackPanel>
+</UserControl>

@@ -155,7 +155,10 @@ public sealed class CullingWorkflowTests
         f.Library.Filter.Sort = Core.Library.LibrarySort.Rating;
 
         var first = f.Library.Photos.Select(t => t.FileName).ToList();
-        f.Library.TryHandle(CullingAction.Refresh);
+
+        // The rebuild F5 does, without F5's background folder recheck: with no UI thread in tests, that recheck's
+        // own rebuild could run on another thread while this test reads the grid (a test-only race).
+        f.Library.RebuildView();
         var second = f.Library.Photos.Select(t => t.FileName).ToList();
 
         Assert.Equal(first, second);

@@ -99,6 +99,11 @@
     <SolidColorBrush x:Key="Brush.Label.Green" Color="#FF5DAE63" />
     <SolidColorBrush x:Key="Brush.Label.Blue" Color="#FF4F8FD9" />
     <SolidColorBrush x:Key="Brush.Rating" Color="#FFE6C571" />
+    <!-- Histogram (M09): luminance as a quiet fill; the channel lines are desaturated enough not to read as UI accents -->
+    <SolidColorBrush x:Key="Brush.Histogram.Luminance" Color="#FF5A5A5A" />
+    <SolidColorBrush x:Key="Brush.Histogram.Red" Color="#FFE06C5C" />
+    <SolidColorBrush x:Key="Brush.Histogram.Green" Color="#FF6FBF73" />
+    <SolidColorBrush x:Key="Brush.Histogram.Blue" Color="#FF5B8DEF" />
 
     <!-- ================================================================ Typography -->
     <!-- Segoe UI Variable on Windows 11, Segoe UI elsewhere. One family; hierarchy comes from size and weight. -->

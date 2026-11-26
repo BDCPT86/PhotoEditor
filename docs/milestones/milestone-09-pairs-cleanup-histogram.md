@@ -176,7 +176,36 @@
 >     `ff-recycle-test-….tmp`. You can delete them there.
 >   - **Not covered:** a skipped file on a real memory card or network drive (only in tests), and the permanent-delete
 >     warning (see B1).
->   - **Unexplained (B1):** one full test run reported 1 failure. The runner kept no results file, so I couldn't identify
+>   - **Unexplained (B1):** one full test run reported 1 failure.
+> - **C1 done:** the histogram, shaped with the design skill. Your answers: the channels overlaid, top-right in the
+>   viewer, and clipping that matches the badge.
+>   - **The count:** `ImageHistogram` (Analysis) counts red, green, blue and Rec. 709 luminance in 256 bins.
+>     - **Clipping** uses the ◐ badge's levels (`ExposureAnalyzer.HighlightLevel` 254, `ShadowLevel` 1), so the two
+>       agree. This changes the brief's "exactly 255 / 0", by your choice.
+>     - **Speed:** 26 ms at 2560 × 1440 and 58 ms at 3840 × 2160 in Release; 36 ms at 2560 × 1440 in Debug.
+>   - **What it counts:** what is on screen.
+>     - **In Develop,** the rendered edit without the mask overlay (`DevelopViewModel.RenderedPixels`), so the red
+>       tint isn't counted. While the original (\\) or an Auto option is shown, that is counted instead.
+>     - **In the viewer,** the photo shown.
+>   - **The view model** (`HistogramViewModel`) counts off the UI thread. While one count runs, newer images replace
+>     each other, and nothing is counted while no histogram is shown.
+>   - **The display** (`HistogramView` and `HistogramBox`):
+>     - **The curves:** a grey luminance fill with thin red, green and blue lines, smoothed (1-2-1) for drawing only,
+>       and scaled to the smoothed peak between levels 1 and 254.
+>     - **The text:** "Shadows 0.8 %" and "Highlights 0.2 %" under the curves.
+>     - **Where:** at the top of Develop's panel, and in the viewer on a scrim at the top right with **H**
+>       (`viewer.showHistogram`, remembered; hidden while Develop is open).
+>     - **The design system** has its tokens and placement.
+>   - **Seen in the app** on IMG_9007: the viewer and Develop both read shadows 0.8 % and highlights 0.2 %, and after
+>     +1.5 EV highlights read 38 %. The first look showed a spiky, flat curve, so smoothing and the new scale were
+>     added. That redrawn curve hasn't been seen yet; C2's check will show it.
+>   - **Not done:** the highlight and shadow shares have no tooltip in the viewer, because the scrim ignores the mouse
+>     so panning works through it. Develop's do have tooltips.
+>   - **Tests:** 7 calculation tests, 9 view-model and workflow tests, and 1 drawing test.
+>   - **A test race fixed:** `Filters_AreDeterministic_AcrossRebuilds` pressed F5, whose background folder recheck
+>     (from M07) can rebuild the grid on another thread in tests, which have no UI thread. It failed once with a null
+>     tile. It now rebuilds directly, and 8 runs in a row passed. This may be what caused B1's unexplained failure.
+>     `MaskTests.AtMostEightMasks` also failed once and didn't again in 8 runs; it remains unexplained. The runner kept no results file, so I couldn't identify
 >     the test. The next 5 full runs passed (933 tests).
 >   - **An edit made to a RAW file before this milestone** isn't shown, since the tile is the JPEG.
 

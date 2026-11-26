@@ -94,6 +94,11 @@ public sealed partial class DevelopViewModel(IEditRenderService renderer, EditCo
     [NotifyPropertyChangedFor(nameof(DisplayImage))]
     private BitmapSource? _rendered;
 
+    /// <summary>
+    /// The edit as rendered, without the mask overlay painted into <see cref="Rendered"/>: what the histogram counts (M09).
+    /// </summary>
+    public AnalysisImage? RenderedPixels { get; private set; }
+
     /// <summary>What the photo area shows: the original (Before), the focused Auto option, or the live render.</summary>
     public BitmapSource? DisplayImage => ShowOriginal ? _originalBitmap : FocusedSuggestion?.Preview ?? Rendered;
 
@@ -199,6 +204,7 @@ public sealed partial class DevelopViewModel(IEditRenderService renderer, EditCo
         ShowOriginal = false;
         _source = null;
         _originalBitmap = null;
+        RenderedPixels = null;
         Rendered = null;
         Tile = null;
     }
@@ -559,6 +565,7 @@ public sealed partial class DevelopViewModel(IEditRenderService renderer, EditCo
         _loadCts = cts;
         _source = null;
         _originalBitmap = null;
+        RenderedPixels = null;
         Rendered = null;
         IsLoading = true;
         try
@@ -618,13 +625,14 @@ public sealed partial class DevelopViewModel(IEditRenderService renderer, EditCo
                 // Snapshots taken on the UI thread; the render itself runs in the background.
                 var ready = Masks.ReadyMasks();
                 var overlay = IsCropMode ? null : Masks.OverlayTarget;
-                var bitmap = await Task.Run(() =>
+                var (pixels, bitmap) = await Task.Run(() =>
                 {
                     var rendered = EditRenderer.Render(source, recipe, ready);
-                    return BitmapConversions.ToBitmap(overlay is { } o ? MaskOverlayPainter.Paint(source, recipe, rendered, o.Mask, o.Invert, o.Points) : rendered);
+                    return (rendered, BitmapConversions.ToBitmap(overlay is { } o ? MaskOverlayPainter.Paint(source, recipe, rendered, o.Mask, o.Invert, o.Points) : rendered));
                 }).ConfigureAwait(true);
                 if (ReferenceEquals(source, _source))
                 {
+                    RenderedPixels = pixels; // before Rendered, whose change notification readers of both follow
                     Rendered = bitmap;
                 }
             }

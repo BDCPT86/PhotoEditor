@@ -53,6 +53,9 @@ FrameForge is where photographs are judged, so the interface behaves like a neut
   content aside instead of covering it. Header = panel title + icon close button.
 - **Viewer and compare:** a 48 px chrome header (back to grid, file name, position; decision, zoom, Develop on the
   right), the canvas, and a 32 px chrome footer for metadata and key hints. Develop is a 320 px panel on the right.
+- **Histogram (M09):** red, green and blue lines over a grey luminance fill, smoothed for drawing only, with the
+  clipped shadows (left) and highlights (right) written beneath. At the top of Develop's panel, under its header;
+  in the viewer, **H** shows it on a scrim in the canvas's top-right corner (hidden while Develop shows its own).
 
 ## Colour tokens
 | Token | Value | Use |
@@ -78,6 +81,7 @@ FrameForge is where photographs are judged, so the interface behaves like a neut
 | `Color.Status.Error` / `.Success` / `.Warning` | `#E5695F` / `#73B777` / `#DBA84A` | Messages, always with ⚠ or ✓ |
 | `Brush.Decision.Keep` / `.Review` / `.Reject` | `#73B777` / `#DBA84A` / `#E5695F` | ✓ ? ✕ marks only |
 | `Brush.Label.*`, `Brush.Rating` | — | Label swatches (with a letter), stars |
+| `Brush.Histogram.Luminance` / `.Red` / `.Green` / `.Blue` | `#5A5A5A` / `#E06C5C` / `#6FBF73` / `#5B8DEF` | Histogram only: luminance as a quiet fill, channels as thin lines (desaturated so they never read as accents) |
 | `Brush.HoverTint` | white at 7 % | Hover over any tone |
 | `Brush.Scrim` | `#121212` at 78 % | Backing for marks drawn on photos |
 

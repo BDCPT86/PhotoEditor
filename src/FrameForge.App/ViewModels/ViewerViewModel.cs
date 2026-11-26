@@ -46,6 +46,14 @@ public sealed partial class ViewerViewModel : ObservableObject, IDisposable
         _cache = new ViewerImageCache(LoadForDisplayAsync);
         Develop = develop;
         Develop.PropertyChanged += OnDevelopChanged;
+        Histogram = new HistogramViewModel(logger);
+        PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is nameof(DisplayImage) or nameof(ShowHistogram))
+            {
+                UpdateHistogram();
+            }
+        };
     }
 
     /// <summary>Longest side, in device pixels, that photos are loaded at for the fit view. Set by the view from its size.</summary>
@@ -166,6 +174,38 @@ public sealed partial class ViewerViewModel : ObservableObject, IDisposable
     /// <summary>What the image area shows: the Develop preview while developing, otherwise the full-size photo.</summary>
     public BitmapSource? DisplayImage => Develop.IsOpen ? Develop.DisplayImage : Image;
 
+    /// <summary>The histogram of the image on screen: in Develop's panel, and over the photo when <see cref="ShowHistogram"/> (H).</summary>
+    public HistogramViewModel Histogram { get; }
+
+    /// <summary>Show the histogram over the photo (H, remembered). Develop always shows its own at the top of its panel.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowFloatingHistogram))]
+    private bool _showHistogram;
+
+    /// <summary>The histogram over the photo: on request, and not while Develop shows its own.</summary>
+    public bool ShowFloatingHistogram => ShowHistogram && !Develop.IsOpen;
+
+    /// <summary>
+    /// Counts what is on screen, only while a histogram is shown. In Develop that is the edit without the mask overlay
+    /// (so the red tint isn't counted), or the original or an Auto option while one of those is shown instead.
+    /// </summary>
+    private void UpdateHistogram()
+    {
+        object? source = null;
+        if (Develop.IsOpen)
+        {
+            source = Develop.ShowOriginal || Develop.FocusedSuggestion is not null
+                ? Develop.DisplayImage
+                : (object?)Develop.RenderedPixels ?? Develop.DisplayImage;
+        }
+        else if (ShowHistogram)
+        {
+            source = Image;
+        }
+
+        Histogram.Show(source);
+    }
+
     public string PositionText => _items.Count == 0
         ? string.Empty
         : string.Create(CultureInfo.CurrentCulture, $"{CurrentIndex + 1:N0} / {_items.Count:N0}");
@@ -239,6 +279,7 @@ public sealed partial class ViewerViewModel : ObservableObject, IDisposable
             OnPropertyChanged(nameof(DisplayFullHeight));
             OnPropertyChanged(nameof(DisplayKey));
             OnPropertyChanged(nameof(DisplayImage));
+            OnPropertyChanged(nameof(ShowFloatingHistogram));
         }
     }
 

@@ -35,6 +35,7 @@ public enum CullingAction
     NextFace,
     PreviousFace,
     RecycleRejects,
+    ToggleHistogram,
 }
 
 public sealed record ShortcutHelpItem(string Keys, string Description);
@@ -106,6 +107,7 @@ public static class CullingShortcuts
             Key.O => CullingAction.ToggleMaskOverlay,
             Key.M => CullingAction.ToggleRefine,
             Key.Delete => CullingAction.RecycleRejects,
+            Key.H => CullingAction.ToggleHistogram,
             Key.F5 => CullingAction.Refresh,
             Key.F1 => CullingAction.ToggleHelp,
             _ => null,
@@ -184,6 +186,7 @@ public static class CullingShortcuts
             new("+ / −, mouse wheel", "Zoom"),
             new("Drag", "Pan"),
             new("F / Shift+F", "Zoom to the next / previous face (needs face analysis)"),
+            new("H", "Show or hide the histogram (Develop always shows it)"),
         ]),
         new("Help",
         [
