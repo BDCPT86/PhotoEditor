@@ -1,7 +1,7 @@
 # 0020 — RAW files through LibRaw and their embedded previews
 
 **Date:** 2026-11-25
-**Status:** Accepted for M07 phase A; A1–A5 are in place, A6 follows (see the M07 brief)
+**Status:** Accepted for M07 phase A; implemented (A0–A6; see the M07 brief)
 
 ## Context
 - FrameForge reads JPEGs only. Windows has no CR3 decoder installed (no WIC codec).

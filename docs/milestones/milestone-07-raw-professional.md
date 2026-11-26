@@ -1,15 +1,28 @@
 # Milestone 07 — RAW and Professional Workflow
 
-> **Status (2026-11-25):** In progress, in phases, each approved on its own. Milestone 08 was done first, because it
+> **Status (2026-11-26):** All phases (A–F) are implemented, each approved on its own. Milestone 08 was done first, because it
 > depends only on M05 and M06.
 >
-> - **Phase A (RAW): the A1 spike has run; integration has not started.**
->   - The spike tool is `raw-spike` in `tools/FrameForge.Evaluation`, using LibRaw 0.22.3, the first version that lists
->     the Canon EOS R50. Sdcb.LibRaw was dropped: its native package is LibRaw 0.21.1, with no R50 support and from
->     before the 0.22.1 security fixes.
->   - On 12 R50 CR3 files with their camera JPEGs, all decoded and no damaged copy crashed LibRaw. The embedded full-size
->     preview matches the camera JPEG. A full develop takes about 2.5 s and up to about 880 MB, and looks darker and
->     flatter than the camera's. See the [compatibility report](../benchmarks/m07-raw-spike.md).
+> - **Phase A (RAW, Canon CR3), implemented.** See [ADR 0020](../decisions/0020-raw-through-libraw-previews.md).
+>   - A0: the installer adds the Visual C++ runtime when it is missing, and the app turns AI off instead of crashing
+>     when the runtime can't load (ADR 0019).
+>   - A1: LibRaw 0.22.3 (LGPL-2.1) is vendored unmodified and wrapped in `FrameForge.Raw`; other versions are refused.
+>   - A2: `.CR3` files import with their details (camera, lens, exposure, capture time, orientation).
+>   - A3: RAW files show, analyse and edit through their embedded full-size JPEG; RAW and JPEG import as separate
+>     photos.
+>   - A4: edited JPEGs of RAW files carry the camera details read from the RAW file (no GPS).
+>   - A5: checked in the app on copies of 12 R50 CR3 files and their 12 camera JPEGs: import, grid, viewer, Analyze
+>     and export.
+>   - A6: the user guide lists the supported format and its limits.
+>   - **Supported:** Canon CR3, tested with the Canon EOS R50 only. No other RAW format is imported, and no sensor-data
+>     develop yet.
+>   - The spike before it:
+>     - The spike tool is `raw-spike` in `tools/FrameForge.Evaluation`, using LibRaw 0.22.3, the first version that lists
+>       the Canon EOS R50. Sdcb.LibRaw was dropped: its native package is LibRaw 0.21.1, with no R50 support and from
+>       before the 0.22.1 security fixes.
+>     - On 12 R50 CR3 files with their camera JPEGs, all decoded and no damaged copy crashed LibRaw. The embedded full-size
+>       preview matches the camera JPEG. A full develop takes about 2.5 s and up to about 880 MB, and looks darker and
+>       flatter than the camera's. See the [compatibility report](../benchmarks/m07-raw-spike.md).
 > - **Phase B (export naming, metadata, profiles), implemented.** File-name patterns; a metadata choice for edited JPEGs
 >   (all, all except location, none) with the rating and label written in; saved export profiles and the last export's
 >   settings. It also fixed edited exports of photos with an embedded colour profile, which were labelled with the wrong
@@ -58,15 +71,6 @@
 >   - Crash reports are written locally and never sent, with a note on the next start.
 >
 >   See [ADR 0019](../decisions/0019-installer-updates-crash-reports.md).
-> - **Order planned for the rest:**
->   - A: RAW integration. A0 (fix from E) is done: the installer adds the Visual C++ runtime when it is missing, and
->     the app turns AI off instead of crashing when the runtime can't load (ADR 0019). A1 is done: LibRaw 0.22.3 (LGPL-2.1)
->     is vendored and wrapped in `FrameForge.Raw`, checked on the R50 samples ([ADR 0020](../decisions/0020-raw-through-libraw-previews.md)).
->     A2 is done: .CR3 files import with their details (camera, lens, exposure, capture time, orientation). A3 is done:
->     RAW files show, analyse and edit through their embedded full-size JPEG. A4 is done: edited JPEGs of RAW files carry
->     the camera details read from the RAW file (no GPS). A5 is done: checked in the app on the 12 + 12 R50 samples
->     (import, grid, viewer, analysis, export). Next: A6 (user guide and supported formats) (plan approved:
->     embedded previews, LibRaw under LGPL-2.1, RAW and JPEG as separate photos, CR3 only).
 
 ## Goal
 Evaluate and integrate RAW decoding and harden the app for professional use.

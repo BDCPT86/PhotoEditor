@@ -5,7 +5,7 @@ A Windows-first, local-first photography application focused on photo culling an
 **New here? Read the [user guide](docs/user-guide.md)**: importing, culling, analysis, optional AI, Develop, masks,
 presets and export, in plain steps.
 
-**Status:** Milestone 08 (AI-assisted editing: Auto tools, and masks for local adjustments — Subject, Sky, Background, refined with clicks) is complete, after Milestone 06 (non-destructive editing). Milestone 07 is in progress: photos on an unplugged drive show as Offline, and **Locate folder…** reconnects a folder you moved; exports take file-name patterns, a metadata choice and saved profiles; RAW support has been tested on Canon EOS R50 samples but is not in the app yet. Import folders of JPEGs, cull them with the keyboard
+**Status:** Milestone 08 (AI-assisted editing: Auto tools, and masks for local adjustments — Subject, Sky, Background, refined with clicks) is complete, after Milestone 06 (non-destructive editing). Milestone 07 (RAW and professional workflow) has all its phases implemented: photos on an unplugged drive show as Offline, and **Locate folder…** reconnects a folder you moved; exports take file-name patterns, a metadata choice and saved profiles; Canon CR3 RAW files import, show, edit and export through the full-size JPEG the camera stores in them (tested with the Canon EOS R50). Import folders of JPEGs or CR3 files, cull them with the keyboard
 (keep/reject/review, ratings, colour labels), filter and sort, compare photos side by side, and export the selection.
 **Analyze** measures sharpness and exposure and finds exact and near-duplicates. These are explainable heuristics,
 not AI. Optional local AI models (face detection and scene similarity, off by default, installed only with your consent)
@@ -73,7 +73,7 @@ analysis finding and to choose the sort and thumbnail size, and a **footer** wit
    - **Export → Edited JPEGs** saves new JPEGs with the edits, at a quality and size you choose. Choose which camera
      metadata to keep (all, all except location, or none); your star rating and colour label are written in.
 
-   Edits are stored separately and the original file is never written to. JPEGs are 8-bit, so highlights that are
+   Edits are stored separately and the original file is never written to. JPEGs (and RAW files, edited through their embedded JPEG) are 8-bit, so highlights that are
    already blown cannot be recovered.
 
 Originals are opened read-only and are never modified, moved, or deleted. Export never replaces an existing file: a

@@ -12,7 +12,8 @@ Milestone 06 adds editing without ever touching the original files. The requirem
 - presets applied in batches with progress and cancel
 - undo and reset
 
-Only JPEGs are imported so far, so editing works on 8-bit data. This ADR does not claim RAW-quality results.
+Only JPEGs were imported when this was decided, so editing works on 8-bit data. M07 adds Canon CR3 files, still edited
+through their embedded 8-bit JPEG (ADR 0020). This ADR does not claim RAW-quality results.
 
 ## Decision
 

@@ -12,8 +12,8 @@ folder, cull it with the keyboard, use analysis as hints, edit, and export.
 - **Automatic tools only suggest.** Analysis badges, AI picks, Auto options and masks are hints or previews. Nothing
   changes until you apply it, and you can undo it.
 
-This guide describes FrameForge as of Milestone 08 phase B (masks), with the redesigned interface. Press **F1** in the
-app for the keyboard list at any time.
+This guide describes FrameForge as of Milestone 07 phase A (Canon CR3 RAW files), after Milestone 08 phase B (masks).
+Press **F1** in the app for the keyboard list at any time.
 
 ---
 
@@ -31,7 +31,7 @@ app for the keyboard list at any time.
   totals (keep, review, reject, undecided).
 
 ## 1. Import a folder
-1. Choose **Import** (Ctrl+I) and pick a folder of JPEGs, or drop a folder from File Explorer onto the window. The
+1. Choose **Import** (Ctrl+I) and pick a folder of JPEGs or Canon CR3 RAW files, or drop a folder from File Explorer onto the window. The
    small arrow beside Import has **Include subfolders**; the choice is remembered.
 2. Import reads only each file's details (size, date, camera, exposure). Thumbnails are made as tiles scroll into
    view, so a large folder is usable at once.
@@ -41,6 +41,17 @@ app for the keyboard list at any time.
 Files that can't be read are listed as **Unreadable**. Files deleted since the last import show as **Missing** the next
 time that folder is imported. If an import finds no photos at all in a folder that has some in the library (an empty
 card reader or network share, say), nothing is marked Missing, and the result says so.
+
+### RAW files (Canon CR3)
+- **Which files:** `.CR3` files import alongside JPEGs. They have been tested with the Canon EOS R50. Other RAW formats
+  (CR2, NEF, ARW, DNG and so on) aren't imported yet.
+- **What you see and edit:** the camera's own full-size JPEG, which every CR3 file carries inside it. Thumbnails, the
+  viewer, Analyze, AI, masks and edits all use it, so a RAW file looks like the camera's JPEG of the same shot.
+- **RAW + JPEG:** when the camera saves both, they import as two separate photos side by side. Analyze puts each pair
+  in the same similar group, so **G** selects both.
+- **Details:** camera, lens, exposure, capture time and orientation are read from the RAW file, the same way as from a
+  JPEG.
+- **A CR3 file that can't be read** is listed as **Unreadable**, with the reason, like a damaged JPEG.
 
 ### Photos on a drive that isn't connected
 If the drive or network share a folder is on isn't there, or the folder has gone, its photos show **⚠ Offline** in the
@@ -169,7 +180,8 @@ or 1–3 preview one on the photo, **Enter** applies it as one undo step, and **
 line it found. **Crop** frames the main faces at the ratio chosen under Crop and needs face analysis. Auto never
 applies anything on its own.
 
-JPEGs are 8-bit: highlights that are already blown can't be recovered.
+JPEGs are 8-bit: highlights that are already blown can't be recovered. This holds for RAW files too for now: they are
+edited through the camera's JPEG inside them, not through the sensor data.
 
 ## 9. Masks: edit part of the photo
 The **Masks** section in Develop adjusts one area at a time: brighten the player, cool the sky, calm a busy background.
@@ -230,7 +242,8 @@ in too.
 Choose **Export** in the header. Pick a **Profile** (or set things up yourself), which **Photos** (all marked Keep, or
 those shown in the grid) and what to **Export as**, then **Choose destination and export…**. To export only one
 folder's keepers, choose **Kept** and that folder in the sidebar, then **Photos shown in the grid**.
-- **Copy files to a folder:** the originals, copied unchanged (all their metadata included).
+- **Copy files to a folder:** the originals, copied unchanged (all their metadata included); a RAW file is copied as
+  the `.CR3` itself.
 - **Edited JPEGs:** new JPEGs with each photo's edits, masks included. Masks not worked out yet are worked out during
   the export. If one can't be made, the JPEG is still saved with the rest of the edit, and the result says which photo
   and why. You choose:
@@ -239,6 +252,9 @@ folder's keepers, choose **Kept** and that folder in the sidebar, then **Photos 
     and place names (city, region, country). **None** writes no metadata at all.
   - **Include my star rating and colour label:** writes your rating and label into the JPEG, replacing any in the
     original, so Windows, Lightroom and Bridge show them.
+  - **From a RAW file:** the JPEG gets the camera details read from the RAW file (camera, lens, capture time,
+    exposure, aperture, ISO, focal length), plus your rating and label. GPS, copyright and other details aren't
+    carried over, so **All** and **All except location** give the same result.
 - **Selection manifest (CSV):** a list of the photos and your decisions, with no image files.
 
 ### File names
@@ -332,7 +348,10 @@ version, the error and the end of the log, with your user and computer names rem
 yourself if you want help.
 
 ## 14. Limits worth knowing
-- JPEG only for now. RAW support is planned: Canon EOS R50 RAW files have been tested, but the app can't open them yet.
+- **RAW files:** only Canon CR3 is imported, and it has been tested with the Canon EOS R50 only.
+  - RAW files are shown and edited through the camera's JPEG inside them, so they have no extra highlight or shadow
+    latitude yet. A true RAW develop is planned for a later milestone.
+  - Exported JPEGs of RAW files carry no GPS.
 - At the largest thumbnail size on a high-DPI screen (150 % and up), thumbnails can look slightly soft: they are made at
   320 px.
 - There are no collections yet; the sidebar shows views and folders only.
