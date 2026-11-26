@@ -475,8 +475,11 @@
                                     <ContentPresenter Content="{Binding}" HorizontalAlignment="Center" VerticalAlignment="Center">
                                         <ContentPresenter.Style>
                                             <Style TargetType="ContentPresenter">
+                                                <!-- Hidden until its template applies: a presenter with content and no template shows the view model's name -->
+                                                <Setter Property="Visibility" Value="Collapsed" />
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding HasProblem}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible" />
                                                         <Setter Property="ContentTemplate" Value="{StaticResource TileProblemText}" />
                                                     </DataTrigger>
                                                 </Style.Triggers>
@@ -491,8 +494,11 @@
                                     <ContentPresenter Content="{Binding}" HorizontalAlignment="Left" VerticalAlignment="Top">
                                         <ContentPresenter.Style>
                                             <Style TargetType="ContentPresenter">
+                                                <!-- Hidden until its template applies: a presenter with content and no template shows the view model's name -->
+                                                <Setter Property="Visibility" Value="Collapsed" />
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding HasAnalysisBadges}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible" />
                                                         <Setter Property="ContentTemplate" Value="{StaticResource TileAnalysisBadges}" />
                                                     </DataTrigger>
                                                 </Style.Triggers>
@@ -505,8 +511,11 @@
                                     <ContentPresenter Content="{Binding}" HorizontalAlignment="Left" VerticalAlignment="Bottom">
                                         <ContentPresenter.Style>
                                             <Style TargetType="ContentPresenter">
+                                                <!-- Hidden until its template applies: a presenter with content and no template shows the view model's name -->
+                                                <Setter Property="Visibility" Value="Collapsed" />
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding HasProblem}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible" />
                                                         <Setter Property="ContentTemplate" Value="{StaticResource TileProblemBadge}" />
                                                     </DataTrigger>
                                                 </Style.Triggers>
