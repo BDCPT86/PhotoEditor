@@ -92,7 +92,14 @@ public sealed partial class RecycleBinService(IRecycleBinPlatform platform, ILog
             progress?.Report(new RecycleProgress(paths.Count, i, Path.GetFileName(path)));
             var result = MoveOne(path);
             results.Add(result);
-            LogFileResult(path, result.Outcome, result.Refusal, result.Detail);
+            if (result.Outcome == RecycleOutcome.Moved)
+            {
+                LogMoved(path);
+            }
+            else
+            {
+                LogNotMoved(path, result.Outcome, result.Refusal, result.Detail ?? string.Empty);
+            }
         }
 
         progress?.Report(new RecycleProgress(paths.Count, paths.Count, null));
@@ -170,8 +177,11 @@ public sealed partial class RecycleBinService(IRecycleBinPlatform platform, ILog
     [LoggerMessage(Level = LogLevel.Information, Message = "Moving {Count} file(s) to the Recycle Bin.")]
     private partial void LogMoveStarting(int count);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Recycle Bin: {Path}: {Outcome} {Refusal} {Detail}")]
-    private partial void LogFileResult(string path, RecycleOutcome outcome, RecycleRefusal refusal, string? detail);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Moved to the Recycle Bin: {Path}")]
+    private partial void LogMoved(string path);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Not moved to the Recycle Bin ({Outcome}, refusal {Refusal}) {Detail}: {Path}")]
+    private partial void LogNotMoved(string path, RecycleOutcome outcome, RecycleRefusal refusal, string detail);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Recycle Bin move finished: moved={Moved} skipped={Skipped} failed={Failed} stoppedForSafety={Stopped} cancelled={Cancelled}")]
     private partial void LogMoveFinished(int moved, int skipped, int failed, bool stopped, bool cancelled);

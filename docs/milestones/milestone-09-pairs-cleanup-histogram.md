@@ -158,6 +158,24 @@
 >
 >     Both stay true of the files' contents.
 >   - **Phase D** adds the full guide sections for pairs and the Recycle Bin.
+> - **Phase B in-app check (2026-11-26):**
+>   - **Setup:** the Debug build, a new isolated library, and fresh copies of the 24 renamed R50 test files.
+>   - **Results:**
+>     - 3 pairs were rejected, and the Rejected view showed 3.
+>     - **Delete** opened the panel and **Esc** closed it, so the B2 focus fix works.
+>     - **The panel** read "3 photos · 6 files · 113 MB" and "Move 6 files to Recycle Bin".
+>     - **Pressed:**
+>       - in 1.3 s the status read "Moved 6 files (3 photos) to the Recycle Bin. The log lists every file.";
+>       - the Rejected view went to 0, and All photos to 9;
+>       - the 6 files left the folder (18 remain);
+>       - the Recycle Bin went from 1 item to 7.
+>     - **The log:** one line per file, and no errors or warnings.
+>   - **Tidied after the check:** the per-file log lines now read "Moved to the Recycle Bin: <path>", and a file not
+>     moved gets a warning with the reason.
+>   - **Your Recycle Bin** holds the 6 test files (`IMG_9001`–`IMG_9003`, .JPG and .CR3) and B1's 1 KB
+>     `ff-recycle-test-….tmp`. You can delete them there.
+>   - **Not covered:** a skipped file on a real memory card or network drive (only in tests), and the permanent-delete
+>     warning (see B1).
 >   - **Unexplained (B1):** one full test run reported 1 failure. The runner kept no results file, so I couldn't identify
 >     the test. The next 5 full runs passed (933 tests).
 >   - **An edit made to a RAW file before this milestone** isn't shown, since the tile is the JPEG.
